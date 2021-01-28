@@ -4,28 +4,37 @@
   "description": "",
   "private": true,
   "config": {
-    "build_rpc": "./remote_build_scripts/generate_rpc_interface.sh --build_machine \"$npm_config_build_machine\""
+    "serve_port": "8000",
+    "endpoint_url": "http://localhost:50051",
+    "proxy_url": "http://localhost:50052",
+    "build_common": "node build/build.js --serve_port \"$npm_package_config_serve_port\" --endpoint_url \"$npm_package_config_endpoint_url\" --proxy_url \"$npm_package_config_proxy_url\" --build_machine \"$npm_config_build_machine\""
   },
   "scripts": {
-    "watch": "$npm_package_config_build_rpc && npx webpack --watch",
-    "start": "$npm_package_config_build_rpc && npx webpack serve",
-    "build": "$npm_package_config_build_rpc && npx webpack",
-    "preview": "$npm_package_config_build_rpc && npx webpack && npx firebase hosting:channel:deploy preview",
-    "publish": "$npm_package_config_build_rpc && npx webpack && npx firebase deploy --only hosting"
+    "start": "$npm_package_config_build_common --serve_mode=serve",
+    "build": "$npm_package_config_build_common",
+    "preview": "$npm_package_config_build_common --deploy=preview",
+    "publish": "$npm_package_config_build_common --deploy=public",
+    "test": "npx mocha build"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "devDependencies": {
-    "d3": "^6.5.0",
-    "three": "^0.125.1",
-    "webpack": "^5.18.0",
+    "adm-zip": "^0.5.5",
+    "debug": "^2.6.9",
+    "firebase": "^8.2.5",
+    "firebase-tools": "^9.2.2",
+    "mocha": "^8.4.0",
+    "nock": "^13.1.0",
     "webpack-cli": "^4.4.0",
     "webpack-dev-server": "^3.11.2"
   },
   "dependencies": {
     "@seregpie/three.text-sprite": "^3.2.0",
-    "firebase": "^8.2.5",
-    "firebase-tools": "^9.2.2"
+    "d3": "^6.5.0",
+    "google-protobuf": "^3.14.0",
+    "grpc-web": "^1.2.1",
+    "three": "^0.125.1",
+    "webpack": "^5.18.0"
   }
 }

@@ -1,0 +1,235 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Contains proto definitions used primarily for storage purposes.
+syntax = "proto3";
+
+package falken.proto.data_store;
+
+import "google/rpc/status.proto";
+import "brain.proto";
+import "episode.proto";
+import "session.proto";
+
+message Assignment {
+  string project_id = 1;
+  string brain_id = 2;
+  string session_id = 3;
+  string assignment_id = 4;
+  google.rpc.Status status = 5;
+}
+
+message Project {
+  string project_id = 1;
+  string name = 2;
+  string api_key = 3;
+  uint64 created_micros = 4;
+}
+
+message Brain {
+  string project_id = 1;
+  string brain_id = 2;
+
+  string name = 3;
+  uint64 created_micros = 4;
+  falken.proto.BrainSpec brain_spec = 5;
+}
+
+message Session {
+  string project_id = 1;
+  string brain_id = 2;
+  string session_id = 3;
+
+  uint64 created_micros = 4;
+  uint64 ended_micros = 5;
+  uint64 last_data_received_micros = 6;
+  google.rpc.Status status = 7;
+
+  // Snapshot used to start the session.
+  repeated string starting_snapshot_ids = 8;
+  // Populated when the session is complete.
+  string snapshot_id = 9;
+
+  falken.proto.SessionType session_type = 10;
+
+  // User agent of the client that created this session.
+  string user_agent = 11;
+}
+
+message TrainingInfo {
+  // Number of training steps for each call to TFAgent.train().
+  int64 training_steps = 1;
+  int64 batch_size = 2;
+  // Number of frames stored in the replay buffer.
+  int64 demonstration_frames = 3;
+  // Number of frames used for evaluation.
+  int64 evaluation_frames = 4;
+}
+
+message ModelLatencyStats {
+  float fetch_initial_chunk_latency = 1 [deprecated = true];
+  // Use train_brain_latencies instead.
+  float fetch_chunk_latency = 2 [deprecated = true];
+  // Use fetch_chunk_latencies instead.
+  float train_brain_latency = 3 [deprecated = true];
+  float save_model_tmp_latency = 4;
+  float save_model_latency = 5;
+  float record_model_latency = 6;
+  repeated float fetch_chunk_latencies = 7;
+  repeated float train_brain_latencies = 8;
+  float export_model_latency = 9;
+  float export_checkpoint_latency = 10;
+  float convert_tflite_latency = 11;
+  TrainingInfo training_info = 12;
+}
+
+message Model {
+  string project_id = 1;
+  string brain_id = 2;
+  string session_id = 3;
+  string model_id = 4;
+
+  int64 commit_timestamp_micros = 5;
+  string model_path = 6;
+  string compressed_model_path = 11;
+
+  // Set by the learner service to indicate the assignment that trained this
+  // model.
+  string assignment_id = 7;
+
+  // Set by the learner service to associate this model with data utilized
+  // to train it.
+  string episode_id = 8;
+  int64 episode_chunk_id = 9;
+  // Time for the most recent human demonstration used to train this model
+  // (the most recent chunk that doesn't contain human data).
+  uint64 most_recent_demo_time_micros = 14;
+
+  // Latency stats for model-creating and recording events.
+  ModelLatencyStats latency_stats = 10;
+
+  // Fields with information about training progress.
+  // training_examples_completed / max_training_examples indicates
+  // the proportion of training time already completed.
+  // (Note examples = steps * batches).
+  int64 training_examples_completed = 12;
+  int64 max_training_examples = 13;
+}
+
+enum StepsType {
+  UNKNOWN = 0;
+  ONLY_DEMONSTRATIONS = 1;
+  ONLY_INFERENCES = 2;
+  MIXED = 3;
+}
+
+message EpisodeChunk {
+  // Key fields
+  string project_id = 1;
+  string brain_id = 2;
+  string session_id = 3;
+  string episode_id = 4;
+  int64 chunk_id = 5;
+
+  int64 created_micros = 6;
+
+  // Value columns.
+  falken.proto.EpisodeChunk data = 7;
+  StepsType steps_type = 8;  // Summary of steps in chunk.
+}
+
+message SnapshotParents {
+  // ID of the snapshot with one or more parents.
+  string snapshot_id = 1;
+  // IDs of parents of the snapshot referenced by snapshot_id.
+  repeated string parent_snapshot_ids = 2;
+}
+
+message Snapshot {
+  // Resource identifier of the snapshot.
+  string project_id = 1;
+  string brain_id = 2;
+  string snapshot_id = 3;
+
+  // IDs of all brain state snapshots that this snapshot is derived from.
+  // In the form child:parent.
+  repeated SnapshotParents ancestor_snapshot_ids = 4;
+
+  // When this snapshot was created in microseconds since the Unix epoch.
+  uint64 created_micros = 5;
+
+  // Developer specified metadata.
+  // Display name of the snapshot.
+  string display_name = 6;
+
+  // ID of the session in the Sessions table that was used to train this brain
+  // state.
+  string session_id = 7;
+  // The best model in the Models table and associated evaluation in the
+  // Evaluations table selected after the training session.
+  string model_id = 8;
+  // Path of the serialized brain state. This is a copy of the model_path field
+  // of the falken.storage.Model proto to reduce the number of queries to load
+  // a model from a snapshot.
+  string model_path = 9;
+  // Complete size of all data associated with this snapshot in bytes. This is
+  // provided to minimize the number of queries required to calculate the
+  // overall snapshot size. This is the sum of all checkpoints, episode
+  // observations and actions.
+  uint64 snapshot_size = 10;
+  // IDs of models in the Models table from the most recent set of training
+  // assignments in the session referenced by this snapshot.
+  repeated string model_ids = 11;
+}
+
+message EvalLatencyStats {
+  float eval_latency = 1;
+  float record_eval_latency = 2;
+}
+
+message OfflineEvaluation {
+  // Key of the evaluation.
+  string project_id = 1;
+  string brain_id = 2;
+  string session_id = 3;
+  string model_id = 4;
+
+  // Version of the eval set. Increasing == newer. Only scores of versions with
+  // the same evaluation_set_id should be compared against each other.
+  uint64 evaluation_set_id = 5;
+  // Evaluation loss score. Lower is better.
+  float score = 6;
+
+  // Time the score was last computed.
+  uint64 commit_timestamp = 7;
+
+  // Latency stats for evaluating and recording the evaluation.
+  EvalLatencyStats latency_stats = 8;
+}
+
+message OnlineEvaluation {
+  // Key of the evaluation.
+  string project_id = 1;
+  string brain_id = 2;
+  string session_id = 3;
+  string model_id = 4;
+  string episode_id = 5;
+
+  // Column data
+  float score = 6;
+  int64 commit_timestamp_micros = 7;
+
+  // Latency stats for evaluating and recording the evaluation.
+  EvalLatencyStats latency_stats = 8;
+}

@@ -1,0 +1,113 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package falken.proto;
+
+import "primitives.proto";
+
+// AxesMode indicates how joystick axes are interpreted. Note that Falken uses
+// Unity-style conventions:
+//  * up is the positive Y direction.
+//  * right is the positive X direction.
+//  * forward is the positive Z direction.
+enum JoystickAxesMode {
+  // Null value, invalid.
+  UNDEFINED = 0;
+  // Axes control degree of desired change in pitch / yaw.
+  DELTA_PITCH_YAW = 1;
+  // Axes indicate a direction in the XZ plane of a given reference frame.
+  DIRECTION_XZ = 2;
+}
+
+// Declares a two-axis continuous input where axes are interpreted either
+// indicating a desired change in the rotation of an object or a direction
+// specified with regards to the control_frame.
+message JoystickType {
+  // How axes inputs are interpreted.
+  JoystickAxesMode axes_mode = 1;
+  // Name of the entity that is being controlled, e.g., "player", "camera".
+  string controlled_entity = 2;
+  // Name of the entity which specifies that the frame in which directional
+  // inputs are interpreted. May only be set if the axes_mode is DIRECTION_*.
+  string control_frame = 3;
+}
+
+// Represents a two-axis continuous input from an input device with values
+// between -1 and 1.
+message Joystick {
+  // The X-axis of the input device.
+  float x_axis = 1;
+  // The Y-axis of the input device.
+  float y_axis = 2;
+}
+
+// Declares a type of action available to an agent at a timestep.
+message ActionType {
+  // User-specified name to identify the ActionType.
+  string name = 1;
+  // Represents the type of action available to the agent.
+  oneof action_types {
+    // A CategoryType represents an enum-style type whose values are discrete
+    // and don't have numerical interpretations.
+    CategoryType category = 2;
+    // NumberType represents a numerical value within a closed range,
+    // represented internally as a float.
+    NumberType number = 3;
+    // JoystickType represents a two-axis input device where axis-values are
+    // between -1 and 1.
+    JoystickType joystick = 4;
+  }
+}
+
+// Represents an action performed by an agent.
+message Action {
+  // An action agent, matches the AcionType action_types field.
+  oneof action {
+    // A Category action represents an enum-style value.
+    Category category = 1;
+    // A Number action represents a numerical value within a closed range.
+    Number number = 2;
+    // A Joystick action represents a two-axis input device where axis-values
+    // are within -1 and 1.
+    Joystick joystick = 3;
+  }
+}
+
+// Declares the action space available to an agent.
+message ActionSpec {
+  // Declares ActionTypes available to an agent.
+  repeated ActionType actions = 1;
+}
+
+// Represents the actions taken by an agent in a given timestep.
+message ActionData {
+  // Actions taken by an agent.
+  repeated Action actions = 1;
+  // Source of the action.
+  ActionSource source = 2;
+
+  // Types of sources for an action.
+  enum ActionSource {
+    // Unknown source.
+    SOURCE_UNKNOWN = 0;
+    // No demonstration nor brain available, action is empty.
+    NO_SOURCE = 1;
+    // Action provided by a human, as a demonstration.
+    HUMAN_DEMONSTRATION = 2;
+    // Action has been produced by a brain.
+    BRAIN_ACTION = 3;
+  }
+}

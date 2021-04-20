@@ -1,0 +1,105 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Falken's primitives.proto contains basic representations of value that are
+// shared between observations and actions.
+syntax = "proto3";
+
+package falken.proto;
+
+// A CategoryType represents an enum-style type whose values are discrete and
+// don't have numerical interpretations. For example:
+//
+// spell_type {            // CategoryType message
+//   enum_values: "HEAL"
+//   enum_values: "FIREBALL"
+//   enum_values: "LIGHTNING_BOLT"
+// }
+//
+// spell_value {           // Category message
+//   value: 1               // corresponds to FIREBALL
+// }
+message CategoryType {
+  // A list of all possible categories that this type may take.
+  repeated string enum_values = 1;
+}
+
+// Category represents a value of a CategoryType.
+message Category {
+  // The categorical value, corresponding to the human readable string
+  // enum_values[value] that was provided in the associated CategoryType.
+  int32 value = 1;
+}
+
+// NumberType represents a numerical value within a closed range, represented
+// internally as a float. For example:
+//
+// health_type {            // NumberType message
+//   minimum: 0.0
+//   maximum: 100.0
+// }
+// health {                 // Number message
+//   value: 59.0            // current health value.
+// }
+//
+// Another example:
+//
+// throttle_type {          // NumberType message
+//   minimum: -1.0          // full decceleration
+//   maximum: 1.0           // full acceleration
+// }
+// throttle {
+//   value: 0.732           // represents moderate forwards acceleration.
+// }
+message NumberType {
+  // Minimum number accepted in the NumberType.
+  float minimum = 1;
+  // Maximum number accepted in the NumberType.
+  float maximum = 2;
+}
+
+// Number represents a value of a NumberType.
+message Number {
+  // Value of the number recorded in the NumberType.
+  float value = 1;
+}
+
+// Geometric primitives:
+// Represents a position in world-space.
+message PositionType {}
+
+// Position represents a value of PositionType.
+message Position {
+  // X coordinate in the world-space.
+  float x = 1;
+  // Y coordinate in the world-space.
+  float y = 2;
+  // Z coordinate in the world-space.
+  float z = 3;
+}
+
+// Represents a rotation in quaternion format.
+message RotationType {}
+
+// Rotation represents a value of a RotationType.
+message Rotation {
+  // X component of the rotation quarternion.
+  float x = 1;
+  // Y component of the rotation quarternion.
+  float y = 2;
+  // Z component of the rotation quarternion.
+  float z = 3;
+  // W component of the rotation quarternion.
+  float w = 4;
+}

@@ -1,0 +1,33 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package falken.proto;
+
+// Represents a Brain state when a session is complete.
+message Snapshot {
+  // ID of the project that owns the brain.
+  string project_id = 1;
+  // ID of the brain that this is a snapshot of.
+  string brain_id = 2;
+  // ID of the snapshot.
+  string snapshot_id = 3;
+  // IDs of parents of this snapshot in the graph of snapshots for a brain.
+  repeated string parent_snapshot_ids = 4;
+  // Unix epoch timestamp in milliseconds when the snapshot was created.
+  int64 created_timestamp_millis = 5;
+  // Human readable name of the snapshot.
+  string display_name = 6;
+}

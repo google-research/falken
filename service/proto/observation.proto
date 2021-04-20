@@ -1,0 +1,121 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package falken.proto;
+
+import "primitives.proto";
+
+// High-level observations:
+
+// An EntityType declares an in-game entity type that may have position,
+// rotation and a set of custom fields.
+message EntityType {
+  // PositionType declaration.
+  PositionType position = 1;
+  // RotationType declaration.
+  RotationType rotation = 2;
+  // EntityFieldType declaration.
+  repeated EntityFieldType entity_fields = 3;
+}
+
+// Entity represents observations associated with an in-game entity.
+message Entity {
+  // Position of an entity.
+  Position position = 1;
+  // Rotation of an entity.
+  Rotation rotation = 2;
+  // Other fields of the entity.
+  repeated EntityField entity_fields = 3;
+}
+
+// An EntityFieldType declares a named custom fields of an entity.
+message EntityFieldType {
+  // User-specified name to identify the EntityField.
+  string name = 1;
+  // Type of the field.
+  oneof type {
+    // A CategoryType represents an enum-style type whose values are discrete
+    // and don't have numerical interpretations.
+    CategoryType category = 2;
+    // NumberType represents a numerical value within a closed range,
+    // represented internally as a float.
+    NumberType number = 3;
+    // Range information describing the geometry of the world.
+    FeelerType feeler = 4;
+  }
+}
+
+// EntityField represents the value of named custom field of an entity.
+message EntityField {
+  // Value recorded in the entity_field.
+  oneof value {
+    // Category value.
+    Category category = 1;
+    // Number value.
+    Number number = 2;
+    // Feeler value.
+    Feeler feeler = 3;
+  }
+}
+
+// Range information from the player to objects in the game world.
+message FeelerType {
+  // The number of feelers that will report distances.
+  int32 count = 1;
+  // Specification for the distance provided with each Measurement.
+  NumberType distance = 2;
+  // The angle of each feeler, measured in radians and relative to the parent
+  // entity, around the entity's up vector.
+  repeated float yaw_angles = 3;
+  // Additional numeric information. For experimental use only.
+  repeated NumberType experimental_data = 4;
+  // Thickness of the trace used by the feeler.
+  float thickness = 5;
+}
+
+// Measurements in a specific direction relative to the entity.
+message FeelerMeasurement {
+  // The distance measured in the direction.
+  Number distance = 1;
+  // Values measured in the direction.
+  repeated Number experimental_data = 2;
+}
+
+// Feelers that sense distances to the surroundings of an entity.
+message Feeler {
+  // Measurements to the world in a specific direction relative to the entity.
+  repeated FeelerMeasurement measurements = 1;
+}
+
+// Declares the observation space the agent is operating in.
+message ObservationSpec {
+  // The type of the player.
+  EntityType player = 1;
+  // The type of the camera.
+  EntityType camera = 3;
+  // Globally unique entities.
+  repeated EntityType global_entities = 2;
+}
+
+// Represents an observation made by an agent in a single timestep.
+message ObservationData {
+  // The player entity.
+  Entity player = 1;
+  // The camera entity.
+  Entity camera = 3;
+  // Other entities.
+  repeated Entity global_entities = 2;
+}

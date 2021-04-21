@@ -48,14 +48,14 @@ class DataFetcherTest(absltest.TestCase):
     with data_fetcher.DataFetcher(
         _fetch_data(), DataFetcherTest._FETCH_INTERVAL_SECONDS,
         condition=mock_condition) as fetcher:
-      self.assertEqual(fetcher.Get(), 1)
-      self.assertEqual(fetcher.Get(), 2)
-      self.assertEqual(fetcher.Get(), 3)
+      self.assertEqual(fetcher.get(), 1)
+      self.assertEqual(fetcher.get(), 2)
+      self.assertEqual(fetcher.get(), 3)
       with self.assertRaises(data_fetcher.Empty):
-        fetcher.Get(timeout=0.01)
+        fetcher.get(timeout=0.01)
 
   def test_error_propagation(self):
-    """Ensure Get() raises the exception returned by the generator."""
+    """Ensure get() raises the exception returned by the generator."""
 
     class _TestError(Exception):
       pass
@@ -70,10 +70,10 @@ class DataFetcherTest(absltest.TestCase):
     with data_fetcher.DataFetcher(
         _fetch_data(), DataFetcherTest._FETCH_INTERVAL_SECONDS,
         condition=mock_condition) as fetcher:
-      fetcher.Get()
-      fetcher.Get()
+      fetcher.get()
+      fetcher.get()
       with self.assertRaises(_TestError):
-        fetcher.Get()
+        fetcher.get()
     self.assertEqual(0, mock_condition.wait.call_count)
 
   def test_stop_stops_thread(self):
@@ -88,8 +88,8 @@ class DataFetcherTest(absltest.TestCase):
     with data_fetcher.DataFetcher(
         _fetch_data(), DataFetcherTest._FETCH_INTERVAL_SECONDS) as fetcher:
       self.assertTrue(fetcher.running)
-      fetcher.Get()
-      fetcher.Get()
+      fetcher.get()
+      fetcher.get()
     self.assertFalse(fetcher.running)
     # Make sure the thread isn't still calling the generator.
     stopped_yield_count = yield_count

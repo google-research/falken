@@ -56,15 +56,15 @@ class DataFetcher:
     self._fetcher_thread = None
     self._poll_condition = condition if condition else threading.Condition()
 
-  def Start(self):
+  def start(self):
     """Start fetching data in a background thread."""
     assert not self._running
     self._stop = False
     self._running = True
-    self._fetcher_thread = threading.Thread(target=self._Run, daemon=True)
+    self._fetcher_thread = threading.Thread(target=self._run, daemon=True)
     self._fetcher_thread.start()
 
-  def Stop(self):
+  def stop(self):
     """Stop fetching data in a background thread."""
     self._stop = True
     self._poll_condition.acquire()
@@ -78,13 +78,13 @@ class DataFetcher:
     return self._running
 
   def __enter__(self):
-    self.Start()
+    self.start()
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
-    self.Stop()
+    self.stop()
 
-  def Get(self, block=True, timeout=None):
+  def get(self, block=True, timeout=None):
     """Interface is identical to queue.get. Raises Empty if no data present."""
     try:
       queue_result = self._queue.get(block=block, timeout=timeout)
@@ -104,7 +104,7 @@ class DataFetcher:
 
     return result
 
-  def _Run(self):
+  def _run(self):
     """Main loop for fetcher thread."""
     self._running = True
     try:

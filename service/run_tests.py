@@ -18,8 +18,8 @@
 import importlib
 import inspect
 import os
-import subprocess
 import sys
+from common import pip_installer  # pylint: disable=unused-import
 
 # Add search paths for all modules.
 _SERVICE_MODULE_PATHS = ['data_store', 'log', 'learner', 'learner/brains']
@@ -27,15 +27,9 @@ sys.path.extend(
     [os.path.join(os.path.dirname(__file__), p) for p in _SERVICE_MODULE_PATHS]
 )
 
-# Modules required to execute service modules and tests.
-_REQUIRED_PYTHON_MODULES = [
-    'absl-py',
-    'tensorflow',
-    'tensorflow_graphics',
-    'tf-agents',
-]
-
 _TEST_MODULES = [
+    'common.generate_protos_test',
+    'common.pip_installer_test',
     'data_store.data_store_test',
     'learner.brains.egocentric_test',
     'learner.brains.imitation_loss_test',
@@ -46,12 +40,6 @@ _TEST_MODULES = [
     'learner.data_fetcher_test',
     'log.falken_logging_test',
 ]
-
-
-def install_dependencies():
-  """Install all Python module dependencies."""
-  for m in _REQUIRED_PYTHON_MODULES:
-    subprocess.check_call([sys.executable, '-m', 'pip', '-q', 'install', m])
 
 
 def _add_module_test_classes_to_global_namespace(test_classes, module):
@@ -82,5 +70,4 @@ def run_absltests():
 
 
 if __name__ == '__main__':
-  install_dependencies()
   run_absltests()

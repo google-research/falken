@@ -13,10 +13,11 @@
 # limitations under the License.
 
 # Lint as: python3
-# pylint: disable=g-bad-import-order, g-import-not-at-top
+# pylint: disable=g-bad-import-order, g-import-not-at-top, reimported
 """Tests that protos are generated after importing generate_protos module."""
 import glob
 import os
+import sys
 
 from absl.testing import absltest
 # Set the environment variable to false so the test can call the method to
@@ -68,8 +69,35 @@ class GenerateProtosTest(absltest.TestCase):
 
     generated_protos = glob.glob(f'{generated_dir}/*.py')
     self.assertSameElements(generated_protos, all_expected_protos)
+    import primitives_pb2
+    self.assertIsNotNone(primitives_pb2.Rotation())
+
+  def test_generate_protos_cache(self):
+    """Verify calling generate_proto multiple times without clean_up works."""
+    # First, verify that importing brain_pb2 before generate_protos is called
+    # raises a ModuleNotFoundError.
+    with self.assertRaises(ModuleNotFoundError):
+      import brain_pb2
+    old_sys_path = sys.path[:]
+
+    # Call generate for the first time.
+    common.generate_protos.generate()
     import brain_pb2
     self.assertIsNotNone(brain_pb2.Brain())
+
+    # Restore the sys.path to what it was before calling generate().
+    sys.path = old_sys_path
+
+    # Because the sys.path does not contain the path to the generated protos,
+    # snapshot_pb2 cannot be found.
+    with self.assertRaises(ModuleNotFoundError):
+      import snapshot_pb2
+
+    # Generate the protos again, which does not actually re-generate the protos,
+    # but adds the path to the sys.path. Now snapshot_pb2 can be found.
+    common.generate_protos.generate()
+    import snapshot_pb2
+    self.assertIsNotNone(snapshot_pb2.Snapshot())
 
 
 if __name__ == '__main__':

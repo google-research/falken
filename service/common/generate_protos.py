@@ -84,13 +84,20 @@ def generate():
     ]
     args.extend(glob.glob(f'{original_proto_dir}/*.proto'))
     subprocess.run(args, check=True)
+  if generated_protos_dir not in sys.path:
     sys.path.append(generated_protos_dir)
 
 
 def clean_up():
   """Cleans up the generated protos directory created by generate()."""
-  shutil.rmtree(get_generated_protos_dir())
-  shutil.rmtree(download_external_protos())
+  external_protos_dir = download_external_protos()
+  if os.path.exists(external_protos_dir):
+    shutil.rmtree(download_external_protos())
+  generated_protos_dir = get_generated_protos_dir()
+  if os.path.exists(generated_protos_dir):
+    shutil.rmtree(generated_protos_dir)
+  if generated_protos_dir in sys.path:
+    sys.path.remove(generated_protos_dir)
 
 
 if int(os.environ.get('FALKEN_GENERATE_PROTOS', 1)):

@@ -20,6 +20,7 @@ package falken.proto.data_store;
 import "google/rpc/status.proto";
 import "brain.proto";
 import "episode.proto";
+import "serialized_model.proto";
 import "session.proto";
 
 message Assignment {
@@ -125,6 +126,15 @@ message Model {
   // (Note examples = steps * batches).
   int64 training_examples_completed = 12;
   int64 max_training_examples = 13;
+}
+
+message SerializedModel {
+  string project_id = 1;
+  string brain_id = 2;
+  string session_id = 3;
+  string model_id = 4;
+
+  falken.proto.SerializedModel serialized_model = 5;
 }
 
 enum StepsType {

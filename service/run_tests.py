@@ -28,7 +28,6 @@ sys.path.extend(
 )
 
 _TEST_MODULES = [
-    'common.generate_protos_test',
     'common.pip_installer_test',
     'data_store.data_store_test',
     'learner.brains.egocentric_test',

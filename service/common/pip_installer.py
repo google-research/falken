@@ -30,5 +30,5 @@ def install_dependencies():
     subprocess.check_call([sys.executable, '-m', 'pip', '-q', 'install', m])
 
 
-if int(os.environ.get('FALKEN_INSTALL_DEPENDENCIES', 1)):
+if int(os.environ.get('FALKEN_AUTO_INSTALL_DEPENDENCIES', 1)):
   install_dependencies()

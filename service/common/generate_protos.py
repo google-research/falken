@@ -100,5 +100,5 @@ def clean_up():
     sys.path.remove(generated_protos_dir)
 
 
-if int(os.environ.get('FALKEN_GENERATE_PROTOS', 1)):
+if int(os.environ.get('FALKEN_AUTO_GENERATE_PROTOS', 1)):
   generate()

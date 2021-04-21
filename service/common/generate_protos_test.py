@@ -22,24 +22,30 @@ import sys
 from absl.testing import absltest
 # Set the environment variable to false so the test can call the method to
 # generate protos explicitly.
-os.environ['FALKEN_GENERATE_PROTOS'] = '0'
-import common.generate_protos
+os.environ['FALKEN_AUTO_GENERATE_PROTOS'] = '0'
+import generate_protos
 
 
 class GenerateProtosTest(absltest.TestCase):
   """Test generate_protos module."""
 
+  def setUp(self):
+    super(GenerateProtosTest, self).setUp()
+    # Clean up any generated proto state that may have remained from other
+    # processes run before this test.
+    generate_protos.clean_up()
+
   def tearDown(self):
     """Tear down the testing environment."""
     super(GenerateProtosTest, self).tearDown()
-    common.generate_protos.clean_up()
+    generate_protos.clean_up()
 
   def test_generate_protos(self):
     """Import the generate_protos module and verify generation and use."""
-    common.generate_protos.generate()
+    generate_protos.generate()
     source_protos = glob.glob(
-        f'{common.generate_protos.get_source_proto_dir()}/*.proto')
-    generated_dir = common.generate_protos.get_generated_protos_dir()
+        f'{generate_protos.get_source_proto_dir()}/*.proto')
+    generated_dir = generate_protos.get_generated_protos_dir()
 
     def extract_generated_proto_path(source_proto_path, generated_dir):
       """Create generated proto path with the proto name.
@@ -81,7 +87,7 @@ class GenerateProtosTest(absltest.TestCase):
     old_sys_path = sys.path[:]
 
     # Call generate for the first time.
-    common.generate_protos.generate()
+    generate_protos.generate()
     import brain_pb2
     self.assertIsNotNone(brain_pb2.Brain())
 
@@ -95,7 +101,7 @@ class GenerateProtosTest(absltest.TestCase):
 
     # Generate the protos again, which does not actually re-generate the protos,
     # but adds the path to the sys.path. Now snapshot_pb2 can be found.
-    common.generate_protos.generate()
+    generate_protos.generate()
     import snapshot_pb2
     self.assertIsNotNone(snapshot_pb2.Snapshot())
 

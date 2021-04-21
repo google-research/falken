@@ -18,6 +18,7 @@
 import importlib
 import inspect
 import os
+import subprocess
 import sys
 from common import pip_installer  # pylint: disable=unused-import
 
@@ -27,8 +28,12 @@ sys.path.extend(
     [os.path.join(os.path.dirname(__file__), p) for p in _SERVICE_MODULE_PATHS]
 )
 
+_SUBPROCESS_TESTS = [
+    'common/generate_protos_test.py',
+    'common/pip_installer_test.py',
+]
+
 _TEST_MODULES = [
-    'common.pip_installer_test',
     'data_store.data_store_test',
     'learner.brains.egocentric_test',
     'learner.brains.imitation_loss_test',
@@ -56,6 +61,13 @@ def _add_module_test_classes_to_global_namespace(test_classes, module):
 
 def run_absltests():
   """Run all absl tests in the current module."""
+  # Run tests that need to be run on separate subprocesses so they do not
+  # affect the other tests' environments.
+  for subprocess_test in _SUBPROCESS_TESTS:
+    subprocess.check_call(
+        [sys.executable, os.path.join(
+            os.path.dirname(__file__), subprocess_test)])
+
   # Can't import absl at the top of this file as it needs to be installed first.
   # pylint: disable=g-import-not-at-top.
   from absl.testing import absltest

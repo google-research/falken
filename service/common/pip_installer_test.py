@@ -25,8 +25,8 @@ from absl.testing import absltest
 
 # Set the environment variable to false so the test can call the method to
 # install dependencies explicitly.
-os.environ['FALKEN_INSTALL_DEPENDENCIES'] = '0'
-import common.pip_installer
+os.environ['FALKEN_AUTO_INSTALL_DEPENDENCIES'] = '0'
+import pip_installer
 
 
 class PipInstallerTest(absltest.TestCase):
@@ -35,10 +35,10 @@ class PipInstallerTest(absltest.TestCase):
   @mock.patch.object(subprocess, 'check_call', autospec=True)
   def test_install_dependencies(self, check_call):
     """Import the install_dependencies module and verify install."""
-    common.pip_installer.install_dependencies()
+    pip_installer.install_dependencies()
     expected_call_args_list = [
         mock.call([sys.executable, '-m', 'pip', '-q', 'install', module])
-        for module in common.pip_installer._REQUIRED_PYTHON_MODULES
+        for module in pip_installer._REQUIRED_PYTHON_MODULES
     ]
     check_call.assert_has_calls(expected_call_args_list)
 

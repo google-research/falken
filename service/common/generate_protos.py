@@ -73,16 +73,16 @@ def generate():
   generated_protos_dir = get_generated_protos_dir()
   if not os.path.exists(generated_protos_dir):
     os.makedirs(generated_protos_dir)
-    original_proto_dir = get_source_proto_dir()
+    source_proto_dir = get_source_proto_dir()
     downloaded_proto_dir = download_external_protos()
     args = [
         sys.executable, '-m', 'grpc_tools.protoc',
         f'--proto_path={downloaded_proto_dir}',
-        f'--proto_path={original_proto_dir}',
+        f'--proto_path={source_proto_dir}',
         f'--python_out={generated_protos_dir}',
         f'--grpc_python_out={generated_protos_dir}'
     ]
-    args.extend(glob.glob(f'{original_proto_dir}/*.proto'))
+    args.extend(glob.glob(f'{source_proto_dir}/*.proto'))
     subprocess.run(args, check=True)
   if generated_protos_dir not in sys.path:
     sys.path.append(generated_protos_dir)

@@ -36,6 +36,7 @@ _SUBPROCESS_TESTS = [
 _TEST_MODULES = [
     'data_store.data_store_test',
     'learner.brains.egocentric_test',
+    'learner.brains.eval_datastore_test',
     'learner.brains.imitation_loss_test',
     'learner.brains.layers_test',
     'learner.brains.numpy_replay_buffer_test',

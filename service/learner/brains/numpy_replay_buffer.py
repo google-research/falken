@@ -15,6 +15,8 @@
 # Lint as: python3
 """A simple replay buffer backed by numpy arrays with fast inserts."""
 
+from learner.brains import tensor_nest
+
 import numpy as np
 import tensorflow as tf
 
@@ -67,7 +69,7 @@ class NumpyReplayBuffer:
       nested_tensor: A tensor nest where the first dimension corresponds to
         the length of the input. (Must be at least one)
     """
-    size = _BatchSize(nested_tensor)
+    size = tensor_nest.batch_size(nested_tensor)
     def _Update(buf, t):
       """Update buffer buf from tensor t."""
       buf_start = self._rr_ptr  # Pointer to the buffer start.
@@ -110,15 +112,3 @@ class NumpyReplayBuffer:
       A tf.data.Dataset representing the contents of the buffer.
     """
     return tf.data.Dataset.from_tensor_slices(self.Gather())
-
-
-def _BatchSize(tensor_nest):
-  """Return outermost dimension of tensors in tensor nest."""
-  size = None
-  def _RecordSize(t):
-    nonlocal size
-    if size is not None and size != len(t):
-      raise Error('Unbalanced nest, outer dim {size} vs {len(t)}')
-    size = len(t)
-  tf.nest.map_structure(_RecordSize, tensor_nest)
-  return size

@@ -35,14 +35,22 @@ def get_generated_protos_dir():
       _PROTO_GEN_DIR)
 
 
-def get_source_proto_dir():
-  """Returns path to directory containing .proto files.
+def get_service_dir():
+  """Returns the /service directory."""
+  # Since this file is in /service/common, return its parent dir.
+  return os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
+
+
+def get_source_proto_dirs():
+  """Returns list of directory paths containing .proto files.
 
   Since this file is in /service/common, go to its parent dir and go to the
   proto directory.
   """
-  return os.path.join(
-      os.path.dirname(os.path.abspath(__file__)), os.pardir, 'proto')
+  return [
+      os.path.join(get_service_dir(), 'proto'),
+      os.path.join(get_service_dir(), 'data_store', 'proto')
+  ]
 
 
 def download_external_protos():
@@ -51,7 +59,7 @@ def download_external_protos():
   Returns:
     Path to where the external protos are downloaded.
   """
-  downloaded_proto_dir = os.path.join(get_source_proto_dir(), 'external')
+  downloaded_proto_dir = os.path.join(get_service_dir(), 'proto', 'external')
   if not os.path.exists(downloaded_proto_dir):
     for proto_url, proto_path in _EXTERNAL_PROTOS:
       file_name = os.path.join(downloaded_proto_dir, proto_path)
@@ -73,16 +81,16 @@ def generate():
   generated_protos_dir = get_generated_protos_dir()
   if not os.path.exists(generated_protos_dir):
     os.makedirs(generated_protos_dir)
-    source_proto_dir = get_source_proto_dir()
+    source_proto_dirs = get_source_proto_dirs()
     downloaded_proto_dir = download_external_protos()
     args = [
         sys.executable, '-m', 'grpc_tools.protoc',
         f'--proto_path={downloaded_proto_dir}',
-        f'--proto_path={source_proto_dir}',
         f'--python_out={generated_protos_dir}',
         f'--grpc_python_out={generated_protos_dir}'
-    ]
-    args.extend(glob.glob(f'{source_proto_dir}/*.proto'))
+    ] + [f'--proto_path={d}' for d in source_proto_dirs]
+    for d in source_proto_dirs:
+      args.extend(glob.glob(f'{d}/*.proto'))
     subprocess.run(args, check=True)
   if generated_protos_dir not in sys.path:
     sys.path.append(generated_protos_dir)

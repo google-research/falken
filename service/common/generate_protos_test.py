@@ -43,8 +43,9 @@ class GenerateProtosTest(absltest.TestCase):
   def test_generate_protos(self):
     """Import the generate_protos module and verify generation and use."""
     generate_protos.generate()
-    source_protos = glob.glob(
-        f'{generate_protos.get_source_proto_dir()}/*.proto')
+    source_protos = []
+    for d in generate_protos.get_source_proto_dirs():
+      source_protos += glob.glob(f'{d}/*.proto')
     generated_dir = generate_protos.get_generated_protos_dir()
 
     def extract_generated_proto_path(source_proto_path, generated_dir):

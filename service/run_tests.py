@@ -41,6 +41,7 @@ _TEST_MODULES = [
     'learner.brains.eval_datastore_test',
     'learner.brains.imitation_loss_test',
     'learner.brains.layers_test',
+    'learner.brains.networks_test',
     'learner.brains.numpy_replay_buffer_test',
     'learner.brains.observation_preprocessor_test',
     'learner.brains.policies_test',

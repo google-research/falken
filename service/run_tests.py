@@ -42,6 +42,7 @@ _TEST_MODULES = [
     'learner.brains.imitation_loss_test',
     'learner.brains.layers_test',
     'learner.brains.numpy_replay_buffer_test',
+    'learner.brains.observation_preprocessor_test',
     'learner.brains.policies_test',
     'learner.brains.specs_test',
     'learner.brains.tensor_nest_test',

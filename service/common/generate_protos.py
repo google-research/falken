@@ -94,6 +94,8 @@ def generate():
     subprocess.run(args, check=True)
   if generated_protos_dir not in sys.path:
     sys.path.append(generated_protos_dir)
+  os.environ['FALKEN_GENERATED_PROTOS_DIR'] = (
+      os.path.abspath(os.path.join(generated_protos_dir, os.pardir)))
 
 
 def clean_up():

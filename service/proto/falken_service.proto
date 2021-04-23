@@ -23,29 +23,24 @@ import "session.proto";
 
 // This API provides Falken clients access to the Falken service.
 service FalkenService {
-
   // Creates a new brain from a BrainSpec.
-  rpc CreateBrain(CreateBrainRequest)
-      returns (falken.proto.Brain) {}
+  rpc CreateBrain(CreateBrainRequest) returns (falken.proto.Brain) {}
 
   // Retrieves an existing Brain.
-  rpc GetBrain(GetBrainRequest)
-      returns (falken.proto.Brain) {}
+  rpc GetBrain(GetBrainRequest) returns (falken.proto.Brain) {}
 
   // Returns a list of Brains in the project.
   rpc ListBrains(ListBrainsRequest) returns (ListBrainsResponse) {}
 
   // Creates a Session to begin training using the given Brain.
-  rpc CreateSession(CreateSessionRequest)
-      returns (falken.proto.Session) {}
+  rpc CreateSession(CreateSessionRequest) returns (falken.proto.Session) {}
 
   // Retrieves session count for a given brain.
   rpc GetSessionCount(GetSessionCountRequest)
       returns (GetSessionCountResponse) {}
 
   // Retrieves a Session by ID.
-  rpc GetSession(GetSessionRequest)
-      returns (falken.proto.Session) {}
+  rpc GetSession(GetSessionRequest) returns (falken.proto.Session) {}
 
   // Retrieves a Session by index.
   rpc GetSessionByIndex(GetSessionByIndexRequest)
@@ -67,7 +62,7 @@ service FalkenService {
   rpc SubmitEpisodeChunks(SubmitEpisodeChunksRequest)
       returns (SubmitEpisodeChunksResponse) {}
 
-  // Returns a serialized  model.
+  // Returns a serialized model.
   rpc GetModel(GetModelRequest) returns (Model) {}
 }
 

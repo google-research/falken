@@ -29,11 +29,13 @@ sys.path.extend(
 )
 
 _SUBPROCESS_TESTS = [
+    'launcher_test.py',
     'common/generate_protos_test.py',
     'common/pip_installer_test.py',
 ]
 
 _TEST_MODULES = [
+    'api.falken_service_test',
     'data_store.data_store_test',
     'learner.brains.action_postprocessor_test',
     'learner.brains.demonstration_buffer_test',

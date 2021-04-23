@@ -78,6 +78,14 @@ message TrainingInfo {
   int64 evaluation_frames = 4;
 }
 
+message MachineInfo {
+  // Name of the machine.
+  string hostname = 1;
+  // Optional high level machine charateristics
+  // (e.g GPU-type, CPU-type, RAM etc.)
+  string taxonomy = 2;
+}
+
 message ModelLatencyStats {
   float fetch_initial_chunk_latency = 1 [deprecated = true];
   // Use train_brain_latencies instead.
@@ -92,7 +100,8 @@ message ModelLatencyStats {
   float export_model_latency = 9;
   float export_checkpoint_latency = 10;
   float convert_tflite_latency = 11;
-  TrainingInfo training_info = 12;
+  MachineInfo machine_info = 12;
+  TrainingInfo training_info = 13;
 }
 
 message Model {

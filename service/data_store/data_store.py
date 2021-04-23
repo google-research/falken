@@ -208,7 +208,8 @@ class DataStore(object):
       An Assignment proto.
     """
     return self._read_proto(
-        self._get_episode_path(project_id, brain_id, session_id, assignment_id),
+        self._get_assignment_path(project_id, brain_id, session_id,
+                                  assignment_id),
         _ASSIGNMENT_FILE_NAME, data_store_pb2.Assignment)
 
   def write_assignment(self, assignment):
@@ -218,7 +219,7 @@ class DataStore(object):
       assignment: The Assignment proto to write.
     """
     self._write_proto(
-        self._get_episode_path(
+        self._get_assignment_path(
             assignment.project_id, assignment.brain_id, assignment.session_id,
             assignment.assignment_id),
         _ASSIGNMENT_FILE_NAME, assignment)

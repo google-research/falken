@@ -253,5 +253,18 @@ class LayersTest(parameterized.TestCase):
     batch_norm.initialize_weights()
     mock_initialize_layer_or_model.assert_called_once_with(batch_norm._batch)
 
+  def test_normalize_range(self):
+    layer = layers.NormalizeRange(-5.0, 15.0)
+    layer_input = tf.constant([[-5.0, 15.0], [0.0, 5.0]])
+    got = layer(layer_input).numpy().tolist()
+    want = [[-1.0, 1.0], [-0.5, 0.0]]
+    self.assertEqual(got, want)
+
+  def test_normalize_range_overflow(self):
+    layer = layers.NormalizeRange(tf.float32.min, tf.float32.max)
+    layer_input = tf.constant([[-5.0, 15.0], [0.0, 5.0]])
+    got = layer(layer_input).numpy().tolist()
+    self.assertEqual(got, layer_input.numpy().tolist())
+
 if __name__ == '__main__':
   absltest.main()

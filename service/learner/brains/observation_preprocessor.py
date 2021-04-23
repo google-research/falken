@@ -81,7 +81,9 @@ class ObservationNestPreprocess(nest_map.NestMap):
 
         return sequential.Sequential([layers.BatchNorm(tfa_spec), feelers])
       elif isinstance(proto_spec, primitives_pb2.NumberType):
-        return layers.BatchNorm(tfa_spec)
+        return sequential.Sequential([
+            layers.NormalizeRange(proto_spec.minimum, proto_spec.maximum),
+            layers.BatchNorm(tfa_spec)])
       else:
         return tf.keras.layers.Lambda(lambda x: None)
 
@@ -156,7 +158,7 @@ class EgocentricDirectionToEntity(network.Network):
       # How to process:
       #   'linear': Simply provide Euclidean distance.
       #   'log_plus_one: Compute log(distance + 1).
-      'egocentric_distance_mode': 'linear',
+      'egocentric_distance_mode': 'log_plus_one',
   }
 
   def __init__(self, brain_spec, hparams):

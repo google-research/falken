@@ -360,6 +360,47 @@ class FlattenAndConcatenate(tf.keras.layers.Layer,
     return tf.concat(float_tensors, axis=-1)
 
 
+class NormalizeRange(tf.keras.layers.Layer,
+                     weights_initializer.NoWeightsInterface):
+  """Normalize a number in a given range to the range -1, 1."""
+
+  def __init__(self, minimum: float, maximum: float):
+    """Create a NormalizeRange layer with the indicated range.
+
+    Args:
+      minimum: A float scalar representing the lower bound on the range.
+      maximum: A float scalar representing the upper bound on the range.
+
+    Raises:
+      Error: If an empty range is specified.
+    """
+    if minimum >= maximum:
+      raise Error('Can\'t normalize to empty range: ' +
+                  f'[{self.minimum, self.maximum}]')
+    self.minimum = tf.constant(minimum, dtype=tf.float32)
+    self.maximum = tf.constant(maximum, dtype=tf.float32)
+    super().__init__()
+
+  def call(self, inputs):
+    """Map inputs to be in range between -1 and 1.
+
+    Args:
+      inputs: A tensor of arbitrary size.
+    Returns:
+      A tensor of the same shape as the input with values in [-1, 1]. If the
+      range is too large for a float32, then the input is returned unchanged.
+    """
+    length = self.maximum - self.minimum
+    range_too_large = tf.math.is_inf(length)
+    def _normalize_range():
+      """Map input elements to range -1, 1."""
+      clipped = tf.clip_by_value(inputs, self.minimum, self.maximum)
+      return -1 + 2 * (clipped - self.minimum) / length
+
+    # If range is invalid, return inputs unchanged, else return result.
+    return tf.cond(range_too_large, lambda: inputs, _normalize_range)
+
+
 class BatchNorm(tf.keras.layers.Layer,
                 weights_initializer.WeightInitializationInterface):
   """A batchnorm that always processes data as a 2D tensor.

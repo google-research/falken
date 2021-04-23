@@ -73,36 +73,40 @@ class ObservationPreprocessorTest(parameterized.TestCase):
     preprocessed, _ = obs_preproc(tfa_val)  # Ignore state component.
     preprocessed = preprocessed.numpy().tolist()
 
+    def _dist(d):
+      """Preprocess distances to match observation preprocessor."""
+      return np.log(d + 1)
+
     want = [
         0.0,                 # global_entities/0/drink - one-hot, category 0
         0.0,                 # global_entities/0/drink - one-hot, category 1
         1.0,                 # global_entities/0/drink - one-hot, category 2
-        66,                  # global_entities/0/evilness
+        2 * (66 / 100) - 1,  # global_entities/0/evilness
         1,                   # player/feeler
         1.1,                 # player/feeler
         2,                   # player/feeler
         2.1,                 # player/feeler
         3,                   # player/feeler
         3.1,                 # player/feeler
-        50,                  # player/health
+        2 * (50 / 100) - 1,  # player/health
         0.0,                 # XZ-angle camera to entity1
         0.0,                 # YZ-angle camera to entity1
-        1.0,                 # distance camera to entity1
+        _dist(1.0),          # distance camera to entity1
         0.0,                 # XZ-angle camera to entity2
         -math.pi/2,          # YZ-angle camera to entity2
-        1.0,                 # distance camera to entity2
-        math.pi/2,          # XZ-angle camera to entity3
+        _dist(1.0),          # distance camera to entity2
+        math.pi/2,           # XZ-angle camera to entity3
         0.0,                 # YZ-angle camera to entity3
-        2.0,                 # distance camera to entity3
+        _dist(2.0),          # distance camera to entity3
         0.0,                 # XZ-angle player to entity1
         0.0,                 # YZ-angle player to entity1
-        1.0,                 # distance player to entity1
+        _dist(1.0),          # distance player to entity1
         0.0,                 # XZ-angle player to entity2
-        math.pi/2,          # YZ-angle player to entity2
-        1.0,                 # distance player to entity2
+        math.pi/2,           # YZ-angle player to entity2
+        _dist(1.0),          # distance player to entity2
         -math.pi/2,          # XZ-angle player to entity3
         0.0,                 # YZ-angle player to entity3
-        2.0                  # distance player to entity3
+        _dist(2.0)           # distance player to entity3
     ]
     # We're rounding aggressively because batch norm adds noise.
     self.assertSequenceAlmostEqual(preprocessed, want, delta=0.05)
@@ -158,7 +162,7 @@ class ObservationPreprocessorTest(parameterized.TestCase):
         0.0,   # global_entities/0/drink - one-hot, categpry 0
         0.0,   # global_entities/0/drink - one-hot, category 1
         1.0,   # global_entities/0/drink - one-hot, category 2
-        66,    # global_entities/0/evilness
+        2 * (66.0 / 100.0) - 1,    # global_entities/0/evilness
     ]
     self.assertSequenceAlmostEqual(preprocessed, want, delta=0.05)
 

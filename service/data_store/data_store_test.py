@@ -14,7 +14,7 @@
 
 """Tests for DataStore."""
 
-import tempfile
+import re
 
 from absl.testing import absltest
 from data_store import data_store
@@ -24,19 +24,58 @@ import common.generate_protos  # pylint: disable=g-bad-import-order,unused-impor
 import data_store_pb2
 
 
+class FakeFileSystem(object):
+  """In-memory implementation of the FileSystem class."""
+
+  def __init__(self):
+    self._path_to_proto = {}
+
+  def read_proto(self, path, unused_data_type):
+    """Reads binary proto data from the given mock file.
+
+    Args:
+      path: The path of the file where the proto is stored.
+      unused_data_type: The class of the proto to read.
+    Returns:
+      The proto that was read from storage.
+    """
+    return self._path_to_proto[path]
+
+  def write_proto(self, path, data):
+    """Writes proto data into the given mock file.
+
+    Args:
+      path: The path of the file where the proto is stored.
+      data: A proto to store in that location.
+    """
+    self._path_to_proto[path] = data
+
+  def glob(self, pattern):
+    """Encapsulates glob.glob.
+
+    Args:
+      pattern: Pattern to search for.
+    Returns:
+      List of path strings found.
+    """
+    # The fake file system doesn't support recursive globs.
+    assert '**' not in pattern
+    pattern = pattern.replace('*', '[^/]*')
+    return [path for path in sorted(self._path_to_proto)
+            if re.match(pattern, path)]
+
+
 class DataStoreTest(absltest.TestCase):
 
   def setUp(self):
     """Create a datastore object that uses a temporary directory."""
     super().setUp()
-    self._temporary_directory = tempfile.TemporaryDirectory()
-    self._data_store = data_store.DataStore(self._temporary_directory.name)
+    self._data_store = data_store.DataStore(FakeFileSystem())
 
   def tearDown(self):
     """Clean up the temporary directory and datastore."""
     super().tearDown()
     self._data_store = None
-    self._temporary_directory.cleanup()
 
   def test_read_write_project(self):
     self._data_store.write_project(data_store_pb2.Project(project_id='p1'))
@@ -110,53 +149,42 @@ class DataStoreTest(absltest.TestCase):
                                                  2).evaluation_set_id)
 
   def test_get_project_path(self):
-    self.assertEqual(
-        '/base/projects/p1',
-        data_store.DataStore('/base')._get_project_path('p1'))
+    self.assertEqual('projects/p1', self._data_store._get_project_path('p1'))
 
   def test_get_brain_path(self):
-    self.assertEqual(
-        '/base/projects/p1/brains/b1',
-        data_store.DataStore('/base')._get_brain_path('p1', 'b1'))
+    self.assertEqual('projects/p1/brains/b1',
+                     self._data_store._get_brain_path('p1', 'b1'))
 
   def test_get_snapshot_path(self):
-    self.assertEqual(
-        '/base/projects/p1/brains/b1/snapshots/s1',
-        data_store.DataStore('/base')._get_snapshot_path('p1', 'b1', 's1'))
+    self.assertEqual('projects/p1/brains/b1/snapshots/s1',
+                     self._data_store._get_snapshot_path('p1', 'b1', 's1'))
 
   def test_get_session_path(self):
-    self.assertEqual(
-        '/base/projects/p1/brains/b1/sessions/s1',
-        data_store.DataStore('/base')._get_session_path('p1', 'b1', 's1'))
+    self.assertEqual('projects/p1/brains/b1/sessions/s1',
+                     self._data_store._get_session_path('p1', 'b1', 's1'))
 
   def test_get_episode_path(self):
-    self.assertEqual(
-        '/base/projects/p1/brains/b1/sessions/s1/episodes/e1',
-        data_store.DataStore('/base')._get_episode_path(
-            'p1', 'b1', 's1', 'e1'))
+    self.assertEqual('projects/p1/brains/b1/sessions/s1/episodes/e1',
+                     self._data_store._get_episode_path('p1', 'b1', 's1', 'e1'))
 
   def test_get_chunk_path(self):
     self.assertEqual(
-        '/base/projects/p1/brains/b1/sessions/s1/episodes/e1/chunks/c1',
-        data_store.DataStore('/base')._get_chunk_path(
-            'p1', 'b1', 's1', 'e1', 'c1'))
+        'projects/p1/brains/b1/sessions/s1/episodes/e1/chunks/c1',
+        self._data_store._get_chunk_path('p1', 'b1', 's1', 'e1', 'c1'))
 
   def test_get_assignment_path(self):
     self.assertSequenceStartsWith(
-        '/base/projects/p1/brains/b1/sessions/s1/assignments/',
-        data_store.DataStore('/base')._get_assignment_path(
-            'p1', 'b1', 's1', 'a1'))
+        'projects/p1/brains/b1/sessions/s1/assignments/',
+        self._data_store._get_assignment_path('p1', 'b1', 's1', 'a1'))
 
   def test_get_model_path(self):
-    self.assertEqual(
-        '/base/projects/p1/brains/b1/sessions/s1/models/m1',
-        data_store.DataStore('/base')._get_model_path('p1', 'b1', 's1', 'm1'))
+    self.assertEqual('projects/p1/brains/b1/sessions/s1/models/m1',
+                     self._data_store._get_model_path('p1', 'b1', 's1', 'm1'))
 
   def test_get_offline_evaluation_path(self):
     self.assertEqual(
-        '/base/projects/p1/brains/b1/sessions/s1/models/m1/'
-        'offline_evaluations/o1',
-        data_store.DataStore('/base')._get_offline_evaluation_path(
+        'projects/p1/brains/b1/sessions/s1/models/m1/offline_evaluations/o1',
+        self._data_store._get_offline_evaluation_path(
             'p1', 'b1', 's1', 'm1', 'o1'))
 
 

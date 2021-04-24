@@ -85,7 +85,7 @@ class ModelManager:
     if not self._best_eval_version:
       # Prefer newer models if no eval data is available.
       version, score = (None, None) if not full_eval else full_eval[-1]
-      falken_logging.info(f'No previous eval, updating best model.'
+      falken_logging.info('No previous eval, updating best model.'
                           f'v{version}:{score}',
                           model_id=model_id)
       self._set_best(model_id, version, score)
@@ -96,20 +96,18 @@ class ModelManager:
       assert version >= self._best_eval_version
       if self._best_eval_version < version:
         # A new eval version is available, replace previous best.
-        falken_logging.info(
-            f'Newer eval set available. Updating best model: '
-            f'v{version}:{score}', model_id=model_id)
+        falken_logging.info('Newer eval set available. Updating best model: '
+                            f'v{version}:{score}', model_id=model_id)
         self._set_best(model_id, version, score)
         return
 
-      falken_logging.info(
-          f'New model vs. previous best score on eval set '
-          f'{version}: {score} vs {self._best_score}')
+      falken_logging.info('New model vs. previous best score on eval set '
+                          f'{version}: {score} vs {self._best_score}')
       if self._best_score - score < _IMPROVEMENT_EPSILON:
         self._models_without_improvement += 1
       if score < self._best_score:
         self._set_best(model_id, version, score)
         falken_logging.info('Updated local best model.', model_id=model_id)
       else:
-        falken_logging.info(f'No significant improvement for '
+        falken_logging.info('No significant improvement for '
                             f'{self._models_without_improvement} steps.')

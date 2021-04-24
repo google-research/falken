@@ -19,7 +19,7 @@ import queue
 import threading
 import traceback
 
-from log import falken_logging as logging
+from log import falken_logging
 
 
 class Empty(Exception):  # pylint: disable=g-bad-exception-name
@@ -94,10 +94,8 @@ class DataFetcher:
       else:
         # Exception on the queue
         _, e, stack_trace = queue_result
-
-        logging.error(
-            f'Error in fetcher thread: {e}'
-            f'\nFetcher thread stack trace: {stack_trace}')
+        falken_logging.error(f'Error in fetcher thread: {e}'
+                             f'\nFetcher thread stack trace: {stack_trace}')
         raise e
     except queue.Empty:
       raise Empty()

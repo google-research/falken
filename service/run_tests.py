@@ -30,6 +30,7 @@ sys.path.extend(
 
 _SUBPROCESS_TESTS = [
     'launcher_test.py',
+    'common/generate_flatbuffers_test.py',
     'common/generate_protos_test.py',
     'common/pip_installer_test.py',
 ]

@@ -99,10 +99,10 @@ def generate():
 
 
 def clean_up():
-  """Cleans up the generated protos directory created by generate()."""
+  """Clean up the generated protos directory created by generate()."""
   external_protos_dir = download_external_protos()
   if os.path.exists(external_protos_dir):
-    shutil.rmtree(download_external_protos())
+    shutil.rmtree(external_protos_dir)
   generated_protos_dir = get_generated_protos_dir()
   if os.path.exists(generated_protos_dir):
     shutil.rmtree(generated_protos_dir)

@@ -14,7 +14,7 @@
 
 # Lint as: python3
 # pylint: disable=g-bad-import-order, g-import-not-at-top, reimported
-"""Tests that protos are generated after importing generate_protos module."""
+"""Tests that protos are generated after using the generate_protos module."""
 import glob
 import os
 import sys
@@ -41,7 +41,7 @@ class GenerateProtosTest(absltest.TestCase):
     generate_protos.clean_up()
 
   def test_generate_protos(self):
-    """Import the generate_protos module and verify generation and use."""
+    """Call the generate method and verify generation and use."""
     generate_protos.generate()
     source_protos = []
     for d in generate_protos.get_source_proto_dirs():

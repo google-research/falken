@@ -23,6 +23,7 @@ import os
 import platform
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import urllib.request
@@ -126,31 +127,34 @@ def generate():
   Also inserts the apache license text at the top of each generated flatbuffer
   python file.
   """
-  temp_dir = tempfile.mkdtemp()
-  flatc = os.path.normpath(
-      os.path.join(install_flatc(temp_dir),
-                   'Debug' if platform.system() == 'Windows' else ''
-                   'flatc',
-                   '.exe' if platform.system() == 'Windows' else ''))
   generated_fbs_dir = get_generated_flatbuffers_dir()
   if not os.path.exists(generated_fbs_dir):
-    os.makedirs(generated_fbs_dir)
-  downloaded_fbs_dir = download_external_fbs(temp_dir)
-  args = [
-      flatc, '--python',
-      '-o', generated_fbs_dir,
-      '-I', downloaded_fbs_dir,
-      '--gen-object-api',
-  ]
+    temp_dir = tempfile.mkdtemp()
+    flatc = os.path.normpath(
+        os.path.join(install_flatc(temp_dir),
+                     'Debug' if platform.system() == 'Windows' else ''
+                     'flatc',
+                     '.exe' if platform.system() == 'Windows' else ''))
+    generated_fbs_dir = get_generated_flatbuffers_dir()
+    if not os.path.exists(generated_fbs_dir):
+      os.makedirs(generated_fbs_dir)
+    downloaded_fbs_dir = download_external_fbs(temp_dir)
+    args = [
+        flatc, '--python',
+        '-o', generated_fbs_dir,
+        '-I', downloaded_fbs_dir,
+        '--gen-object-api',
+    ]
 
-  args.extend(glob.glob(f'{downloaded_fbs_dir}/**/*.fbs', recursive=True))
-  subprocess.run(args, check=True)
+    args.extend(glob.glob(f'{downloaded_fbs_dir}/**/*.fbs', recursive=True))
+    subprocess.run(args, check=True)
 
-  shutil.rmtree(temp_dir)
+    shutil.rmtree(temp_dir)
+    write_apache_license_header(generated_fbs_dir)
+
   os.environ['FALKEN_GENERATED_FLATBUFFERS_DIR'] = (
       os.path.abspath(os.path.join(generated_fbs_dir, os.pardir)))
-
-  write_apache_license_header(generated_fbs_dir)
+  sys.path.append(generated_fbs_dir)
 
 
 if int(os.environ.get('FALKEN_AUTO_GENERATE_FLATBUFFERS', 1)):

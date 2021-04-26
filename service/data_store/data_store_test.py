@@ -29,26 +29,37 @@ class FakeFileSystem(object):
 
   def __init__(self):
     self._path_to_proto = {}
+    # Simulate the passing of time with a counter.
+    self._current_time = 0
 
-  def read_proto(self, path, unused_data_type):
-    """Reads binary proto data from the given mock file.
+  def read_proto(self, pattern, unused_data_type):
+    """Finds matching file path, and reads its binary proto data.
 
     Args:
-      path: The path of the file where the proto is stored.
+      pattern: The path pattern of the file where the proto is stored, including
+        a single * to allow for unknown parts of the name to be filled in.
+        No more than one file is allowed to match with the pattern path.
       unused_data_type: The class of the proto to read.
     Returns:
       The proto that was read from storage.
     """
-    return self._path_to_proto[path]
+    assert pattern.count('*') == 1
+    paths = self.glob(pattern)
+    assert len(paths) == 1
+    return self._path_to_proto[paths[0]]
 
-  def write_proto(self, path, data):
-    """Writes proto data into the given mock file.
+  def write_proto(self, pattern, data):
+    """Writes proto data into the given file.
 
     Args:
-      path: The path of the file where the proto is stored.
+      pattern: The path of the file where the proto is stored, with a * that
+        will be replaced by the timestamp.
       data: A proto to store in that location.
     """
+    assert pattern.count('*') == 1
+    path = pattern.replace('*', str(self._current_time))
     self._path_to_proto[path] = data
+    self._current_time += 1
 
   def glob(self, pattern):
     """Encapsulates glob.glob.

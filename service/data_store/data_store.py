@@ -18,22 +18,23 @@ import glob
 import hashlib
 import os
 import os.path
+import time
 
 import common.generate_protos  # pylint: disable=g-bad-import-order,unused-import
 
 import data_store_pb2
 
 
-_PROJECT_FILE_NAME = 'project.pb'
-_BRAIN_FILE_NAME = 'brain.pb'
-_SNAPSHOT_FILE_NAME = 'snapshot.pb'
-_SESSION_FILE_NAME = 'session.pb'
-_CHUNK_FILE_NAME = 'episode_chunk.pb'
-_ONLINE_EVALUATION_FILE_NAME = 'online_evaluation.pb'
-_ASSIGNMENT_FILE_NAME = 'assignment.pb'
-_MODEL_FILE_NAME = 'model.pb'
-_SERIALIZED_MODEL_FILE_NAME = 'serialized_model.pb'
-_OFFLINE_EVALUATION_FILE_NAME = 'offline_evaluation.pb'
+_PROJECT_FILE_PATTERN = 'project_*.pb'
+_BRAIN_FILE_PATTERN = 'brain_*.pb'
+_SNAPSHOT_FILE_PATTERN = 'snapshot_*.pb'
+_SESSION_FILE_PATTERN = 'session_*.pb'
+_CHUNK_FILE_PATTERN = 'episode_chunk_*.pb'
+_ONLINE_EVALUATION_FILE_PATTERN = 'online_evaluation_*.pb'
+_ASSIGNMENT_FILE_PATTERN = 'assignment_*.pb'
+_MODEL_FILE_PATTERN = 'model_*.pb'
+_SERIALIZED_MODEL_FILE_PATTERN = 'serialized_model_*.pb'
+_OFFLINE_EVALUATION_FILE_PATTERN = 'offline_evaluation_*.pb'
 
 
 class FileSystem(object):
@@ -47,25 +48,40 @@ class FileSystem(object):
     """
     self._root_path = root_path
 
-  def read_proto(self, path, data_type):
-    """Reads binary proto data from the given file.
+  def read_proto(self, pattern, data_type):
+    """Finds matching file path, and reads its binary proto data.
 
     Args:
-      path: The path of the file where the proto is stored.
+      pattern: The path pattern of the file where the proto is stored, including
+        a single * to allow for unknown parts of the name to be filled in.
+        No more than one file is allowed to match with the pattern path.
       data_type: The class of the proto to read.
     Returns:
       The proto that was read from storage.
     """
-    with open(os.path.join(self._root_path, path), 'rb') as f:
+    assert pattern.count('*') == 1
+    paths = self.glob(pattern)
+    if not paths:
+      raise ValueError(f'File with pattern "{pattern}" does not exist.')
+    if len(paths) > 1:
+      raise ValueError(
+          f'More than one file was found matching pattern "{pattern}".')
+
+    with open(os.path.join(self._root_path, paths[0]), 'rb') as f:
       return data_type.FromString(f.read())
 
-  def write_proto(self, path, data):
-    """Writes proto data into the given file.
+  def write_proto(self, pattern, data):
+    """Writes proto data into the given file, with a timestamp in its name.
 
     Args:
-      path: The path of the file where the proto is stored.
+      pattern: The path of the file where the proto is stored, with a * that
+        will be replaced by the timestamp.
       data: A proto to store in that location.
     """
+    assert pattern.count('*') == 1
+    t = int(time.time() * 1000)
+    path = pattern.replace('*', str(t))
+
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(os.path.join(self._root_path, path), 'wb') as f:
       f.write(data.SerializeToString())
@@ -101,7 +117,7 @@ class DataStore(object):
       A Project proto.
     """
     return self._fs.read_proto(
-        os.path.join(self._get_project_path(project_id), _PROJECT_FILE_NAME),
+        os.path.join(self._get_project_path(project_id), _PROJECT_FILE_PATTERN),
         data_store_pb2.Project)
 
   def write_project(self, project):
@@ -112,7 +128,7 @@ class DataStore(object):
     """
     self._fs.write_proto(
         os.path.join(
-            self._get_project_path(project.project_id), _PROJECT_FILE_NAME),
+            self._get_project_path(project.project_id), _PROJECT_FILE_PATTERN),
         project)
 
   def read_brain(self, project_id, brain_id):
@@ -126,7 +142,7 @@ class DataStore(object):
     """
     return self._fs.read_proto(
         os.path.join(self._get_brain_path(project_id, brain_id),
-                     _BRAIN_FILE_NAME), data_store_pb2.Brain)
+                     _BRAIN_FILE_PATTERN), data_store_pb2.Brain)
 
   def write_brain(self, brain):
     """Writes a brain proto to storage.
@@ -137,7 +153,7 @@ class DataStore(object):
     self._fs.write_proto(
         os.path.join(
             self._get_brain_path(brain.project_id, brain.brain_id),
-            _BRAIN_FILE_NAME),
+            _BRAIN_FILE_PATTERN),
         brain)
 
   def read_snapshot(self, project_id, brain_id, snapshot_id):
@@ -153,7 +169,7 @@ class DataStore(object):
     return self._fs.read_proto(
         os.path.join(
             self._get_snapshot_path(project_id, brain_id, snapshot_id),
-            _SNAPSHOT_FILE_NAME),
+            _SNAPSHOT_FILE_PATTERN),
         data_store_pb2.Snapshot)
 
   def write_snapshot(self, snapshot):
@@ -166,7 +182,7 @@ class DataStore(object):
         os.path.join(
             self._get_snapshot_path(snapshot.project_id, snapshot.brain_id,
                                     snapshot.snapshot_id),
-            _SNAPSHOT_FILE_NAME),
+            _SNAPSHOT_FILE_PATTERN),
         snapshot)
 
   def read_session(self, project_id, brain_id, session_id):
@@ -182,7 +198,7 @@ class DataStore(object):
     return self._fs.read_proto(
         os.path.join(
             self._get_session_path(project_id, brain_id, session_id),
-            _SESSION_FILE_NAME),
+            _SESSION_FILE_PATTERN),
         data_store_pb2.Session)
 
   def write_session(self, session):
@@ -194,7 +210,7 @@ class DataStore(object):
     self._fs.write_proto(
         os.path.join(
             self._get_session_path(session.project_id, session.brain_id,
-                                   session.session_id), _SESSION_FILE_NAME),
+                                   session.session_id), _SESSION_FILE_PATTERN),
         session)
 
   def read_episode_chunk(self, project_id, brain_id, session_id, episode_id,
@@ -214,7 +230,7 @@ class DataStore(object):
         os.path.join(
             self._get_chunk_path(project_id, brain_id, session_id, episode_id,
                                  chunk_id),
-            _CHUNK_FILE_NAME),
+            _CHUNK_FILE_PATTERN),
         data_store_pb2.EpisodeChunk)
 
   def write_episode_chunk(self, chunk):
@@ -228,7 +244,7 @@ class DataStore(object):
             self._get_chunk_path(chunk.project_id, chunk.brain_id,
                                  chunk.session_id, chunk.episode_id,
                                  chunk.chunk_id),
-            _CHUNK_FILE_NAME),
+            _CHUNK_FILE_PATTERN),
         chunk)
 
   def read_online_evaluation(
@@ -247,7 +263,7 @@ class DataStore(object):
         os.path.join(
             self._get_episode_path(project_id, brain_id, session_id,
                                    episode_id),
-            _ONLINE_EVALUATION_FILE_NAME),
+            _ONLINE_EVALUATION_FILE_PATTERN),
         data_store_pb2.OnlineEvaluation)
 
   def write_online_evaluation(self, online_evaluation):
@@ -261,7 +277,7 @@ class DataStore(object):
             self._get_episode_path(
                 online_evaluation.project_id, online_evaluation.brain_id,
                 online_evaluation.session_id, online_evaluation.episode_id),
-            _ONLINE_EVALUATION_FILE_NAME),
+            _ONLINE_EVALUATION_FILE_PATTERN),
         online_evaluation)
 
   def read_assignment(self, project_id, brain_id, session_id, assignment_id):
@@ -279,7 +295,7 @@ class DataStore(object):
         os.path.join(
             self._get_assignment_path(
                 project_id, brain_id, session_id, assignment_id),
-            _ASSIGNMENT_FILE_NAME),
+            _ASSIGNMENT_FILE_PATTERN),
         data_store_pb2.Assignment)
 
   def write_assignment(self, assignment):
@@ -294,7 +310,7 @@ class DataStore(object):
                                       assignment.brain_id,
                                       assignment.session_id,
                                       assignment.assignment_id),
-            _ASSIGNMENT_FILE_NAME), assignment)
+            _ASSIGNMENT_FILE_PATTERN), assignment)
 
   def read_model(self, project_id, brain_id, session_id, model_id):
     """Retrieves a model proto from storage.
@@ -310,7 +326,7 @@ class DataStore(object):
     return self._fs.read_proto(
         os.path.join(
             self._get_model_path(project_id, brain_id, session_id, model_id),
-            _MODEL_FILE_NAME), data_store_pb2.Model)
+            _MODEL_FILE_PATTERN), data_store_pb2.Model)
 
   def write_model(self, model):
     """Writes a model proto to storage.
@@ -322,7 +338,7 @@ class DataStore(object):
         os.path.join(
             self._get_model_path(model.project_id, model.brain_id,
                                  model.session_id, model.model_id),
-            _MODEL_FILE_NAME), model)
+            _MODEL_FILE_PATTERN), model)
 
   def read_serialized_model(self, project_id, brain_id, session_id, model_id):
     """Retrieves a serialized model proto from storage.
@@ -338,7 +354,7 @@ class DataStore(object):
     return self._fs.read_proto(
         os.path.join(
             self._get_model_path(project_id, brain_id, session_id, model_id),
-            _SERIALIZED_MODEL_FILE_NAME),
+            _SERIALIZED_MODEL_FILE_PATTERN),
         data_store_pb2.SerializedModel)
 
   def write_serialized_model(self, serialized_model):
@@ -352,7 +368,7 @@ class DataStore(object):
             self._get_model_path(
                 serialized_model.project_id, serialized_model.brain_id,
                 serialized_model.session_id, serialized_model.model_id),
-            _SERIALIZED_MODEL_FILE_NAME),
+            _SERIALIZED_MODEL_FILE_PATTERN),
         serialized_model)
 
   def read_offline_evaluation(
@@ -373,7 +389,7 @@ class DataStore(object):
         os.path.join(
             self._get_offline_evaluation_path(project_id, brain_id, session_id,
                                               model_id, str(evaluation_set_id)),
-            _OFFLINE_EVALUATION_FILE_NAME), data_store_pb2.OfflineEvaluation)
+            _OFFLINE_EVALUATION_FILE_PATTERN), data_store_pb2.OfflineEvaluation)
 
   def write_offline_evaluation(self, offline_evaluation):
     """Writes an offline evaluation proto to storage.
@@ -387,7 +403,7 @@ class DataStore(object):
                 offline_evaluation.project_id, offline_evaluation.brain_id,
                 offline_evaluation.session_id, offline_evaluation.model_id,
                 str(offline_evaluation.evaluation_set_id)),
-            _OFFLINE_EVALUATION_FILE_NAME),
+            _OFFLINE_EVALUATION_FILE_PATTERN),
         offline_evaluation)
 
   def _get_project_path(self, project_id):

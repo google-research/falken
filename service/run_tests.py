@@ -54,6 +54,7 @@ _TEST_MODULES = [
     'learner.brains.tensor_nest_test',
     'learner.brains.weights_initializer_test',
     'learner.data_fetcher_test',
+    'learner.file_system_test',
     'learner.model_manager_test',
     'learner.stats_collector_test',
     'log.falken_logging_test',

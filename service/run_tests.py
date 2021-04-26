@@ -39,6 +39,7 @@ _TEST_MODULES = [
     'api.falken_service_test',
     'data_store.data_store_test',
     'learner.brains.action_postprocessor_test',
+    'learner.brains.brain_cache_test',
     'learner.brains.continuous_imitation_brain_test',
     'learner.brains.demonstration_buffer_test',
     'learner.brains.egocentric_test',

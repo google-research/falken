@@ -14,9 +14,10 @@
 
 """Processes hidden layer outputs and creates a nest of action distributions."""
 
+from learner.brains import egocentric
+from learner.brains import weights_initializer
 import numpy as np
 import tensorflow as tf
-
 from tf_agents.networks import categorical_projection_network
 from tf_agents.networks import network
 from tf_agents.networks import normal_projection_network
@@ -26,8 +27,6 @@ from tf_agents.utils import nest_utils
 import common.generate_protos  # pylint: disable=unused-import
 import action_pb2
 import primitives_pb2
-import egocentric
-import weights_initializer
 
 
 def _normal_projection_net(action_spec,

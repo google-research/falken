@@ -65,10 +65,7 @@ class BCAgent(behavioral_cloning_agent.BehavioralCloningAgent):
     optimizer = tf.compat.v1.train.AdamOptimizer(
         learning_rate=hparams['learning_rate'])
 
-    # Ideally we would initialize BehavioralCloningAgent directly using
-    # super().__init__(). However, we need to workaround a problem with
-    # TF Agents 0.7.1 so use _init_continuous_imitation_brain() instead.
-    self._init_continuous_imitation_brain(
+    super().__init__(
         ts.time_step_spec(brain_spec.observation_spec.tfa_spec),
         brain_spec.action_spec.tfa_spec,
         optimizer=optimizer,
@@ -86,110 +83,6 @@ class BCAgent(behavioral_cloning_agent.BehavioralCloningAgent):
     # be called and pruned avoiding errand placeholders in the
     # checkpoint.
     self.policy.variables()
-
-  def _init_continuous_imitation_brain(
-      self, time_step_spec, action_spec, cloning_network, optimizer,
-      num_outer_dims=1, epsilon_greedy=0.1, loss_fn=None,
-      gradient_clipping=None, debug_summaries=False,
-      summarize_grads_and_vars=False,
-      train_step_counter=None, name=None):
-    """Fork of BehavioralCloningAgent.__init__().
-
-    This is a fork of TF Agents 0.7.1 BehavioralCloningAgent.__init__() to
-    workaround a restriction that forces agents that generate discrete
-    actions to use action TensorSpecs with no dimensions. Instead this
-    sets up the agent with a continuous action space even when the action
-    spec for the agent just consists of discrete actions.
-
-    Args:
-      time_step_spec: A `TimeStep` spec of the expected time_steps.
-      action_spec: A nest of BoundedTensorSpec representing the actions.
-      cloning_network: A `tf_agents.networks.Network` to be used by the agent.
-        The network will be called as
-
-          ```
-          network(observation, step_type=step_type, network_state=initial_state)
-          ```
-        and must return a 2-tuple with elements `(output, next_network_state)`
-      optimizer: The optimizer to use for training.
-      num_outer_dims: The number of outer dimensions for the agent. Must be
-        either 1 or 2. If 2, training will require both a batch_size and time
-        dimension on every Tensor; if 1, training will require only a batch_size
-        outer dimension.
-      epsilon_greedy: probability of choosing a random action in the default
-        epsilon-greedy collect policy (used only if actions are discrete)
-      loss_fn: A function for computing the error between the output of the
-        cloning network and the action that was taken. If None, the loss
-        depends on the action dtype. The `loss_fn` is called with parameters:
-        `agent, experience`, and must return a loss value for each element of
-        the batch.
-      gradient_clipping: Norm length to clip gradients.
-      debug_summaries: A bool to gather debug summaries.
-      summarize_grads_and_vars: If True, gradient and network variable summaries
-        will be written during training.
-      train_step_counter: An optional counter to increment every time the train
-        op is run.  Defaults to the global_step.
-      name: The name of this agent. All variables in this module will fall
-        under that name. Defaults to the class name.
-    """
-    # pylint: disable=g-import-not-at-top
-    from tf_agents.agents import data_converter
-    from tf_agents.specs import tensor_spec
-    # pylint: enable=g-import-not-at-top
-
-    tf.Module.__init__(self, name=name)
-    self._cloning_network = cloning_network
-    self._optimizer = optimizer
-    self._gradient_clipping = gradient_clipping
-
-    flat_action_spec = tf.nest.flatten(action_spec)
-    continuous_specs = [tensor_spec.is_continuous(s) for s in flat_action_spec]
-
-    if not flat_action_spec:
-      raise ValueError('The `action_spec` must contain at least one action.')
-
-    single_discrete_scalar_action = (
-        len(flat_action_spec) == 1 and
-        flat_action_spec[0].shape.rank == 0 and
-        not tensor_spec.is_continuous(flat_action_spec[0]))
-    single_continuous_action = (
-        len(flat_action_spec) == 1 and
-        tensor_spec.is_continuous(flat_action_spec[0]))
-
-    if (not loss_fn and not single_discrete_scalar_action and
-        not single_continuous_action):
-      raise ValueError(
-          'A `loss_fn` must be provided unless there is a single, scalar '
-          'discrete action or a single (scalar or non-scalar) continuous '
-          'action.')
-
-    cloning_network.create_variables(time_step_spec.observation)
-
-    # If there is a mix of continuous and discrete actions we want to use an
-    # actor policy so we can use the `setup_as_continuous` method as long as the
-    # user provided a custom loss_fn which we verified above.
-    if not single_discrete_scalar_action:  # Original: if any(continuous_specs)
-      policy, collect_policy = self._setup_as_continuous(
-          time_step_spec, action_spec, loss_fn)
-    else:
-      policy, collect_policy = self._setup_as_discrete(time_step_spec,
-                                                       action_spec, loss_fn,
-                                                       epsilon_greedy)
-
-    super(behavioral_cloning_agent.BehavioralCloningAgent, self).__init__(
-        time_step_spec,
-        action_spec,
-        policy,
-        collect_policy,
-        train_sequence_length=None,
-        validate_args=False,
-        debug_summaries=debug_summaries,
-        summarize_grads_and_vars=summarize_grads_and_vars,
-        train_step_counter=train_step_counter)
-
-    self._as_trajectory = data_converter.AsTrajectory(
-        self.data_context, sequence_length=None,
-        num_outer_dims=num_outer_dims)
 
   def _dict_loss(self, experience, training=True):
     batch_size = (

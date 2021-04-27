@@ -20,7 +20,11 @@ import sys
 
 # Modules required to execute service modules and tests.
 _REQUIRED_PYTHON_MODULES = [
-    'absl-py', 'tensorflow', 'tensorflow-graphics', 'tf-agents', 'grpcio-tools',
+    'absl-py',
+    'tensorflow',
+    'tensorflow-graphics',
+    'tf-agents==0.8.0rc1',
+    'grpcio-tools',
     'flatbuffers'
 ]
 

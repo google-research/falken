@@ -14,7 +14,9 @@
 
 """Tests for DataStore."""
 
+import os.path
 import re
+from unittest import mock
 
 from absl.testing import absltest
 from data_store import data_store
@@ -168,6 +170,10 @@ class DataStoreTest(absltest.TestCase):
     self.assertEqual('12:ab', self._data_store._encode_token(12, 'ab'))
 
   def test_list_resources(self):
+    brains_pattern = os.path.join(
+        self._data_store._get_project_path('p1'), 'brains', '*',
+        data_store._BRAIN_FILE_PATTERN)
+
     brain_ids = [f'b{i:02}' for i in range(20)]
     # Many repeated 5s.
     timestamps = [0, 1, 2, 3, 4, 5, 5, 5, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
@@ -177,39 +183,88 @@ class DataStoreTest(absltest.TestCase):
       self._data_store.write_brain(
           data_store_pb2.Brain(project_id='p1', brain_id=brain_ids[i]))
 
-    self.assertEqual((['b00', 'b01', 'b02'], '2:b02'),
-                     self._data_store.list_brains('p1', 3, None))
+    self.assertEqual(
+        (['b00', 'b01', 'b02'], '2:b02'),
+        self._data_store._list_resources(brains_pattern, 3, None))
 
     self.assertEqual(
         (['b03', 'b04', 'b05', 'b06', 'b07', 'b08', 'b09', 'b10', 'b11', 'b12'
          ], '8:b12'),
-        self._data_store.list_brains('p1', 10, '2:b02'))
+        self._data_store._list_resources(brains_pattern, 10, '2:b02'))
 
     self.assertEqual(
         (['b03', 'b04', 'b05', 'b06'], '5:b06'),
-        self._data_store.list_brains('p1', 4, '2:b02'))
+        self._data_store._list_resources(brains_pattern, 4, '2:b02'))
 
     self.assertEqual(
         (['b07', 'b08', 'b09', 'b10'], '6:b10'),
-        self._data_store.list_brains('p1', 4, '5:b06'))
+        self._data_store._list_resources(brains_pattern, 4, '5:b06'))
 
-    self.assertEqual((brain_ids, None),
-                     self._data_store.list_brains('p1', 20, None))
+    self.assertEqual(
+        (brain_ids, None),
+        self._data_store._list_resources(brains_pattern, 20, None))
 
-    self.assertEqual((brain_ids, None),
-                     self._data_store.list_brains('p1', 30, None))
+    self.assertEqual(
+        (brain_ids, None),
+        self._data_store._list_resources(brains_pattern, 30, None))
 
-    self.assertEqual((brain_ids[:-1], '14:b18'),
-                     self._data_store.list_brains('p1', 19, None))
+    self.assertEqual(
+        (brain_ids[:-1], '14:b18'),
+        self._data_store._list_resources(brains_pattern, 19, None))
 
-    self.assertEqual((['b19'], None),
-                     self._data_store.list_brains('p1', 10, '14:b18'))
+    self.assertEqual(
+        (['b19'], None),
+        self._data_store._list_resources(brains_pattern, 10, '14:b18'))
 
-    self.assertEqual(([], None),
-                     self._data_store.list_brains('p1', 10, '700:bzzz'))
+    self.assertEqual(
+        ([], None),
+        self._data_store._list_resources(brains_pattern, 10, '700:bzzz'))
 
-    self.assertEqual(([], None),
-                     self._data_store.list_brains('p1', 0, '2:b02'))
+    self.assertEqual(
+        ([], None),
+        self._data_store._list_resources(brains_pattern, 0, '2:b02'))
+
+  def test_list_brains(self):
+    self._data_store._list_resources = mock.Mock()
+    self._data_store._list_resources.return_value = (['b1'], 'next_token')
+    self.assertEqual(self._data_store._list_resources.return_value,
+                     self._data_store.list_brains('p1', 2, 'start_token'))
+    self._data_store._list_resources.assert_called_with(
+        self._data_store._get_resource_list_path('brain', ['p1']), 2,
+        'start_token')
+
+  def test_list_sessions(self):
+    self._data_store._list_resources = mock.Mock()
+    self._data_store._list_resources.return_value = (['s1'], 'next_token')
+    self.assertEqual(
+        self._data_store._list_resources.return_value,
+        self._data_store.list_sessions('p1', 'b1', 2, 'start_token'))
+    self._data_store._list_resources.assert_called_with(
+        self._data_store._get_resource_list_path('session', ['p1', 'b1']), 2,
+        'start_token')
+
+  def test_list_episode_chunks(self):
+    self._data_store._list_resources = mock.Mock()
+    self._data_store._list_resources.return_value = ([1], 'next_token')
+    self.assertEqual(
+        self._data_store._list_resources.return_value,
+        self._data_store.list_episode_chunks(
+            'p1', 'b1', 's1', 'e1', 2, 'start_token'))
+    self._data_store._list_resources.assert_called_with(
+        self._data_store._get_resource_list_path(
+            'episode_chunk', ['p1', 'b1', 's1', 'e1']),
+        2, 'start_token')
+
+  def test_list_online_evaluations(self):
+    self._data_store._list_resources = mock.Mock()
+    self._data_store._list_resources.return_value = (['e00'], 'next_token')
+    self.assertEqual(
+        self._data_store._list_resources.return_value,
+        self._data_store.list_online_evaluations(
+            'p1', 'b1', 's1', 2, 'start_token'))
+    self._data_store._list_resources.assert_called_with(
+        self._data_store._get_resource_list_path(
+            'online_evaluation', ['p1', 'b1', 's1']), 2, 'start_token')
 
   def test_get_resource_id(self):
     self.assertEqual('4567', self._data_store._get_resource_id(

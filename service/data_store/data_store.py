@@ -30,12 +30,37 @@ _PROJECT_FILE_PATTERN = 'project_*.pb'
 _BRAIN_FILE_PATTERN = 'brain_*.pb'
 _SNAPSHOT_FILE_PATTERN = 'snapshot_*.pb'
 _SESSION_FILE_PATTERN = 'session_*.pb'
-_CHUNK_FILE_PATTERN = 'episode_chunk_*.pb'
-_ONLINE_EVALUATION_FILE_PATTERN = 'online_evaluation_*.pb'
+_CHUNK_FILE_PATTERN = 'episode-chunk_*.pb'
+_ONLINE_EVALUATION_FILE_PATTERN = 'online-evaluation_*.pb'
 _ASSIGNMENT_FILE_PATTERN = 'assignment_*.pb'
 _MODEL_FILE_PATTERN = 'model_*.pb'
-_SERIALIZED_MODEL_FILE_PATTERN = 'serialized_model_*.pb'
-_OFFLINE_EVALUATION_FILE_PATTERN = 'offline_evaluation_*.pb'
+_SERIALIZED_MODEL_FILE_PATTERN = 'serialized-model_*.pb'
+_OFFLINE_EVALUATION_FILE_PATTERN = 'offline-evaluation_*.pb'
+
+
+# Allow retrieving file patterns by the corresponding file type.
+_FILE_PATTERN_BY_RESOURCE_TYPE = {
+    'brain': _BRAIN_FILE_PATTERN,
+    'session': _SESSION_FILE_PATTERN,
+    'episode_chunk': _CHUNK_FILE_PATTERN,
+    'online_evaluation': _ONLINE_EVALUATION_FILE_PATTERN
+}
+
+
+# Allow retrieving the parent directory in which a resource of a given
+# resource type is stored.
+_DIRECTORY_BY_RESOURCE_TYPE = {
+    'project': 'projects',
+    'brain': 'brains',
+    'snapshot': 'snapshots',
+    'session': 'sessions',
+    'episode': 'episodes',
+    'episode_chunk': 'chunks',
+    'online_evaluation': 'episodes',
+    'assignment': 'assignments',
+    'model': 'models',
+    'offline_evaluation': 'offline_evaluations'
+}
 
 
 class FileSystem(object):
@@ -452,17 +477,104 @@ class DataStore(object):
       or None if there is no next page.
     """
     return self._list_resources(
-        os.path.join(
-            self._get_project_path(project_id), 'brains', '*',
-            _BRAIN_FILE_PATTERN), page_size, page_token)
+        self._get_resource_list_path(
+            'brain', [project_id]),
+        page_size, page_token)
+
+  def list_sessions(self, project_id, brain_id, page_size, page_token):
+    """Lists sessions for a given brain.
+
+    Args:
+      project_id: The project id string to use for finding the sessions.
+      brain_id: The brain id string to use for finding the sessions.
+      page_size: An int describing the max amount of brains to return.
+      page_token: A token string used for pagination, or None for starting
+        the list from the beginning.
+    Returns:
+      A pair (session_ids, next_token), where session_ids is a list of
+      session id strings, and next_token is the token for the next page,
+      or None if there is no next page.
+    """
+    return self._list_resources(
+        self._get_resource_list_path(
+            'session', [project_id, brain_id]),
+        page_size, page_token)
+
+  def list_episode_chunks(
+      self, project_id, brain_id, session_id, episode_id, page_size,
+      page_token):
+    """Lists chunks for a given episode.
+
+    Args:
+      project_id: The project id string to use for finding the chunks.
+      brain_id: The brain id string to use for finding the chunks.
+      session_id: The session id string to use for finding the chunks.
+      episode_id: The episode id string to use for finding the chunks.
+      page_size: An int describing the max amount of brains to return.
+      page_token: A token string used for pagination, or None for starting
+        the list from the beginning.
+    Returns:
+      A pair (chunk_ids, next_token), where chunk_ids is a list of
+      episode chunk id ints, and next_token is the token for the next page,
+      or None if there is no next page.
+    """
+    chunk_ids, next_token = self._list_resources(
+        self._get_resource_list_path(
+            'episode_chunk', [project_id, brain_id, session_id, episode_id]),
+        page_size, page_token)
+    chunk_ids = [int(s) for s in chunk_ids]
+    return chunk_ids, next_token
+
+  def list_online_evaluations(
+      self, project_id, brain_id, session_id, page_size, page_token):
+    """Lists online evaluations for a given session.
+
+    Args:
+      project_id: The project id string to use for finding
+        the online evaluations.
+      brain_id: The brain id string to use for finding the online evaluations.
+      session_id: The session id string to use for finding
+        the online evaluations.
+      page_size: An int describing the max amount of brains to return.
+      page_token: A token string used for pagination, or None for starting
+        the list from the beginning.
+    Returns:
+      A pair (eval_ids, next_token), where eval_ids is a list of
+      online evaluation id strings, and next_token is the token for the next
+      page, or None if there is no next page.
+    """
+    return self._list_resources(
+        self._get_resource_list_path(
+            'online_evaluation', [project_id, brain_id, session_id]),
+        page_size, page_token)
+
+  def _get_resource_list_path(self, resource_type, resource_ids):
+    """Gives the path to use for listing resources of a given type.
+
+    Args:
+      resource_type: Type of resource to build the path for.
+      resource_ids: List of arguments to use to call self._get_*_path.
+    Returns:
+      A string with the path to use for listing.
+    """
+    path_callable_by_resource_type = {
+        'brain': self._get_project_path,
+        'session': self._get_brain_path,
+        'episode_chunk': self._get_episode_path,
+        'online_evaluation': self._get_session_path
+    }
+    return os.path.join(
+        path_callable_by_resource_type[resource_type](*resource_ids),
+        _DIRECTORY_BY_RESOURCE_TYPE[resource_type], '*',
+        _FILE_PATTERN_BY_RESOURCE_TYPE[resource_type])
 
   def _list_resources(self, glob_path, page_size, page_token):
-    """Lists resources for a given project, in ascending order.
+    """Lists resources for a given glob, in ascending order.
 
     Args:
       glob_path: Path to use for glob. Last two components of the path must be:
        * for glob (which matches the resource id), and a file name pattern.
-      page_size: An int describing the max amount of brains to return.
+      page_size: An int describing the max amount of resources to return.
       page_token: A token string used for pagination, or None for starting
         the list from the beginning.
     Returns:
@@ -528,7 +640,7 @@ class DataStore(object):
       A string describing the project directory path.
     """
     assert project_id
-    return os.path.join('projects', project_id)
+    return os.path.join(_DIRECTORY_BY_RESOURCE_TYPE['project'], project_id)
 
   def _get_brain_path(self, project_id, brain_id):
     """Gives the path for a brain.
@@ -540,7 +652,8 @@ class DataStore(object):
       A string describing the brain directory path.
     """
     assert brain_id
-    return os.path.join(self._get_project_path(project_id), 'brains', brain_id)
+    return os.path.join(self._get_project_path(project_id),
+                        _DIRECTORY_BY_RESOURCE_TYPE['brain'], brain_id)
 
   def _get_snapshot_path(self, project_id, brain_id, snapshot_id):
     """Gives the path for a snapshot.
@@ -554,7 +667,8 @@ class DataStore(object):
     """
     assert snapshot_id
     return os.path.join(
-        self._get_brain_path(project_id, brain_id), 'snapshots', snapshot_id)
+        self._get_brain_path(project_id, brain_id),
+        _DIRECTORY_BY_RESOURCE_TYPE['snapshot'], snapshot_id)
 
   def _get_session_path(self, project_id, brain_id, session_id):
     """Gives the path for a session.
@@ -568,7 +682,8 @@ class DataStore(object):
     """
     assert session_id
     return os.path.join(
-        self._get_brain_path(project_id, brain_id), 'sessions', session_id)
+        self._get_brain_path(project_id, brain_id),
+        _DIRECTORY_BY_RESOURCE_TYPE['session'], session_id)
 
   def _get_episode_path(self, project_id, brain_id, session_id, episode_id):
     """Gives the path for an episode.
@@ -583,8 +698,8 @@ class DataStore(object):
     """
     assert episode_id
     return os.path.join(
-        self._get_session_path(project_id, brain_id, session_id), 'episodes',
-        episode_id)
+        self._get_session_path(project_id, brain_id, session_id),
+        _DIRECTORY_BY_RESOURCE_TYPE['episode'], episode_id)
 
   def _get_chunk_path(
       self, project_id, brain_id, session_id, episode_id, chunk_id):
@@ -599,10 +714,9 @@ class DataStore(object):
     Returns:
       A string describing the episode chunk directory path.
     """
-    assert chunk_id
     return os.path.join(
         self._get_episode_path(project_id, brain_id, session_id, episode_id),
-        'chunks', str(chunk_id))
+        _DIRECTORY_BY_RESOURCE_TYPE['episode_chunk'], str(chunk_id))
 
   def _get_assignment_path(
       self, project_id, brain_id, session_id, assignment_id):
@@ -619,7 +733,7 @@ class DataStore(object):
     assert assignment_id
     return os.path.join(
         self._get_session_path(project_id, brain_id, session_id),
-        'assignments',
+        _DIRECTORY_BY_RESOURCE_TYPE['assignment'],
         hashlib.sha256(assignment_id.encode('utf-8')).hexdigest())
 
   def _get_model_path(
@@ -637,7 +751,7 @@ class DataStore(object):
     assert model_id
     return os.path.join(
         self._get_session_path(project_id, brain_id, session_id),
-        'models', model_id)
+        _DIRECTORY_BY_RESOURCE_TYPE['model'], model_id)
 
   def _get_offline_evaluation_path(
       self, project_id, brain_id, session_id, model_id, evaluation_set_id):
@@ -656,4 +770,4 @@ class DataStore(object):
     assert evaluation_set_id
     return os.path.join(
         self._get_model_path(project_id, brain_id, session_id, model_id),
-        'offline_evaluations', evaluation_set_id)
+        _DIRECTORY_BY_RESOURCE_TYPE['offline_evaluation'], evaluation_set_id)

@@ -18,6 +18,7 @@ import glob
 import hashlib
 import os
 import os.path
+import re
 import time
 
 import common.generate_protos  # pylint: disable=g-bad-import-order,unused-import
@@ -99,6 +100,9 @@ class FileSystem(object):
 
 class DataStore(object):
   """Reads and writes data from storage."""
+
+  _FILENAME_METADATA_RE = re.compile(
+      r'^(?P<name>[^_]+)_(?P<timestamp>[0-9]+)\..*')
 
   def __init__(self, file_system):
     """Initializes the data store with a given root path.
@@ -405,6 +409,115 @@ class DataStore(object):
                 str(offline_evaluation.evaluation_set_id)),
             _OFFLINE_EVALUATION_FILE_PATTERN),
         offline_evaluation)
+
+  def _decode_token(self, token):
+    """Decodes a pagination token.
+
+    Args:
+      token: A string with the form "timestamp:resource_id", or None.
+    Returns:
+      A pair (timestamp, resource_id), where timestamp is an integer, and
+      resource_id a string.
+    """
+    if token is None:
+      return -1, ''
+
+    pair = token.split(':')
+    if len(pair) != 2:
+      raise ValueError(f'Invalid token {token}.')
+    return int(pair[0]), pair[1]
+
+  def _encode_token(self, timestamp, resource_id):
+    """Encodes a pagination token.
+
+    Args:
+      timestamp: An integer with a number of milliseconds since epoch.
+      resource_id: A string containing a resource id.
+    Returns:
+      The encoded string with the form "timestamp:resource_id".
+    """
+    return f'{timestamp}:{resource_id}'
+
+  def list_brains(self, project_id, page_size, page_token):
+    """Lists brains for a given project.
+
+    Args:
+      project_id: The project id string to use for finding the brains.
+      page_size: An int describing the max amount of brains to return.
+      page_token: A token string used for pagination, or None for starting
+        the list from the beginning.
+    Returns:
+      A pair (brain_ids, next_token), where brain_ids is a list of
+      brain id strings, and next_token is the token for the next page,
+      or None if there is no next page.
+    """
+    return self._list_resources(
+        os.path.join(
+            self._get_project_path(project_id), 'brains', '*',
+            _BRAIN_FILE_PATTERN), page_size, page_token)
+
+  def _list_resources(self, glob_path, page_size, page_token):
+    """Lists resources for a given project, in ascending order.
+
+    Args:
+      glob_path: Path to use for glob. Last two components of the path must be:
+       * for glob (which matches the resource id), and a file name pattern.
+      page_size: An int describing the max amount of brains to return.
+      page_token: A token string used for pagination, or None for starting
+        the list from the beginning.
+    Returns:
+      A pair (resource_ids, next_token), where resource_ids is a list of
+      resource id strings, and next_token is the token for the next page,
+      or None if there is no next page.
+    """
+    if not page_size:
+      return [], None
+
+    decoded_token = self._decode_token(page_token)
+
+    files = self._fs.glob(glob_path)
+    id_to_token = {
+        self._get_resource_id(f):
+        (self._get_timestamp(f), self._get_resource_id(f))
+        for f in files
+    }
+    resource_ids = sorted(
+        [r for r in id_to_token.keys() if id_to_token[r] > decoded_token],
+        key=lambda r: id_to_token[r])
+
+    next_page = resource_ids[:page_size]
+    # If resource_ids has the same size as next_page, there are no more pages.
+    next_token = (self._encode_token(*id_to_token[next_page[-1]])
+                  if len(resource_ids) > len(next_page) else None)
+
+    return next_page, next_token
+
+  def _get_resource_id(self, path):
+    """Returns the resource id for a file.
+
+    Args:
+      path: Path of the file to get the resource id for. The last component
+        of the path must be a filename, and the previous to last must be the
+        resource id.
+    Returns:
+      The id for the resource in the given path.
+    """
+    return os.path.basename(os.path.dirname(path))
+
+  def _get_timestamp(self, path):
+    """Returns the timestamp for a file.
+
+    Args:
+      path: Path of the file to get the timestamp for. The file component of
+        the path must have the timestamp after an underscore and before the
+        extension (for example, in brain_1234.pb).
+    Returns:
+      An int with the amount of milliseconds since epoch.
+    """
+    match = re.match(DataStore._FILENAME_METADATA_RE, path)
+    if not match:
+      raise ValueError(f'Path {path} does not contain a timestamp.')
+    return int(match.group('timestamp'))
 
   def _get_project_path(self, project_id):
     """Gives the path for a project.

@@ -28,6 +28,7 @@ class FakeFileSystem(object):
   """In-memory implementation of the FileSystem class."""
 
   def __init__(self):
+    # Stores the proto contained in each path.
     self._path_to_proto = {}
     # Simulate the passing of time with a counter.
     self._current_time = 0
@@ -158,6 +159,64 @@ class DataStoreTest(absltest.TestCase):
         2,
         self._data_store.read_offline_evaluation('p1', 'b1', 's1', 'm1',
                                                  2).evaluation_set_id)
+
+  def test_decode_token(self):
+    self.assertEqual((12, 'ab'), self._data_store._decode_token('12:ab'))
+    self.assertEqual((-1, ''), self._data_store._decode_token(None))
+
+  def test_encode_token(self):
+    self.assertEqual('12:ab', self._data_store._encode_token(12, 'ab'))
+
+  def test_list_resources(self):
+    brain_ids = [f'b{i:02}' for i in range(20)]
+    # Many repeated 5s.
+    timestamps = [0, 1, 2, 3, 4, 5, 5, 5, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+                  15]
+    for i in range(len(brain_ids)):
+      self._data_store._fs._current_time = timestamps[i]
+      self._data_store.write_brain(
+          data_store_pb2.Brain(project_id='p1', brain_id=brain_ids[i]))
+
+    self.assertEqual((['b00', 'b01', 'b02'], '2:b02'),
+                     self._data_store.list_brains('p1', 3, None))
+
+    self.assertEqual(
+        (['b03', 'b04', 'b05', 'b06', 'b07', 'b08', 'b09', 'b10', 'b11', 'b12'
+         ], '8:b12'),
+        self._data_store.list_brains('p1', 10, '2:b02'))
+
+    self.assertEqual(
+        (['b03', 'b04', 'b05', 'b06'], '5:b06'),
+        self._data_store.list_brains('p1', 4, '2:b02'))
+
+    self.assertEqual(
+        (['b07', 'b08', 'b09', 'b10'], '6:b10'),
+        self._data_store.list_brains('p1', 4, '5:b06'))
+
+    self.assertEqual((brain_ids, None),
+                     self._data_store.list_brains('p1', 20, None))
+
+    self.assertEqual((brain_ids, None),
+                     self._data_store.list_brains('p1', 30, None))
+
+    self.assertEqual((brain_ids[:-1], '14:b18'),
+                     self._data_store.list_brains('p1', 19, None))
+
+    self.assertEqual((['b19'], None),
+                     self._data_store.list_brains('p1', 10, '14:b18'))
+
+    self.assertEqual(([], None),
+                     self._data_store.list_brains('p1', 10, '700:bzzz'))
+
+    self.assertEqual(([], None),
+                     self._data_store.list_brains('p1', 0, '2:b02'))
+
+  def test_get_resource_id(self):
+    self.assertEqual('4567', self._data_store._get_resource_id(
+        'something/something/4567/somefile.pb'))
+
+  def test_get_timestamp(self):
+    self.assertEqual(1234, self._data_store._get_timestamp('something_1234.pb'))
 
   def test_get_project_path(self):
     self.assertEqual('projects/p1', self._data_store._get_project_path('p1'))

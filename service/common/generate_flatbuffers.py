@@ -13,10 +13,12 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Script to generate flatbuffers for use by Falken service.
+"""Module to generate flatbuffer code for use by Falken service.
 
-Rather than generating flatbuffers at each use, we run this periodically to
-regenerate them when they need to be, and commit the generated file.
+Rather than generating flatbuffers at each use, we commit generated_flatbuffers
+directory in the repository. If it must be regenerated, first remove the
+generated_flatbuffers directory, and run the code as normal, imported as a
+module in the code that needs the flatbuffers.
 """
 import glob
 import os
@@ -61,8 +63,7 @@ def download_external_fbs(temp_dir):
   Returns:
     Path to where the flatbuffer schema are downloaded.
   """
-  downloaded_fbs_dir = os.path.join(
-      temp_dir, 'downloaded_flatbuffers')
+  downloaded_fbs_dir = os.path.join(temp_dir, 'downloaded_flatbuffers')
   if not os.path.exists(downloaded_fbs_dir):
     for fbs_url, fbs_path in _EXTERNAL_FLATBUFFERS:
       file_name = os.path.join(downloaded_fbs_dir, fbs_path)
@@ -83,8 +84,7 @@ def install_flatc(temp_dir):
   Returns:
     Path to the downloaded and extracted repository.
   """
-  flatbuffers_download_dir = os.path.join(
-      temp_dir, 'flatbuffers')
+  flatbuffers_download_dir = os.path.join(temp_dir, 'flatbuffers')
   flatbuffers_repo_dir = os.path.abspath(os.path.join(
       flatbuffers_download_dir, 'flatbuffers-1.12.0'))
   if not os.path.exists(flatbuffers_download_dir):

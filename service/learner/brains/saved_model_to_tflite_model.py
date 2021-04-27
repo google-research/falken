@@ -22,8 +22,8 @@ import tensorflow as tf
 
 # pylint: disable=g-bad-import-order
 import common.generate_flatbuffers  # pylint: disable=unused-import
-from generated_flatbuffers.tflite import Model
-from generated_flatbuffers.tflite import SubGraph
+from tflite import Model
+from tflite import SubGraph
 
 
 # Encoding for strings in FlatBuffers.

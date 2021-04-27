@@ -31,9 +31,9 @@ from tf_agents.trajectories import time_step as ts
 
 # pylint: disable=g-bad-import-order
 import common.generate_flatbuffers  # pylint: disable=unused-import
-from generated_flatbuffers.tflite import Model
-from generated_flatbuffers.tflite import Tensor
-from generated_flatbuffers.tflite import TensorType
+from tflite import Model
+from tflite import Tensor
+from tflite import TensorType
 
 
 class MockTensor(tf.Tensor):

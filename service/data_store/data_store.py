@@ -105,7 +105,11 @@ class FileSystem(object):
       data: A proto to store in that location.
     """
     assert pattern.count('*') == 1
+
     t = int(time.time() * 1000)
+    if 'created_micros' in data.DESCRIPTOR.fields_by_name:
+      data.created_micros = t
+
     path = os.path.join(self._root_path, pattern.replace('*', str(t)))
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -592,7 +596,7 @@ class DataStore(object):
     files = self._fs.glob(glob_path)
     id_to_token = {
         self._get_resource_id(f):
-        (self._get_timestamp(f), self._get_resource_id(f))
+        (DataStore._get_timestamp(f), self._get_resource_id(f))
         for f in files
     }
     resource_ids = sorted(
@@ -618,7 +622,8 @@ class DataStore(object):
     """
     return os.path.basename(os.path.dirname(path))
 
-  def _get_timestamp(self, path):
+  @staticmethod
+  def _get_timestamp(path):
     """Returns the timestamp for a file.
 
     Args:

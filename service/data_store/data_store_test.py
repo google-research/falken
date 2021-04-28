@@ -103,8 +103,10 @@ class FileSystemTest(absltest.TestCase):
     files = glob.glob(os.path.join(self._temporary_directory.name, pattern))
     self.assertLen(files, 1)
 
+    proto = self._fs.read_proto(pattern, data_store_pb2.Project)
+    self.assertEqual('p1', proto.project_id)
     self.assertEqual(
-        'p1', self._fs.read_proto(pattern, data_store_pb2.Project).project_id)
+        proto.created_micros, data_store.DataStore._get_timestamp(files[0]))
 
   def test_glob(self):
     """Tests FileSystem.glob."""
@@ -310,7 +312,8 @@ class DataStoreTest(absltest.TestCase):
         'something/something/4567/somefile.pb'))
 
   def test_get_timestamp(self):
-    self.assertEqual(1234, self._data_store._get_timestamp('something_1234.pb'))
+    self.assertEqual(
+        1234, data_store.DataStore._get_timestamp('something_1234.pb'))
 
   def test_get_project_path(self):
     self.assertEqual('projects/p1', self._data_store._get_project_path('p1'))

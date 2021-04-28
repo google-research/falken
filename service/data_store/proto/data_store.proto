@@ -110,7 +110,9 @@ message Model {
   string session_id = 3;
   string model_id = 4;
 
-  int64 commit_timestamp_micros = 5;
+  int64 commit_timestamp_micros = 5 [deprecated = true];
+  int64 created_micros = 15;
+
   string model_path = 6;
   string compressed_model_path = 11;
 
@@ -252,3 +254,4 @@ message OnlineEvaluation {
   // Latency stats for evaluating and recording the evaluation.
   EvalLatencyStats latency_stats = 8;
 }
+

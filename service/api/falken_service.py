@@ -27,7 +27,8 @@ import grpc
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('port', None, 'Port for the Falken service to accept RPCs.')
+flags.DEFINE_integer('port', None,
+                     'Port for the Falken service to accept RPCs.')
 flags.DEFINE_string('ssl_dir', '', 'Path containing the SSL cert and key.')
 flags.DEFINE_integer(
     'max_workers', 10,
@@ -106,7 +107,7 @@ def serve():
   falken_service_pb2_grpc.add_FalkenServiceServicer_to_server(
       FalkenService(), server)
   server_credentials = read_server_credentials()
-  server.add_secure_port(FLAGS.port, server_credentials)
+  server.add_secure_port(f'[::]:{FLAGS.port}', server_credentials)
   server.start()
   server.wait_for_termination()
 
@@ -119,4 +120,5 @@ def main(argv):
 
 
 if __name__ == '__main__':
+  flags.mark_flag_as_required('port')
   app.run(main)

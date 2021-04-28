@@ -45,7 +45,7 @@ class FalkenServiceTest(absltest.TestCase):
   @mock.patch.object(falken_service, 'read_server_credentials', autospec=True)
   def test_serve(self, read_credentials):
     """Test that Falken service can be started up and connected to."""
-    FLAGS.port = '[::]:50051'
+    FLAGS.port = 50051
     read_credentials.return_value = grpc.ssl_server_credentials(
         ((b'test_private_key', b'test_certificate_chain'),))
     real_server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

@@ -27,8 +27,8 @@ import common.pip_installer  # pylint: disable=unused-import
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('port', '[::]:50051',
-                    'Port for the Falken service to accept RPCs.')
+flags.DEFINE_integer('port', 50051,
+                     'Port for the Falken service to accept RPCs.')
 flags.DEFINE_string('ssl_dir',
                     os.path.dirname(os.path.abspath(__file__)),
                     'Path containing the SSL cert and key.')
@@ -77,7 +77,7 @@ def run_api(current_path):
     Popen instance where the API service is running.
   """
   return subprocess.Popen(
-      [sys.executable, '-m', 'api.falken_service', '--port', FLAGS.port,
+      [sys.executable, '-m', 'api.falken_service', '--port', str(FLAGS.port),
        '--ssl_dir', FLAGS.ssl_dir, '--verbosity', str(FLAGS.verbosity),
        '--alsologtostderr'], env=os.environ, cwd=current_path)
 

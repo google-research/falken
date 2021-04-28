@@ -48,8 +48,9 @@ class LauncherTest(absltest.TestCase):
     """Call the run_api() method and verify the correct calls."""
     launcher.run_api('mock_path')
     popen.assert_called_once_with(
-        [sys.executable, '-m', 'api.falken_service', '--port', '[::]:50051',
-         '--ssl_dir', FLAGS.ssl_dir], env=os.environ, cwd='mock_path')
+        [sys.executable, '-m', 'api.falken_service', '--port', '50051',
+         '--ssl_dir', FLAGS.ssl_dir, '--verbosity', '0', '--alsologtostderr'],
+        env=os.environ, cwd='mock_path')
 
   @mock.patch.object(subprocess, 'run', autospec=True)
   def test_check_ssl(self, run):

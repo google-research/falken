@@ -29,9 +29,41 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('port', '[::]:50051',
                     'Port for the Falken service to accept RPCs.')
-flags.DEFINE_string('ssl_dir', None, 'Path containing the SSL cert and key.')
+flags.DEFINE_string('ssl_dir',
+                    os.path.dirname(os.path.abspath(__file__)),
+                    'Path containing the SSL cert and key.')
 flags.DEFINE_bool('clean_up_protos', False,
                   'Clean up generated protos at stop.')
+
+
+def check_ssl():
+  """Check if the SSL cert and key exists and request them if they are not.
+
+  Raises:
+    FileNotFoundError: when at the end of the operation the key or cert are not
+      found.
+  """
+  key_file = os.path.join(FLAGS.ssl_dir, 'key.pem')
+  cert_file = os.path.join(FLAGS.ssl_dir, 'cert.pem')
+  if os.path.isfile(key_file) and os.path.isfile(cert_file):
+    return
+
+  logging.debug(
+      'Cannot find %s and %s, so requesting certificates using openssl.',
+      key_file, cert_file)
+  try:
+    subprocess.run(
+        ['openssl', 'req', '-x509', '-newkey', 'rsa:4096', '-keyout', key_file,
+         '-out', cert_file, '-days', '365', '-nodes', '-subj',
+         '/CN=localhost'], check=True)
+  except subprocess.CalledProcessError:
+    logging.exception()
+    logging.error('Please install openssl at openssl.org.')
+
+  if not os.path.isfile(key_file):
+    raise FileNotFoundError('Key was not created.')
+  if not os.path.isfile(cert_file):
+    raise FileNotFoundError('Cert were not created.')
 
 
 def run_api(current_path):
@@ -55,6 +87,7 @@ def main(argv):
 
   logging.debug('Starting Falken services. Press ctrl-c to exit.')
   file_dir = os.path.dirname(os.path.abspath(__file__))
+  check_ssl()
   api_process = run_api(file_dir)
   while True:
     try:

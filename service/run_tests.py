@@ -18,9 +18,23 @@
 import importlib
 import inspect
 import os
+import re
 import subprocess
 import sys
 from common import pip_installer  # pylint: disable=unused-import
+
+# These imports must be placed after the pip_installer,
+# to ensure absl is installed.
+# pylint: disable=g-bad-import-order.
+from absl import flags
+from absl.testing import absltest
+from absl.testing import parameterized
+
+flags.DEFINE_string(
+    'modules_to_test', '.*',
+    'Modules to test regex pattern; by default, test all modules.')
+
+FLAGS = flags.FLAGS
 
 # Add search paths for all modules.
 _SERVICE_MODULE_PATHS = ['data_store', 'log', 'learner', 'learner/brains']
@@ -28,14 +42,14 @@ sys.path.extend(
     [os.path.join(os.path.dirname(__file__), p) for p in _SERVICE_MODULE_PATHS]
 )
 
-_SUBPROCESS_TESTS = [
+_DEFAULT_SUBPROCESS_TESTS = [
     'launcher_test.py',
     'common/generate_flatbuffers_test.py',
     'common/generate_protos_test.py',
     'common/pip_installer_test.py',
 ]
 
-_TEST_MODULES = [
+_DEFAULT_TEST_MODULES = [
     'api.falken_service_test',
     'data_store.data_store_test',
     'learner.brains.action_postprocessor_test',
@@ -77,19 +91,26 @@ def _add_module_test_classes_to_global_namespace(test_classes, module):
 
 def run_absltests():
   """Run all absl tests in the current module."""
+
+  # Filter out the modules using --modules_to_test.
+  FLAGS(sys.argv)
+  modules_to_test_re = re.compile(FLAGS.modules_to_test)
+  def filter_tests(tests):
+    return [t for t in tests if modules_to_test_re.match(t)]
+  subprocess_tests = filter_tests(_DEFAULT_SUBPROCESS_TESTS)
+  test_modules = filter_tests(_DEFAULT_TEST_MODULES)
+  if not subprocess_tests and not test_modules:
+    raise ValueError(f'No tests match {FLAGS.modules_to_test}.')
+
   # Run tests that need to be run on separate subprocesses so they do not
   # affect the other tests' environments.
-  for subprocess_test in _SUBPROCESS_TESTS:
+  for subprocess_test in subprocess_tests:
     subprocess.check_call(
         [sys.executable, os.path.join(
             os.path.dirname(__file__), subprocess_test)])
 
-  # Can't import absl at the top of this file as it needs to be installed first.
-  # pylint: disable=g-import-not-at-top.
-  from absl.testing import absltest
-  from absl.testing import parameterized
   # Import test modules.
-  for module_name in _TEST_MODULES:
+  for module_name in test_modules:
     _add_module_test_classes_to_global_namespace(
         (absltest.TestCase, parameterized.TestCase),
         importlib.import_module(module_name))

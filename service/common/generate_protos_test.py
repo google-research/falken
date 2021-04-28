@@ -18,6 +18,8 @@
 import glob
 import os
 import sys
+import tempfile
+from unittest import mock
 
 from absl.testing import absltest
 # Set the environment variable to false so the test can call the method to
@@ -30,23 +32,40 @@ class GenerateProtosTest(absltest.TestCase):
   """Test generate_protos module."""
 
   def setUp(self):
-    super(GenerateProtosTest, self).setUp()
+    super().setUp()
     # Clean up any generated proto state that may have remained from other
     # processes run before this test.
     generate_protos.clean_up()
+    os.environ['FALKEN_GENERATED_PROTOS_DIR'] = ''
+    self._temp_dir = tempfile.TemporaryDirectory()
 
   def tearDown(self):
     """Tear down the testing environment."""
-    super(GenerateProtosTest, self).tearDown()
+    super().tearDown()
+    self._temp_dir.cleanup()
     generate_protos.clean_up()
 
-  def test_generate_protos(self):
+  def test_get_generated_protos_dir(self):
+    """Get the generated protos directory."""
+    self.assertEqual(
+        generate_protos._PROTO_GEN_DIR,
+        os.path.basename(generate_protos.get_generated_protos_dir()))
+    os.environ['FALKEN_GENERATED_PROTOS_DIR'] = (
+        os.path.join('custom', 'dir'))
+    self.assertEqual(
+        os.path.join('custom', 'dir', generate_protos._PROTO_GEN_DIR),
+        generate_protos.get_generated_protos_dir())
+
+  @mock.patch.object(generate_protos, 'get_generated_protos_dir')
+  def test_generate_protos(self, mock_get_generated_protos_dir):
     """Call the generate method and verify generation and use."""
+    generated_dir = os.path.join(self._temp_dir.name,
+                                 generate_protos._PROTO_GEN_DIR)
+    mock_get_generated_protos_dir.return_value = generated_dir
     generate_protos.generate()
     source_protos = []
     for d in generate_protos.get_source_proto_dirs():
       source_protos += glob.glob(f'{d}/*.proto')
-    generated_dir = generate_protos.get_generated_protos_dir()
 
     def extract_generated_proto_path(source_proto_path, generated_dir):
       """Create generated proto path with the proto name.
@@ -79,8 +98,11 @@ class GenerateProtosTest(absltest.TestCase):
     import primitives_pb2
     self.assertIsNotNone(primitives_pb2.Rotation())
 
-  def test_generate_protos_cache(self):
+  @mock.patch.object(generate_protos, 'get_generated_protos_dir')
+  def test_generate_protos_cache(self, mock_get_generated_protos_dir):
     """Verify calling generate_proto multiple times without clean_up works."""
+    mock_get_generated_protos_dir.return_value = os.path.join(
+        self._temp_dir.name, generate_protos._PROTO_GEN_DIR)
     # First, verify that importing brain_pb2 before generate_protos is called
     # raises a ModuleNotFoundError.
     with self.assertRaises(ModuleNotFoundError):

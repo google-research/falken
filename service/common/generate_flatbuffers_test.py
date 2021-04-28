@@ -17,7 +17,9 @@
 """Tests that flatbuffers are generated using generate_flatbuffers module."""
 import glob
 import os
-import shutil
+import tempfile
+from unittest import mock
+
 from absl.testing import absltest
 # Set the environment variable to false so the test can call the method to
 # generate flatbuffers explicitly.
@@ -29,15 +31,33 @@ class GenerateFlatbuffersTest(absltest.TestCase):
   """Test generate_flatbuffers module."""
 
   def setUp(self):
-    super(GenerateFlatbuffersTest, self).setUp()
-    # Clean up generated flatbuffers that are in the file system before starting
-    # tests.
-    shutil.rmtree(generate_flatbuffers.get_generated_flatbuffers_dir())
+    """Setup a temporary directory for flatbuffers generation."""
+    super().setUp()
+    # Ignore the generated flatbuffers directory from the environment.
+    os.environ['FALKEN_GENERATED_FLATBUFFERS_DIR'] = ''
+    self._temp_dir = tempfile.TemporaryDirectory()
 
-  def test_generate_flatbuffers(self):
+  def tearDown(self):
+    """Clean up the temporary directory for flatbuffers generation."""
+    super().tearDown()
+    self._temp_dir.cleanup()
+
+  def test_get_generated_flatbuffers_dir(self):
+    """Get the generated flatbuffers directory."""
+    self.assertEqual(
+        generate_flatbuffers._FLATBUFFERS_DIR,
+        os.path.basename(generate_flatbuffers.get_generated_flatbuffers_dir()))
+    os.environ['FALKEN_GENERATED_FLATBUFFERS_DIR'] = (
+        os.path.join('custom', 'dir'))
+    self.assertEqual(
+        os.path.join('custom', 'dir', generate_flatbuffers._FLATBUFFERS_DIR),
+        generate_flatbuffers.get_generated_flatbuffers_dir())
+
+  @mock.patch.object(generate_flatbuffers, 'get_generated_flatbuffers_dir')
+  def test_generate_flatbuffers(self, mock_get_generated_flatbuffers_dir):
     """Verify run of generate_flatbuffers script generates fbs py files."""
-    generated_dir = generate_flatbuffers.get_generated_flatbuffers_dir()
-    self.assertFalse(os.path.exists(generated_dir))
+    generated_dir = os.path.join(self._temp_dir.name, 'test')
+    mock_get_generated_flatbuffers_dir.return_value = generated_dir
 
     generate_flatbuffers.generate()
     self.assertTrue(os.path.exists(generated_dir))

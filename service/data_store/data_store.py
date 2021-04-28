@@ -106,10 +106,10 @@ class FileSystem(object):
     """
     assert pattern.count('*') == 1
     t = int(time.time() * 1000)
-    path = pattern.replace('*', str(t))
+    path = os.path.join(self._root_path, pattern.replace('*', str(t)))
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(os.path.join(self._root_path, path), 'wb') as f:
+    with open(path, 'wb') as f:
       f.write(data.SerializeToString())
 
   def glob(self, pattern):
@@ -120,7 +120,9 @@ class FileSystem(object):
     Returns:
       List of path strings found.
     """
-    return glob.glob(pattern)
+    return [
+        os.path.relpath(f, start=self._root_path)
+        for f in glob.glob(os.path.join(self._root_path, pattern))]
 
 
 class DataStore(object):

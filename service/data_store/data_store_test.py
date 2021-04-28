@@ -14,8 +14,10 @@
 
 """Tests for DataStore."""
 
+import glob
 import os.path
 import re
+import tempfile
 from unittest import mock
 
 from absl.testing import absltest
@@ -77,6 +79,43 @@ class FakeFileSystem(object):
     pattern = pattern.replace('*', '[^/]*')
     return [path for path in sorted(self._path_to_proto)
             if re.match(pattern, path)]
+
+
+class FileSystemTest(absltest.TestCase):
+
+  def setUp(self):
+    """Create a file system object that uses a temporary directory."""
+    super().setUp()
+    self._temporary_directory = tempfile.TemporaryDirectory()
+    self._fs = data_store.FileSystem(self._temporary_directory.name)
+
+  def tearDown(self):
+    """Clean up the temporary directory and file system."""
+    super().tearDown()
+    self._temporary_directory.cleanup()
+    self._fs = None
+
+  def test_read_write_proto(self):
+    """Tests files read and writing files, and verify writing location."""
+    pattern = 'some-project_*.pb'
+    self._fs.write_proto(pattern, data_store_pb2.Project(project_id='p1'))
+
+    files = glob.glob(os.path.join(self._temporary_directory.name, pattern))
+    self.assertLen(files, 1)
+
+    self.assertEqual(
+        'p1', self._fs.read_proto(pattern, data_store_pb2.Project).project_id)
+
+  def test_glob(self):
+    """Tests FileSystem.glob."""
+    files = set([
+        'dirA1/dirB1/p1_*.pb', 'dirA1/dirB2/p1_*.pb', 'dirA2/dirC1/p1_*.pb'])
+    for f in files:
+      self._fs.write_proto(f, data_store_pb2.Project(project_id='p1'))
+
+    found_files = self._fs.glob('dir*/dir*/p1_*.pb')
+    found_files = set([re.sub(r'_[0-9]+\.pb', '_*.pb', f) for f in found_files])
+    self.assertEqual(files, found_files)
 
 
 class DataStoreTest(absltest.TestCase):

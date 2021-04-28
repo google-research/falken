@@ -70,15 +70,32 @@ def run_api(current_path):
   """Start the API in a subprocess.
 
   Args:
-    current_path: The path of the file being executed. Used to retrieve the
-      falken_service.py path.
+    current_path: The path of the file being executed. Passed as the cwd of the
+      subprocess.
 
   Returns:
     Popen instance where the API service is running.
   """
   return subprocess.Popen(
       [sys.executable, '-m', 'api.falken_service', '--port', FLAGS.port,
-       '--ssl_dir', FLAGS.ssl_dir], env=os.environ, cwd=current_path)
+       '--ssl_dir', FLAGS.ssl_dir, '--verbosity', str(FLAGS.verbosity),
+       '--alsologtostderr'], env=os.environ, cwd=current_path)
+
+
+def run_learner(current_path):
+  """Start the learner in a subprocess.
+
+  Args:
+    current_path: The path of the file being executed. Passed as the cwd of the
+      subprocess.
+
+  Returns:
+    Popen instance where the learner service is running.
+  """
+  return subprocess.Popen(
+      [sys.executable, '-m', 'learner.learner_service', '--verbosity',
+       str(FLAGS.verbosity), '--alsologtostderr'],
+      env=os.environ, cwd=current_path)
 
 
 def main(argv):
@@ -89,6 +106,7 @@ def main(argv):
   file_dir = os.path.dirname(os.path.abspath(__file__))
   check_ssl()
   api_process = run_api(file_dir)
+  learner_process = run_learner(file_dir)
   while True:
     try:
       _ = sys.stdin.readline()  # Wait for keyboard input.
@@ -97,6 +115,7 @@ def main(argv):
       if FLAGS.clean_up_protos:
         common.generate_protos.clean_up()
       api_process.send_signal(signal.SIGINT)
+      learner_process.send_signal(signal.SIGINT)
       break
 
 

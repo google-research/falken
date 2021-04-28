@@ -114,6 +114,7 @@ def serve():
 def main(argv):
   if len(argv) > 1:
     logging.error('Non-flag parameters are not allowed: %s', argv)
+  logging.debug('Starting the API service...')
   serve()
 
 

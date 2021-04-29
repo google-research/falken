@@ -47,6 +47,7 @@ _DEFAULT_SUBPROCESS_TESTS = [
     'common/generate_flatbuffers_test.py',
     'common/generate_protos_test.py',
     'common/pip_installer_test.py',
+    'tools/generate_sdk_configuration.py',
 ]
 
 _DEFAULT_TEST_MODULES = [

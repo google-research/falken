@@ -74,47 +74,29 @@ class FileSystem(object):
     """
     self._root_path = root_path
 
-  def read_proto(self, pattern, data_type):
-    """Finds matching file path, and reads its binary proto data.
+  def read_file(self, path):
+    """Reads a file.
 
     Args:
-      pattern: The path pattern of the file where the proto is stored, including
-        a single * to allow for unknown parts of the name to be filled in.
-        No more than one file is allowed to match with the pattern path.
-      data_type: The class of the proto to read.
+      path: The path of the file to read.
     Returns:
-      The proto that was read from storage.
+      A bytes-like object containing the contents of the file.
     """
-    assert pattern.count('*') == 1
-    paths = self.glob(pattern)
-    if not paths:
-      raise ValueError(f'File with pattern "{pattern}" does not exist.')
-    if len(paths) > 1:
-      raise ValueError(
-          f'More than one file was found matching pattern "{pattern}".')
+    with open(os.path.join(self._root_path, path), 'rb') as f:
+      return f.read()
 
-    with open(os.path.join(self._root_path, paths[0]), 'rb') as f:
-      return data_type.FromString(f.read())
-
-  def write_proto(self, pattern, data):
-    """Writes proto data into the given file, with a timestamp in its name.
+  def write_file(self, path, data):
+    """Writes into a file.
 
     Args:
-      pattern: The path of the file where the proto is stored, with a * that
-        will be replaced by the timestamp.
-      data: A proto to store in that location.
+      path: The path of the file to write the data to.
+      data: A bytes-like object containing the data to write.
     """
-    assert pattern.count('*') == 1
-
-    t = int(time.time() * 1000)
-    if 'created_micros' in data.DESCRIPTOR.fields_by_name:
-      data.created_micros = t
-
-    path = os.path.join(self._root_path, pattern.replace('*', str(t)))
+    path = os.path.join(self._root_path, path)
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'wb') as f:
-      f.write(data.SerializeToString())
+      f.write(data)
 
   def glob(self, pattern):
     """Encapsulates glob.glob.
@@ -177,7 +159,7 @@ class DataStore(object):
     Returns:
       A Project proto.
     """
-    result = self._fs.read_proto(
+    result = self._read_proto(
         os.path.join(self._get_project_path(project_id), _PROJECT_FILE_PATTERN),
         data_store_pb2.Project)
     self._check_type(result, data_store_pb2.Project)
@@ -190,7 +172,7 @@ class DataStore(object):
       project: The Project proto to write.
     """
     self._check_type(project, data_store_pb2.Project)
-    self._fs.write_proto(
+    self._write_proto(
         os.path.join(
             self._get_project_path(project.project_id), _PROJECT_FILE_PATTERN),
         project)
@@ -204,7 +186,7 @@ class DataStore(object):
     Returns:
       A Brain proto.
     """
-    result = self._fs.read_proto(
+    result = self._read_proto(
         os.path.join(self._get_brain_path(project_id, brain_id),
                      _BRAIN_FILE_PATTERN), data_store_pb2.Brain)
     self._check_type(result, data_store_pb2.Brain)
@@ -217,7 +199,7 @@ class DataStore(object):
       brain: The Brain proto to write.
     """
     self._check_type(brain, data_store_pb2.Brain)
-    self._fs.write_proto(
+    self._write_proto(
         os.path.join(
             self._get_brain_path(brain.project_id, brain.brain_id),
             _BRAIN_FILE_PATTERN),
@@ -233,7 +215,7 @@ class DataStore(object):
     Returns:
       A Snapshot proto.
     """
-    result = self._fs.read_proto(
+    result = self._read_proto(
         os.path.join(
             self._get_snapshot_path(project_id, brain_id, snapshot_id),
             _SNAPSHOT_FILE_PATTERN),
@@ -248,7 +230,7 @@ class DataStore(object):
       snapshot: The Snapshot proto to write.
     """
     self._check_type(snapshot, data_store_pb2.Snapshot)
-    self._fs.write_proto(
+    self._write_proto(
         os.path.join(
             self._get_snapshot_path(snapshot.project_id, snapshot.brain_id,
                                     snapshot.snapshot_id),
@@ -265,7 +247,7 @@ class DataStore(object):
     Returns:
       A Session proto.
     """
-    result = self._fs.read_proto(
+    result = self._read_proto(
         os.path.join(
             self._get_session_path(project_id, brain_id, session_id),
             _SESSION_FILE_PATTERN),
@@ -280,7 +262,7 @@ class DataStore(object):
       session: The Session proto to write.
     """
     self._check_type(session, data_store_pb2.Session)
-    self._fs.write_proto(
+    self._write_proto(
         os.path.join(
             self._get_session_path(session.project_id, session.brain_id,
                                    session.session_id), _SESSION_FILE_PATTERN),
@@ -299,7 +281,7 @@ class DataStore(object):
     Returns:
       An EpisodeChunk proto.
     """
-    result = self._fs.read_proto(
+    result = self._read_proto(
         os.path.join(
             self._get_chunk_path(project_id, brain_id, session_id, episode_id,
                                  chunk_id),
@@ -315,7 +297,7 @@ class DataStore(object):
       chunk: The EpisodeChunk proto to write.
     """
     self._check_type(chunk, data_store_pb2.EpisodeChunk)
-    self._fs.write_proto(
+    self._write_proto(
         os.path.join(
             self._get_chunk_path(chunk.project_id, chunk.brain_id,
                                  chunk.session_id, chunk.episode_id,
@@ -335,7 +317,7 @@ class DataStore(object):
     Returns:
       An OnlineEvaluation proto.
     """
-    result = self._fs.read_proto(
+    result = self._read_proto(
         os.path.join(
             self._get_episode_path(project_id, brain_id, session_id,
                                    episode_id),
@@ -351,7 +333,7 @@ class DataStore(object):
       online_evaluation: The OnlineEvaluation proto to write.
     """
     self._check_type(online_evaluation, data_store_pb2.OnlineEvaluation)
-    self._fs.write_proto(
+    self._write_proto(
         os.path.join(
             self._get_episode_path(
                 online_evaluation.project_id, online_evaluation.brain_id,
@@ -370,7 +352,7 @@ class DataStore(object):
     Returns:
       An Assignment proto.
     """
-    result = self._fs.read_proto(
+    result = self._read_proto(
         os.path.join(
             self._get_assignment_path(
                 project_id, brain_id, session_id, assignment_id),
@@ -386,7 +368,7 @@ class DataStore(object):
       assignment: The Assignment proto to write.
     """
     self._check_type(assignment, data_store_pb2.Assignment)
-    self._fs.write_proto(
+    self._write_proto(
         os.path.join(
             self._get_assignment_path(assignment.project_id,
                                       assignment.brain_id,
@@ -405,7 +387,7 @@ class DataStore(object):
     Returns:
       A Model proto.
     """
-    result = self._fs.read_proto(
+    result = self._read_proto(
         os.path.join(
             self._get_model_path(project_id, brain_id, session_id, model_id),
             _MODEL_FILE_PATTERN), data_store_pb2.Model)
@@ -419,7 +401,7 @@ class DataStore(object):
       model: The Model proto to write.
     """
     self._check_type(model, data_store_pb2.Model)
-    self._fs.write_proto(
+    self._write_proto(
         os.path.join(
             self._get_model_path(model.project_id, model.brain_id,
                                  model.session_id, model.model_id),
@@ -436,7 +418,7 @@ class DataStore(object):
     Returns:
       An SerializedModel proto.
     """
-    result = self._fs.read_proto(
+    result = self._read_proto(
         os.path.join(
             self._get_model_path(project_id, brain_id, session_id, model_id),
             _SERIALIZED_MODEL_FILE_PATTERN),
@@ -451,7 +433,7 @@ class DataStore(object):
       serialized_model: The SerializedModel proto to write.
     """
     self._check_type(serialized_model, data_store_pb2.SerializedModel)
-    self._fs.write_proto(
+    self._write_proto(
         os.path.join(
             self._get_model_path(
                 serialized_model.project_id, serialized_model.brain_id,
@@ -473,7 +455,7 @@ class DataStore(object):
     Returns:
       An OfflineEvaluation proto.
     """
-    result = self._fs.read_proto(
+    result = self._read_proto(
         os.path.join(
             self._get_offline_evaluation_path(project_id, brain_id, session_id,
                                               model_id, str(evaluation_set_id)),
@@ -488,7 +470,7 @@ class DataStore(object):
       offline_evaluation: The OfflineEvaluation proto to write.
     """
     self._check_type(offline_evaluation, data_store_pb2.OfflineEvaluation)
-    self._fs.write_proto(
+    self._write_proto(
         os.path.join(
             self._get_offline_evaluation_path(
                 offline_evaluation.project_id, offline_evaluation.brain_id,
@@ -510,6 +492,43 @@ class DataStore(object):
       raise ValueError(
           f'Value has type {type(data)}, but it should have type '
           f'{expected_type}.')
+
+  def _read_proto(self, pattern, data_type):
+    """Finds matching file path, and reads its binary proto data.
+
+    Args:
+      pattern: The path pattern of the file where the proto is stored, including
+        a single * to allow for unknown parts of the name to be filled in.
+        No more than one file is allowed to match with the pattern path.
+      data_type: The class of the proto to read.
+    Returns:
+      The proto that was read from storage.
+    """
+    assert pattern.count('*') == 1
+    paths = self._fs.glob(pattern)
+    if not paths:
+      raise ValueError(f'File with pattern "{pattern}" does not exist.')
+    if len(paths) > 1:
+      raise ValueError(
+          f'More than one file was found matching pattern "{pattern}".')
+
+    return data_type.FromString(self._fs.read_file(paths[0]))
+
+  def _write_proto(self, pattern, data):
+    """Writes proto data into the given file, with a timestamp in its name.
+
+    Args:
+      pattern: The path of the file where the proto is stored, with a * that
+        will be replaced by the timestamp.
+      data: A proto to store in that location.
+    """
+    assert pattern.count('*') == 1
+
+    t = int(time.time() * 1000)
+    if 'created_micros' in data.DESCRIPTOR.fields_by_name:
+      data.created_micros = t
+
+    self._fs.write_file(pattern.replace('*', str(t)), data.SerializeToString())
 
   def _decode_token(self, token):
     """Decodes a pagination token.

@@ -18,6 +18,7 @@ import glob
 import os.path
 import re
 import tempfile
+import time
 from unittest import mock
 
 from absl.testing import absltest
@@ -34,37 +35,25 @@ class FakeFileSystem(object):
   def __init__(self):
     # Stores the proto contained in each path.
     self._path_to_proto = {}
-    # Simulate the passing of time with a counter.
-    self._current_time = 0
 
-  def read_proto(self, pattern, unused_data_type):
-    """Finds matching file path, and reads its binary proto data.
+  def read_file(self, path):
+    """Reads a file.
 
     Args:
-      pattern: The path pattern of the file where the proto is stored, including
-        a single * to allow for unknown parts of the name to be filled in.
-        No more than one file is allowed to match with the pattern path.
-      unused_data_type: The class of the proto to read.
+      path: The path of the file to read.
     Returns:
-      The proto that was read from storage.
+      A string containing the contents of the file.
     """
-    assert pattern.count('*') == 1
-    paths = self.glob(pattern)
-    assert len(paths) == 1
-    return self._path_to_proto[paths[0]]
+    return self._path_to_proto[path]
 
-  def write_proto(self, pattern, data):
-    """Writes proto data into the given file.
+  def write_file(self, path, data):
+    """Writes into a file.
 
     Args:
-      pattern: The path of the file where the proto is stored, with a * that
-        will be replaced by the timestamp.
-      data: A proto to store in that location.
+      path: The path of the file to write the data to.
+      data: A string containing the data to write.
     """
-    assert pattern.count('*') == 1
-    path = pattern.replace('*', str(self._current_time))
     self._path_to_proto[path] = data
-    self._current_time += 1
 
   def glob(self, pattern):
     """Encapsulates glob.glob.
@@ -88,36 +77,33 @@ class FileSystemTest(absltest.TestCase):
     super().setUp()
     self._temporary_directory = tempfile.TemporaryDirectory()
     self._fs = data_store.FileSystem(self._temporary_directory.name)
+    self._text = 'Hello Falken'.encode('utf-8')
 
   def tearDown(self):
     """Clean up the temporary directory and file system."""
     super().tearDown()
     self._temporary_directory.cleanup()
     self._fs = None
+    self._text = None
 
-  def test_read_write_proto(self):
+  def test_read_write_file(self):
     """Tests files read and writing files, and verify writing location."""
-    pattern = 'some-project_*.pb'
-    self._fs.write_proto(pattern, data_store_pb2.Project(project_id='p1'))
+    path = 'some-project.pb'
+    self._fs.write_file(path, self._text)
 
-    files = glob.glob(os.path.join(self._temporary_directory.name, pattern))
+    files = glob.glob(os.path.join(self._temporary_directory.name, path))
     self.assertLen(files, 1)
 
-    proto = self._fs.read_proto(pattern, data_store_pb2.Project)
-    self.assertEqual('p1', proto.project_id)
-    self.assertEqual(
-        proto.created_micros, data_store.DataStore._get_timestamp(files[0]))
+    self.assertEqual(self._text, self._fs.read_file(path))
 
   def test_glob(self):
     """Tests FileSystem.glob."""
-    files = set([
-        'dirA1/dirB1/p1_*.pb', 'dirA1/dirB2/p1_*.pb', 'dirA2/dirC1/p1_*.pb'])
+    files = ['dirA1/dirB1/p1.pb', 'dirA1/dirB2/p1.pb', 'dirA2/dirC1/p1.pb']
     for f in files:
-      self._fs.write_proto(f, data_store_pb2.Project(project_id='p1'))
+      self._fs.write_file(f, self._text)
 
-    found_files = self._fs.glob('dir*/dir*/p1_*.pb')
-    found_files = set([re.sub(r'_[0-9]+\.pb', '_*.pb', f) for f in found_files])
-    self.assertEqual(files, found_files)
+    found_files = self._fs.glob('dir*/dir*/p1.pb')
+    self.assertEqual(set(files), set(found_files))
 
 
 class DataStoreTest(absltest.TestCase):
@@ -218,7 +204,8 @@ class DataStoreTest(absltest.TestCase):
   def test_encode_token(self):
     self.assertEqual('12:ab', self._data_store._encode_token(12, 'ab'))
 
-  def test_list_resources(self):
+  @mock.patch.object(time, 'time', autospec=True)
+  def test_list_resources(self, mock_time):
     brains_pattern = os.path.join(
         self._data_store._get_project_path('p1'), 'brains', '*',
         data_store._BRAIN_FILE_PATTERN)
@@ -228,7 +215,7 @@ class DataStoreTest(absltest.TestCase):
     timestamps = [0, 1, 2, 3, 4, 5, 5, 5, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
                   15]
     for i in range(len(brain_ids)):
-      self._data_store._fs._current_time = timestamps[i]
+      mock_time.return_value = timestamps[i] / 1000.0
       self._data_store.write_brain(
           data_store_pb2.Brain(project_id='p1', brain_id=brain_ids[i]))
 

@@ -65,6 +65,7 @@ _DEFAULT_TEST_MODULES = [
     'learner.brains.numpy_replay_buffer_test',
     'learner.brains.observation_preprocessor_test',
     'learner.brains.policies_test',
+    'learner.brains.quaternion_test',
     'learner.brains.saved_model_to_tflite_model_test',
     'learner.brains.specs_test',
     'learner.brains.tensor_nest_test',

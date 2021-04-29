@@ -48,8 +48,8 @@ def get_generated_flatbuffers_dir():
   """
   return os.path.normpath(os.path.join(
       os.environ.get('FALKEN_GENERATED_FLATBUFFERS_DIR',
-                     os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                  os.pardir)),
+                     os.path.dirname(os.path.dirname(
+                         os.path.abspath(__file__)))),
       _FLATBUFFERS_DIR))
 
 

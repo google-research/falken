@@ -69,6 +69,16 @@ class FakeFileSystem(object):
     return [path for path in sorted(self._path_to_proto)
             if re.match(pattern, path)]
 
+  def exists(self, path):
+    """Encapsulates os.path.exists.
+
+    Args:
+      path: Path of file or directory to verify the existence of.
+    Returns:
+      A boolean for whether the file or directory exists.
+    """
+    return path in self._path_to_proto
+
 
 class FileSystemTest(absltest.TestCase):
 
@@ -105,18 +115,26 @@ class FileSystemTest(absltest.TestCase):
     found_files = self._fs.glob('dir*/dir*/p1.pb')
     self.assertEqual(set(files), set(found_files))
 
+  def test_exists(self):
+    """Tests FileSystem.exists."""
+    path = 'dirA/dirB/file.pb'
+    self._fs.write_file(path, self._text)
+    self.assertTrue(self._fs.exists(path))
+
 
 class DataStoreTest(absltest.TestCase):
 
   def setUp(self):
     """Create a datastore object that uses a temporary directory."""
     super().setUp()
-    self._data_store = data_store.DataStore(FakeFileSystem())
+    self._fs = FakeFileSystem()
+    self._data_store = data_store.DataStore(self._fs)
 
   def tearDown(self):
     """Clean up the temporary directory and datastore."""
     super().tearDown()
     self._data_store = None
+    self._fs = None
 
   def test_read_write_project(self):
     self._data_store.write_project(data_store_pb2.Project(project_id='p1'))
@@ -188,6 +206,44 @@ class DataStoreTest(absltest.TestCase):
         2,
         self._data_store.read_offline_evaluation('p1', 'b1', 's1', 'm1',
                                                  2).evaluation_set_id)
+
+  @mock.patch.object(time, 'time', autospec=True)
+  def test_read_write_proto(self, mock_time):
+    """Test read, writing, updating a proto."""
+    mock_time.return_value = 0.123
+    self._data_store._write_proto(
+        'a/b/c_*.pb', data_store_pb2.Project(project_id='p1'))
+
+    self.assertEqual(['a/b/c_123.pb'], self._fs.glob('a/b/c_*.pb'))
+
+    data = self._data_store._read_proto('a/b/c_*.pb', data_store_pb2.Project)
+    self.assertEqual('p1', data.project_id)
+    self.assertEqual(123, data.created_micros)
+
+    # Verify updating the proto works, and doesn't update the timestamp.
+    data.project_id = 'p2'
+    mock_time.return_value = 0.456
+    self._data_store._write_proto('a/b/c_*.pb', data)
+
+    self.assertEqual(['a/b/c_123.pb'], self._fs.glob('a/b/c_*.pb'))
+
+    data = self._data_store._read_proto('a/b/c_*.pb', data_store_pb2.Project)
+    self.assertEqual('p2', data.project_id)
+    self.assertEqual(123, data.created_micros)
+
+    with self.assertRaisesWithLiteralMatch(
+        ValueError,
+        'There was an attempt to create a file from a new timestamp at '
+        '\'a/b/c_*.pb\', but the following list of files with timestamps was '
+        'found: [\'a/b/c_123.pb\'].'):
+      self._data_store._write_proto(
+          'a/b/c_*.pb', data_store_pb2.Project(project_id='p3'))
+
+    with self.assertRaisesWithLiteralMatch(
+        ValueError,
+        'Could not update file a/b/c_50.pb as it doesn\'t exist.'):
+      self._data_store._write_proto(
+          'a/b/c_*.pb', data_store_pb2.Project(created_micros=50))
 
   def test_check_type(self):
     self._data_store._check_type(

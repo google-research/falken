@@ -29,6 +29,7 @@ message Assignment {
   string session_id = 3;
   string assignment_id = 4;
   google.rpc.Status status = 5;
+  uint64 created_micros = 6;
 }
 
 message Project {
@@ -144,6 +145,7 @@ message SerializedModel {
   string brain_id = 2;
   string session_id = 3;
   string model_id = 4;
+  uint64 created_micros = 6;
 
   falken.proto.SerializedModel serialized_model = 5;
 }
@@ -234,6 +236,7 @@ message OfflineEvaluation {
 
   // Time the score was last computed.
   uint64 commit_timestamp = 7;
+  uint64 created_micros = 9;
 
   // Latency stats for evaluating and recording the evaluation.
   EvalLatencyStats latency_stats = 8;
@@ -250,6 +253,7 @@ message OnlineEvaluation {
   // Column data
   float score = 6;
   int64 commit_timestamp_micros = 7;
+  uint64 created_micros = 9;
 
   // Latency stats for evaluating and recording the evaluation.
   EvalLatencyStats latency_stats = 8;

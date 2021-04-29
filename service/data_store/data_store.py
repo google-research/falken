@@ -110,6 +110,16 @@ class FileSystem(object):
         os.path.relpath(f, start=self._root_path)
         for f in glob.glob(os.path.join(self._root_path, pattern))]
 
+  def exists(self, path):
+    """Encapsulates os.path.exists.
+
+    Args:
+      path: Path of file or directory to verify the existence of.
+    Returns:
+      A boolean for whether the file or directory exists.
+    """
+    return os.path.exists(os.path.join(self._root_path, path))
+
 
 class ListOptions(object):
   """List options for methods like DataStore.list_brains."""
@@ -520,15 +530,29 @@ class DataStore(object):
     Args:
       pattern: The path of the file where the proto is stored, with a * that
         will be replaced by the timestamp.
-      data: A proto to store in that location.
+      data: A proto to store in that location. If data.created_micros is set,
+        it will use its value as timestamp and update an existing file,
+        otherwise it will use the current time.
     """
     assert pattern.count('*') == 1
 
-    t = int(time.time() * 1000)
-    if 'created_micros' in data.DESCRIPTOR.fields_by_name:
-      data.created_micros = t
+    if data.created_micros:
+      # When create_micros is set, update the file.
+      path = pattern.replace('*', str(data.created_micros))
+      if not self._fs.exists(path):
+        raise ValueError(f'Could not update file {path} as it doesn\'t exist.')
+    else:
+      existing_files = self._fs.glob(pattern)
+      if existing_files:
+        raise ValueError(
+            'There was an attempt to create a file from a new timestamp at '
+            f'\'{pattern}\', but the following list of files with timestamps '
+            f'was found: {existing_files}.')
 
-    self._fs.write_file(pattern.replace('*', str(t)), data.SerializeToString())
+      data.created_micros = int(time.time() * 1000)
+      path = pattern.replace('*', str(data.created_micros))
+
+    self._fs.write_file(path, data.SerializeToString())
 
   def _decode_token(self, token):
     """Decodes a pagination token.

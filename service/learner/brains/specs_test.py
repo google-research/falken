@@ -250,11 +250,11 @@ class ProtobufValidatorTest(parameterized.TestCase):
     """Ensure validation fails with not enough categories."""
     spec = primitives_pb2.CategoryType()
     spec.enum_values.extend(categories)
-    with self.assertRaises(specs.InvalidSpecError) as error:
-      specs.ProtobufValidator.check_spec(spec, 'observations/player/drink')
-    self.assertEqual(
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
         'observations/player/drink has less than two categories: '
-        f'{categories}.', str(error.exception))
+        f'{categories}.'):
+      specs.ProtobufValidator.check_spec(spec, 'observations/player/drink')
 
   def test_check_number_type_valid(self):
     """Check a valid NumberType proto."""
@@ -271,19 +271,18 @@ class ProtobufValidatorTest(parameterized.TestCase):
     spec = primitives_pb2.NumberType()
     spec.minimum = minimum
     spec.maximum = maximum
-    with self.assertRaises(specs.InvalidSpecError) as error:
-      specs.ProtobufValidator.check_spec(spec, 'observations/player/health')
-    self.assertEqual(
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
         'observations/player/health has invalid or missing range: '
-        f'[{minimum}, {maximum}].', str(error.exception))
+        f'[{minimum}, {maximum}].'):
+      specs.ProtobufValidator.check_spec(spec, 'observations/player/health')
 
   def test_check_number_type_no_range(self):
     spec = primitives_pb2.NumberType()
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'observations/player/health has invalid or missing range: [0.0, 0.0].'):
       specs.ProtobufValidator.check_spec(spec, 'observations/player/health')
-    self.assertEqual(
-        'observations/player/health has invalid or missing range: [0.0, 0.0].',
-        str(error.exception))
 
   def test_check_feeler_type_valid(self):
     """Check valid FeelerType proto."""
@@ -307,10 +306,11 @@ class ProtobufValidatorTest(parameterized.TestCase):
     data = spec.experimental_data.add()
     data.minimum = 0
     data.maximum = 9
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'observations/player/feeler/distance has invalid or '
+        'missing range: [2.0, 2.0].'):
       specs.ProtobufValidator.check_spec(spec, 'observations/player/feeler')
-    self.assertEqual('observations/player/feeler/distance has invalid or '
-                     'missing range: [2.0, 2.0].', str(error.exception))
 
   def test_check_feeler_type_invalid_experimental_data(self):
     """Ensure FeelerType validation fails with a invalid experimental data."""
@@ -322,11 +322,11 @@ class ProtobufValidatorTest(parameterized.TestCase):
     data = spec.experimental_data.add()
     data.minimum = 4
     data.maximum = 4
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'observations/player/feeler/experimental_data[0] has '
+        'invalid or missing range: [4.0, 4.0].'):
       specs.ProtobufValidator.check_spec(spec, 'observations/player/feeler')
-    self.assertEqual('observations/player/feeler/experimental_data[0] has '
-                     'invalid or missing range: [4.0, 4.0].',
-                     str(error.exception))
 
   def test_check_feeler_type_mismatched_yaw_angles(self):
     """Ensure FeelerType validation fails with a invalid yaw angles."""
@@ -338,10 +338,11 @@ class ProtobufValidatorTest(parameterized.TestCase):
     data = spec.experimental_data.add()
     data.minimum = 0
     data.maximum = 9
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'observations/player/feeler has 3 yaw_angles that '
+        'mismatch feeler count 2.'):
       specs.ProtobufValidator.check_spec(spec, 'observations/player/feeler')
-    self.assertEqual('observations/player/feeler has 3 yaw_angles that '
-                     'mismatch feeler count 2.', str(error.exception))
 
   def test_check_joystick_type_valid(self):
     """Check valid JoystickType protos."""
@@ -360,19 +361,17 @@ class ProtobufValidatorTest(parameterized.TestCase):
     """Ensure JoystickType validation fails with no joystick axes mode."""
     spec = action_pb2.JoystickType()
     spec.controlled_entity = 'player'
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError, 'actions/joystick has undefined axes_mode.'):
       specs.ProtobufValidator.check_spec(spec, 'actions/joystick')
-    self.assertEqual('actions/joystick has undefined axes_mode.',
-                     str(error.exception))
 
   def test_check_joystick_type_no_entity(self):
     """Ensure JoystickType validation fails with no controlled entity."""
     spec = action_pb2.JoystickType()
     spec.axes_mode = action_pb2.DELTA_PITCH_YAW
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError, 'actions/joystick has no controlled_entity.'):
       specs.ProtobufValidator.check_spec(spec, 'actions/joystick')
-    self.assertEqual('actions/joystick has no controlled_entity.',
-                     str(error.exception))
 
   def test_check_joystick_type_invalid_control_frame(self):
     """Ensure JoystickType validation fails when no control frame is present."""
@@ -380,12 +379,12 @@ class ProtobufValidatorTest(parameterized.TestCase):
     spec.controlled_entity = 'player'
     spec.axes_mode = action_pb2.DELTA_PITCH_YAW
     spec.control_frame = 'camera'
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'actions/joystick has invalid control frame "camera". '
+        'control_frame should only be set if axes_mode is '
+        'DIRECTION_XZ, axes_mode is currently DELTA_PITCH_YAW.'):
       specs.ProtobufValidator.check_spec(spec, 'actions/joystick')
-    self.assertEqual('actions/joystick has invalid control frame "camera". '
-                     'control_frame should only be set if axes_mode is '
-                     'DIRECTION_XZ, axes_mode is currently DELTA_PITCH_YAW.',
-                     str(error.exception))
 
   def test_check_entity_field_type_valid(self):
     """Check valid EntityFieldType proto."""
@@ -405,10 +404,11 @@ class ProtobufValidatorTest(parameterized.TestCase):
   def test_check_entity_field_type_no_type_set(self):
     """Ensure validation fails when EntityFieldType has no type."""
     spec = observation_pb2.EntityFieldType()
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'observations/player type must have one of [category, number, '
+        'feeler] set.'):
       specs.ProtobufValidator.check_spec(spec, 'observations/player')
-    self.assertEqual('observations/player type must have one of '
-                     '[category, number, feeler] set.', str(error.exception))
 
   def test_check_entity_type_valid(self):
     """Check valid EntityType proto."""
@@ -426,29 +426,29 @@ class ProtobufValidatorTest(parameterized.TestCase):
     """Ensure validation fails when a custom field has a reserved name."""
     spec = observation_pb2.EntityType()
     spec.entity_fields.add().name = name
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        f'observations/0/entity_field[0] has reserved name "{name}".'):
       specs.ProtobufValidator.check_spec(spec, 'observations/0')
-    self.assertEqual('observations/0/entity_field[0] has reserved name '
-                     f'"{name}".', str(error.exception))
 
   def test_check_entity_type_no_name(self):
     """Ensure validation fails when a custom field has no name."""
     spec = observation_pb2.EntityType()
     spec.entity_fields.add()
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError, 'observations/0/entity_field[0] has no name.'):
       specs.ProtobufValidator.check_spec(spec, 'observations/0')
-    self.assertEqual('observations/0/entity_field[0] has no name.',
-                     str(error.exception))
 
   def test_check_entity_type_duplicate_name(self):
     """Ensure validation fails when a custom field has a duplicate name."""
     spec = observation_pb2.EntityType()
     spec.entity_fields.add().name = 'foo'
     spec.entity_fields.add().name = 'foo'
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'observations/0/entity_field[1] has name "foo" that already exists in '
+        'observations/0'):
       specs.ProtobufValidator.check_spec(spec, 'observations/0')
-    self.assertEqual('observations/0/entity_field[1] has name "foo" that '
-                     'already exists in observations/0', str(error.exception))
 
   def test_check_action_type_valid(self):
     """Check valid ActionType proto."""
@@ -461,10 +461,10 @@ class ProtobufValidatorTest(parameterized.TestCase):
     """Ensure validation fails when ActionType has no type."""
     spec = action_pb2.ActionType()
     spec.name = 'jump'
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError, 'actions/jump action_types must have one of '
+        '[category, number, joystick] set.'):
       specs.ProtobufValidator.check_spec(spec, 'actions/jump')
-    self.assertEqual('actions/jump action_types must have one of '
-                     '[category, number, joystick] set.', str(error.exception))
 
   def test_check_action_spec_valid(self):
     """Check valid ActionSpec proto."""
@@ -472,40 +472,58 @@ class ProtobufValidatorTest(parameterized.TestCase):
     spec.actions.add().name = 'jump'
     specs.ProtobufValidator.check_spec(spec, 'actions')
 
+  def test_check_action_spec_empty(self):
+    spec = action_pb2.ActionSpec()
+    with self.assertRaisesWithLiteralMatch(specs.InvalidSpecError,
+                                           'actions is empty.'):
+      specs.ProtobufValidator.check_spec(spec, 'actions')
+
   def test_check_action_spec_no_name(self):
     """Ensure validation fails when an ActionType field has no name."""
     spec = action_pb2.ActionSpec()
     spec.actions.add()
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(specs.InvalidSpecError,
+                                           'actions/actions[0] has no name.'):
       specs.ProtobufValidator.check_spec(spec, 'actions')
-    self.assertEqual('actions/actions[0] has no name.', str(error.exception))
 
   def test_check_action_spec_duplicate_name(self):
     """Ensure validation fails when an ActionType field has a duplicate name."""
     spec = action_pb2.ActionSpec()
     spec.actions.add().name = 'jump'
     spec.actions.add().name = 'jump'
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'actions/actions[1] has duplicate name "jump".'):
       specs.ProtobufValidator.check_spec(spec, 'actions')
-    self.assertEqual('actions/actions[1] has duplicate name "jump".',
-                     str(error.exception))
+
+  def test_check_observation_spec_empty(self):
+    spec = observation_pb2.ObservationSpec()
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'observations must contain at least one non-camera entity.'):
+      specs.ProtobufValidator.check_spec(spec, 'observations')
+
+  def test_check_brain_spec_empty(self):
+    spec = brain_pb2.BrainSpec()
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'brain must have an observation spec and action spec.'):
+      specs.ProtobufValidator.check_spec(spec, 'brain')
 
   def test_check_spec_unknown_proto(self):
     """Ensure spec validation fails when an unsupported proto is checked."""
-    spec = brain_pb2.BrainSpec()
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    spec = brain_pb2.Brain()
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError, 'Validator not found for Brain at "brain".'):
       specs.ProtobufValidator.check_spec(spec, 'brain')
-    self.assertEqual('Validator not found for BrainSpec at "brain".',
-                     str(error.exception))
 
   def test_check_unknown_proto(self):
     """Ensure data validation fails when an unsupported proto is checked."""
     data = brain_pb2.Brain()
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError, 'Validator not found for Brain at "brain".'):
       specs.ProtobufValidator.check_data(data, brain_pb2.BrainSpec(), 'brain',
                                          True)
-    self.assertEqual('Validator not found for Brain at "brain".',
-                     str(error.exception))
 
   def test_check_category(self):
     """Validate a category value that is in range."""
@@ -525,12 +543,12 @@ class ProtobufValidatorTest(parameterized.TestCase):
     spec.enum_values.extend(['rose', 'lilly'])
     data = primitives_pb2.Category()
     data.value = value
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError,
+        f'observations/player/item category has value {value} '
+        f'that is out of the specified range [0, 1] (rose, lilly).'):
       specs.ProtobufValidator.check_data(data, spec, 'observations/player/item',
                                          True)
-    self.assertEqual(f'observations/player/item category has value {value} '
-                     'that is out of the specified range [0, 1] (rose, lilly).',
-                     str(error.exception))
 
   def test_check_number_valid(self):
     """Check a valid number."""
@@ -552,12 +570,12 @@ class ProtobufValidatorTest(parameterized.TestCase):
     spec.maximum = 9
     data = primitives_pb2.Number()
     data.value = value
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError,
+        f'observations/player/spirit number has value {value} '
+        'that is out of the specified range [2.0, 9.0].'):
       specs.ProtobufValidator.check_data(data, spec,
                                          'observations/player/spirit', True)
-    self.assertEqual(f'observations/player/spirit number has value {value} '
-                     'that is out of the specified range [2.0, 9.0].',
-                     str(error.exception))
 
   @staticmethod
   def _create_feeler_spec_and_data():
@@ -598,49 +616,48 @@ class ProtobufValidatorTest(parameterized.TestCase):
     spec, data = ProtobufValidatorTest._create_feeler_spec_and_data()
     del data.measurements[1]  # Remove the second feeler.
 
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError, 'observations/player/feeler feeler has an invalid '
+        'number of measurements 1 vs. expected 2.'):
       specs.ProtobufValidator.check_data(data, spec,
                                          'observations/player/feeler', True)
-    self.assertEqual('observations/player/feeler feeler has an invalid '
-                     'number of measurements 1 vs. expected 2.',
-                     str(error.exception))
 
   def test_check_feeler_invalid_distance(self):
     """Ensure feeler validation fails with distance out of range."""
     spec, data = ProtobufValidatorTest._create_feeler_spec_and_data()
     data.measurements[1].distance.value = 43
 
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError,
+        'observations/player/feeler/measurements[1]/distance '
+        'number has value 43.0 that is out of the specified range '
+        '[0.0, 42.0].'):
       specs.ProtobufValidator.check_data(data, spec,
                                          'observations/player/feeler', True)
-    self.assertEqual('observations/player/feeler/measurements[1]/distance '
-                     'number has value 43.0 that is out of the specified range '
-                     '[0.0, 42.0].', str(error.exception))
 
   def test_check_feeler_invalid_experimental_data(self):
     """Ensure feeler validation fails with mismatched categorical data."""
     spec, data = ProtobufValidatorTest._create_feeler_spec_and_data()
     del data.measurements[0].experimental_data[2]
 
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError, 'observations/player/feeler/measurements[0] '
+        'feeler contains 2 experimental_data vs. '
+        'expected 3 experimental_data.'):
       specs.ProtobufValidator.check_data(data, spec,
                                          'observations/player/feeler', True)
-    self.assertEqual('observations/player/feeler/measurements[0] '
-                     'feeler contains 2 experimental_data vs. '
-                     'expected 3 experimental_data.', str(error.exception))
 
   def test_check_feeler_experimental_data_out_of_range(self):
     """Ensure feeler validation fails with out of range categorical data."""
     spec, data = ProtobufValidatorTest._create_feeler_spec_and_data()
     data.measurements[0].experimental_data[1].value = 2
 
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError,
+        'observations/player/feeler/measurements[0]/experimental_data[1] '
+        'number has value 2.0 that is out of the specified range [0.0, 1.0].'):
       specs.ProtobufValidator.check_data(data, spec,
                                          'observations/player/feeler', True)
-    self.assertEqual(
-        'observations/player/feeler/measurements[0]/experimental_data[1] '
-        'number has value 2.0 that is out of the specified range [0.0, 1.0].',
-        str(error.exception))
 
   def test_check_entity_field_valid(self):
     """Check a valid EntityField."""
@@ -657,12 +674,12 @@ class ProtobufValidatorTest(parameterized.TestCase):
     data.number.value = 1
     spec = observation_pb2.EntityFieldType()
     spec.category.enum_values.extend(['false', 'true'])
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError,
+        'observations/player/shades_on/value entity field "number" does not '
+        'match the spec type "category".'):
       specs.ProtobufValidator.check_data(data, spec,
                                          'observations/player/shades_on', True)
-    self.assertEqual(
-        'observations/player/shades_on/value entity field "number" does not '
-        'match the spec type "category".', str(error.exception))
 
   @staticmethod
   def _create_entity_spec_and_data():
@@ -693,31 +710,32 @@ class ProtobufValidatorTest(parameterized.TestCase):
     """Ensure validation fails for Entity with mismatched optional fields."""
     spec, data = ProtobufValidatorTest._create_entity_spec_and_data()
     data.ClearField('position')
-    with self.assertRaises(specs.TypingError)as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError,
+        'observations/player entity does not have "position" but spec has '
+        '"position".'):
       specs.ProtobufValidator.check_data(data, spec, 'observations/player',
                                          True)
-    self.assertEqual(
-        'observations/player entity does not have "position" but spec has '
-        '"position".', str(error.exception))
 
     spec, data = ProtobufValidatorTest._create_entity_spec_and_data()
     spec.ClearField('rotation')
-    with self.assertRaises(specs.TypingError)as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError,
+        'observations/player entity has "rotation" but spec does not have '
+        '"rotation".'):
       specs.ProtobufValidator.check_data(data, spec, 'observations/player',
                                          True)
-    self.assertEqual(
-        'observations/player entity has "rotation" but spec does not have '
-        '"rotation".', str(error.exception))
 
   def test_check_entity_field_mismatch(self):
     """Ensure validation fails for Entity with mismatched fields."""
     spec, data = ProtobufValidatorTest._create_entity_spec_and_data()
     del data.entity_fields[1]
-    with self.assertRaises(specs.TypingError)as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError,
+        'observations/player entity contains 1 entity_fields vs. '
+        'expected 2 entity_fields.'):
       specs.ProtobufValidator.check_data(data, spec, 'observations/player',
                                          True)
-    self.assertEqual('observations/player entity contains 1 entity_fields vs. '
-                     'expected 2 entity_fields.', str(error.exception))
 
   def test_check_action_valid(self):
     """Check a valid Action."""
@@ -733,11 +751,10 @@ class ProtobufValidatorTest(parameterized.TestCase):
     data.number.value = 1
     spec = action_pb2.ActionType()
     spec.category.enum_values.extend(['foo', 'bar'])
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError, 'actions/shout/action action "number" does not '
+        'match the spec action_types "category".'):
       specs.ProtobufValidator.check_data(data, spec, 'actions/shout', True)
-    self.assertEqual(
-        'actions/shout/action action "number" does not '
-        'match the spec action_types "category".', str(error.exception))
 
   def test_check_action_data_valid(self):
     """Check a valid ActionData."""
@@ -752,11 +769,10 @@ class ProtobufValidatorTest(parameterized.TestCase):
     data = action_pb2.ActionData()
     spec = action_pb2.ActionSpec()
     spec.actions.add()
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError,
+        'ActionData actions contains 0 actions vs. expected 1 actions.'):
       specs.ProtobufValidator.check_data(data, spec, 'ActionData', True)
-    self.assertEqual(
-        'ActionData actions contains 0 actions vs. expected 1 actions.',
-        str(error.exception))
 
   @staticmethod
   def _create_observation_spec_and_data():
@@ -783,19 +799,21 @@ class ProtobufValidatorTest(parameterized.TestCase):
     """Ensure Observation validation fails with a mismatched optional entity."""
     spec, data = ProtobufValidatorTest._create_observation_spec_and_data()
     data.camera.entity_fields.add()
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError, 'observations entity has "camera" but spec does not '
+        'have "camera".'):
       specs.ProtobufValidator.check_data(data, spec, 'observations', True)
-    self.assertEqual('observations entity has "camera" but spec does not '
-                     'have "camera".', str(error.exception))
 
   def test_check_observation_mismatched_global_entities(self):
     """Ensure Observation validation fails with a mismatched global entities."""
     spec, data = ProtobufValidatorTest._create_observation_spec_and_data()
     data.global_entities.add()
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError,
+        'observations observations contains 2 global_entities '
+        'vs. expected 1 global_entities.',
+    ):
       specs.ProtobufValidator.check_data(data, spec, 'observations', True)
-    self.assertEqual('observations observations contains 2 global_entities '
-                     'vs. expected 1 global_entities.', str(error.exception))
 
   def test_check_joystick_valid(self):
     """Check a valid Joystick."""
@@ -812,11 +830,12 @@ class ProtobufValidatorTest(parameterized.TestCase):
     """Ensure Joystick validation fails with out of range values."""
     data = action_pb2.Joystick()
     data.x_axis = value
-    with self.assertRaises(specs.TypingError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError,
+        f'left_stick joystick x_axis value {value} is out of '
+        'range [-1.0, 1.0].'):
       specs.ProtobufValidator.check_data(data, action_pb2.JoystickType(),
                                          'left_stick', True)
-    self.assertEqual(f'left_stick joystick x_axis value {value} is out of '
-                     'range [-1.0, 1.0].', str(error.exception))
 
 
 class DataProtobufConverterTest(absltest.TestCase):
@@ -824,11 +843,11 @@ class DataProtobufConverterTest(absltest.TestCase):
 
   def test_unknown_to_tensor(self):
     """Convert an unsupported proto to a tensor."""
-    with self.assertRaises(specs.ConversionError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.ConversionError,
+        'Failed to convert observations () to a tensor.'):
       specs.DataProtobufConverter.leaf_to_tensor(
           observation_pb2.ObservationData(), 'observations')
-    self.assertEqual('Failed to convert observations () to a tensor.',
-                     str(error.exception))
 
   def test_category_to_tensor(self):
     """Convert Category proto to tensor."""
@@ -1129,11 +1148,10 @@ class ProtobufNodeTest(parameterized.TestCase):
   def test_to_tfa_tensor_spec_invalid_type(self):
     """Ensure TensorSpec conversion from an invalid ProtobufNode fails."""
     node = specs.ProtobufNode('invalid', action_pb2.ActionSpec(), '')
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'Unable to convert ActionSpec at "invalid" to TensorSpec.'):
       node.to_tfa_tensor_spec()
-    self.assertEqual(
-        'Unable to convert ActionSpec at "invalid" to TensorSpec.',
-        str(error.exception))
 
   def test_category_type_to_tfa_tensor_spec(self):
     """Test conversion from CategoryType ProtobufNode to BoundedTensorSpec."""
@@ -1425,10 +1443,8 @@ class SpecsTest(parameterized.TestCase):
                           specs.ActionSpec)
 
   @parameterized.named_parameters(
-      ('IllegalEntity',
-       'Joystick(s) reference invalid entities: '
-       'joy_bar --> [\'bar\'], joy_foo --> [\'foo\'].',
-       """
+      ('IllegalEntity', 'Joystick(s) reference invalid entities: '
+       'joy_bar --> [\'bar\'], joy_foo --> [\'foo\'].', """
        actions {
          name: "joy_foo"
          joystick {
@@ -1443,16 +1459,13 @@ class SpecsTest(parameterized.TestCase):
            controlled_entity: "bar"
          }
        }
-       """,
-       """
+       """, """
        player {
          position {}
          rotation {}
        }
-       """),
-      ('MissingPlayer',
-       'Missing entity player referenced by joysticks [\'joy\'].',
-       """
+       """), ('MissingPlayer',
+              'Missing entity player referenced by joysticks [\'joy\'].', """
        actions {
          name: "joy"
          joystick {
@@ -1460,16 +1473,24 @@ class SpecsTest(parameterized.TestCase):
            controlled_entity: "player"
          }
        }
-       """,
-       """
+       """, """
        camera {
          position {}
          rotation {}
+       }
+       global_entities {
+         rotation { }
+         entity_fields {
+           name: "despair",
+           number {
+            minimum: -100.0
+            maximum: 0.0
+           }
+         }
        }
        """),
       ('MissingPlayerRotation',
-       'Entity player referenced by joysticks [\'joy\'] has no rotation.',
-       """
+       'Entity player referenced by joysticks [\'joy\'] has no rotation.', """
        actions {
          name: "joy"
          joystick {
@@ -1477,8 +1498,7 @@ class SpecsTest(parameterized.TestCase):
            controlled_entity: "player"
          }
        }
-       """,
-       """
+       """, """
        player {
          position {}
        }
@@ -1486,10 +1506,8 @@ class SpecsTest(parameterized.TestCase):
          position {}
          rotation {}
        }
-       """),
-      ('MissingCamera',
-       'Missing entity camera referenced by joysticks [\'joy\'].',
-       """
+       """), ('MissingCamera',
+              'Missing entity camera referenced by joysticks [\'joy\'].', """
        actions {
          name: "joy"
          joystick {
@@ -1498,8 +1516,7 @@ class SpecsTest(parameterized.TestCase):
            control_frame: "camera"
          }
        }
-       """,
-       """
+       """, """
        player {
          position {}
          rotation {}
@@ -1509,9 +1526,9 @@ class SpecsTest(parameterized.TestCase):
     brain_spec_pb = brain_pb2.BrainSpec()
     text_format.Parse(action, brain_spec_pb.action_spec)
     text_format.Parse(observation, brain_spec_pb.observation_spec)
-    with self.assertRaises(specs.InvalidSpecError) as error:
+    with self.assertRaisesWithLiteralMatch(specs.InvalidSpecError,
+                                           expected_error):
       _ = specs.BrainSpec(brain_spec_pb)
-    self.assertEqual(expected_error, str(error.exception))
 
   def test_known_fields(self):
     """Ensure that specs.py knows about all fields.

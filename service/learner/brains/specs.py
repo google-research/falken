@@ -26,6 +26,7 @@ from tf_agents.specs import tensor_spec
 import common.generate_protos  # pylint: disable=unused-import
 
 import action_pb2
+import brain_pb2
 import observation_pb2
 import primitives_pb2
 
@@ -444,6 +445,8 @@ class ProtobufValidator:
       InvalidSpecError: If any actions have no names or duplicate names.
     """
     existing_names = set()
+    if not spec.actions:
+      raise InvalidSpecError(f'{path_prefix} is empty.')
     for i, action_type in enumerate(spec.actions):
       path = _concat_path(path_prefix, f'actions[{i}]')
       if not action_type.name:
@@ -452,6 +455,37 @@ class ProtobufValidator:
         raise InvalidSpecError(
             f'{path} has duplicate name "{action_type.name}".')
       existing_names.add(action_type.name)
+
+  @staticmethod
+  def _check_observation_spec(spec, path_prefix):
+    """Validate a ObservationSpec proto.
+
+    Args:
+      spec: ObservationSpec proto to validate.
+      path_prefix: Prefix to add to the path when reporting errors.
+
+    Raises:
+      InvalidSpecError: If any actions have no names or duplicate names.
+    """
+    if not spec.HasField('player') and not spec.global_entities:
+      raise InvalidSpecError(
+          f'{path_prefix} must contain at least one non-camera entity.')
+
+  @staticmethod
+  def _check_brain_spec(spec, path_prefix):
+    """Validate a BrainSpec proto.
+
+    Args:
+      spec: BrainSpec proto to validate.
+      path_prefix: Prefix to add to the path when reporting errors.
+
+    Raises:
+      InvalidSpecError: If any actions have no names or duplicate names.
+    """
+    if not spec.HasField(
+        'observation_spec') or not spec.HasField('action_spec'):
+      raise InvalidSpecError(
+          f'{path_prefix} must have an observation spec and action spec.')
 
   @staticmethod
   def _null_spec_check(unused_spec, unused_path_prefix):
@@ -481,18 +515,30 @@ class ProtobufValidator:
     """
     if not ProtobufValidator._SPEC_PROTO_CLASS_TO_VALIDATOR:
       ProtobufValidator._SPEC_PROTO_CLASS_TO_VALIDATOR = {
-          action_pb2.ActionSpec: ProtobufValidator._check_action_spec,
-          action_pb2.ActionType: ProtobufValidator._check_action_type,
-          action_pb2.JoystickType: ProtobufValidator._check_joystick_type,
+          brain_pb2.BrainSpec:
+              ProtobufValidator._check_brain_spec,
+          action_pb2.ActionSpec:
+              ProtobufValidator._check_action_spec,
+          action_pb2.ActionType:
+              ProtobufValidator._check_action_type,
+          action_pb2.JoystickType:
+              ProtobufValidator._check_joystick_type,
           observation_pb2.EntityFieldType:
-          ProtobufValidator._check_entity_field_type,
-          observation_pb2.EntityType: ProtobufValidator._check_entity_type,
-          observation_pb2.FeelerType: ProtobufValidator._check_feeler_type,
-          observation_pb2.ObservationSpec: ProtobufValidator._null_spec_check,
-          primitives_pb2.CategoryType: ProtobufValidator._check_category_type,
-          primitives_pb2.NumberType: ProtobufValidator._check_number_type,
-          primitives_pb2.PositionType: ProtobufValidator._null_spec_check,
-          primitives_pb2.RotationType: ProtobufValidator._null_spec_check
+              ProtobufValidator._check_entity_field_type,
+          observation_pb2.EntityType:
+              ProtobufValidator._check_entity_type,
+          observation_pb2.FeelerType:
+              ProtobufValidator._check_feeler_type,
+          observation_pb2.ObservationSpec:
+              ProtobufValidator._check_observation_spec,
+          primitives_pb2.CategoryType:
+              ProtobufValidator._check_category_type,
+          primitives_pb2.NumberType:
+              ProtobufValidator._check_number_type,
+          primitives_pb2.PositionType:
+              ProtobufValidator._null_spec_check,
+          primitives_pb2.RotationType:
+              ProtobufValidator._null_spec_check
       }
     validator = ProtobufValidator._SPEC_PROTO_CLASS_TO_VALIDATOR.get(type(spec))
     if not validator:

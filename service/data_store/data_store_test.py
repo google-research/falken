@@ -203,6 +203,14 @@ class DataStoreTest(absltest.TestCase):
         self._data_store.read_offline_evaluation('p1', 'b1', 's1', 'm1',
                                                  2).evaluation_set_id)
 
+  def test_check_type(self):
+    self._data_store._check_type(
+        data_store_pb2.Session(), data_store_pb2.Session)
+
+    with self.assertRaises(ValueError):
+      self._data_store._check_type(
+          data_store_pb2.Project(), data_store_pb2.Session)
+
   def test_decode_token(self):
     self.assertEqual((12, 'ab'), self._data_store._decode_token('12:ab'))
     self.assertEqual((-1, ''), self._data_store._decode_token(None))

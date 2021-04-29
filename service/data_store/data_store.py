@@ -129,6 +129,32 @@ class FileSystem(object):
         for f in glob.glob(os.path.join(self._root_path, pattern))]
 
 
+class ListOptions(object):
+  """List options for methods like DataStore.list_brains."""
+
+  def __init__(self, page_token=None, minimum_timestamp=None):
+    """Initializes the list options.
+
+    Only one of page_token or minimum_timestamp arguments should be specified.
+
+    Args:
+      page_token: A string token indicating where to start pagination, or None.
+      minimum_timestamp: An integer indicating which timestamp to start listing
+        from; or None.
+    """
+    if page_token and minimum_timestamp is not None:
+      raise ValueError(
+          'At least one of page_token and from_timestamp should be None.')
+
+    self.page_token = page_token
+    self.minimum_timestamp = minimum_timestamp
+
+  def __eq__(self, obj):
+    """Overrides equality method."""
+    return (obj.page_token == self.page_token and
+            obj.minimum_timestamp == self.minimum_timestamp)
+
+
 class DataStore(object):
   """Reads and writes data from storage."""
 
@@ -469,46 +495,42 @@ class DataStore(object):
     """
     return f'{timestamp}:{resource_id}'
 
-  def list_brains(self, project_id, page_size, page_token):
+  def list_brains(self, project_id, page_size, list_options=None):
     """Lists brains for a given project.
 
     Args:
       project_id: The project id string to use for finding the brains.
       page_size: An int describing the max amount of brains to return.
-      page_token: A token string used for pagination, or None for starting
-        the list from the beginning.
+      list_options: A ListOptions object specifying what to list, or None.
     Returns:
       A pair (brain_ids, next_token), where brain_ids is a list of
       brain id strings, and next_token is the token for the next page,
       or None if there is no next page.
     """
     return self._list_resources(
-        self._get_resource_list_path(
-            'brain', [project_id]),
-        page_size, page_token)
+        self._get_resource_list_path('brain', [project_id]),
+        page_size, list_options)
 
-  def list_sessions(self, project_id, brain_id, page_size, page_token):
+  def list_sessions(self, project_id, brain_id, page_size, list_options=None):
     """Lists sessions for a given brain.
 
     Args:
       project_id: The project id string to use for finding the sessions.
       brain_id: The brain id string to use for finding the sessions.
       page_size: An int describing the max amount of brains to return.
-      page_token: A token string used for pagination, or None for starting
-        the list from the beginning.
+      list_options: A ListOptions object specifying what to list, or None.
     Returns:
       A pair (session_ids, next_token), where session_ids is a list of
       session id strings, and next_token is the token for the next page,
       or None if there is no next page.
     """
     return self._list_resources(
-        self._get_resource_list_path(
-            'session', [project_id, brain_id]),
-        page_size, page_token)
+        self._get_resource_list_path('session', [project_id, brain_id]),
+        page_size, list_options)
 
   def list_episode_chunks(
       self, project_id, brain_id, session_id, episode_id, page_size,
-      page_token):
+      list_options=None):
     """Lists chunks for a given episode.
 
     Args:
@@ -517,8 +539,7 @@ class DataStore(object):
       session_id: The session id string to use for finding the chunks.
       episode_id: The episode id string to use for finding the chunks.
       page_size: An int describing the max amount of brains to return.
-      page_token: A token string used for pagination, or None for starting
-        the list from the beginning.
+      list_options: A ListOptions object specifying what to list, or None.
     Returns:
       A pair (chunk_ids, next_token), where chunk_ids is a list of
       episode chunk id ints, and next_token is the token for the next page,
@@ -527,12 +548,12 @@ class DataStore(object):
     chunk_ids, next_token = self._list_resources(
         self._get_resource_list_path(
             'episode_chunk', [project_id, brain_id, session_id, episode_id]),
-        page_size, page_token)
+        page_size, list_options)
     chunk_ids = [int(s) for s in chunk_ids]
     return chunk_ids, next_token
 
   def list_online_evaluations(
-      self, project_id, brain_id, session_id, page_size, page_token):
+      self, project_id, brain_id, session_id, page_size, list_options=None):
     """Lists online evaluations for a given session.
 
     Args:
@@ -542,8 +563,7 @@ class DataStore(object):
       session_id: The session id string to use for finding
         the online evaluations.
       page_size: An int describing the max amount of brains to return.
-      page_token: A token string used for pagination, or None for starting
-        the list from the beginning.
+      list_options: A ListOptions object specifying what to list, or None.
     Returns:
       A pair (eval_ids, next_token), where eval_ids is a list of
       online evaluation id strings, and next_token is the token for the next
@@ -552,7 +572,7 @@ class DataStore(object):
     return self._list_resources(
         self._get_resource_list_path(
             'online_evaluation', [project_id, brain_id, session_id]),
-        page_size, page_token)
+        page_size, list_options)
 
   def _get_resource_list_path(self, resource_type, resource_ids):
     """Gives the path to use for listing resources of a given type.
@@ -574,24 +594,31 @@ class DataStore(object):
         _DIRECTORY_BY_RESOURCE_TYPE[resource_type], '*',
         _FILE_PATTERN_BY_RESOURCE_TYPE[resource_type])
 
-  def _list_resources(self, glob_path, page_size, page_token):
+  def _list_resources(
+      self, glob_path, page_size, list_options=None):
     """Lists resources for a given glob, in ascending order.
 
     Args:
       glob_path: Path to use for glob. Last two components of the path must be:
        * for glob (which matches the resource id), and a file name pattern.
       page_size: An int describing the max amount of resources to return.
-      page_token: A token string used for pagination, or None for starting
-        the list from the beginning.
+      list_options: A ListOptions object specifying what to list, or None.
     Returns:
       A pair (resource_ids, next_token), where resource_ids is a list of
       resource id strings, and next_token is the token for the next page,
       or None if there is no next page.
     """
+    page_token = list_options.page_token if list_options else None
+    minimum_timestamp = list_options.minimum_timestamp if list_options else None
+
     if not page_size:
       return [], None
 
-    decoded_token = self._decode_token(page_token)
+    # decoded_token is (starting timestamp, starting resource id)
+    if minimum_timestamp is not None:
+      decoded_token = (minimum_timestamp, '')
+    else:
+      decoded_token = self._decode_token(page_token)
 
     files = self._fs.glob(glob_path)
     id_to_token = {
@@ -600,12 +627,12 @@ class DataStore(object):
         for f in files
     }
     resource_ids = sorted(
-        [r for r in id_to_token.keys() if id_to_token[r] > decoded_token],
+        [r for r in id_to_token.keys() if id_to_token[r] >= decoded_token],
         key=lambda r: id_to_token[r])
 
     next_page = resource_ids[:page_size]
     # If resource_ids has the same size as next_page, there are no more pages.
-    next_token = (self._encode_token(*id_to_token[next_page[-1]])
+    next_token = (self._encode_token(*id_to_token[resource_ids[page_size]])
                   if len(resource_ids) > len(next_page) else None)
 
     return next_page, next_token
@@ -633,7 +660,7 @@ class DataStore(object):
     Returns:
       An int with the amount of milliseconds since epoch.
     """
-    match = re.match(DataStore._FILENAME_METADATA_RE, path)
+    match = re.match(DataStore._FILENAME_METADATA_RE, os.path.basename(path))
     if not match:
       raise ValueError(f'Path {path} does not contain a timestamp.')
     return int(match.group('timestamp'))

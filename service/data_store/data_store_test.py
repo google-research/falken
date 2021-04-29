@@ -225,64 +225,82 @@ class DataStoreTest(absltest.TestCase):
           data_store_pb2.Brain(project_id='p1', brain_id=brain_ids[i]))
 
     self.assertEqual(
-        (['b00', 'b01', 'b02'], '2:b02'),
-        self._data_store._list_resources(brains_pattern, 3, None))
+        (['b00', 'b01', 'b02'], '3:b03'),
+        self._data_store._list_resources(brains_pattern, 3))
 
     self.assertEqual(
         (['b03', 'b04', 'b05', 'b06', 'b07', 'b08', 'b09', 'b10', 'b11', 'b12'
-         ], '8:b12'),
-        self._data_store._list_resources(brains_pattern, 10, '2:b02'))
+         ], '9:b13'),
+        self._data_store._list_resources(
+            brains_pattern, 10, data_store.ListOptions('3:b03')))
 
     self.assertEqual(
-        (['b03', 'b04', 'b05', 'b06'], '5:b06'),
-        self._data_store._list_resources(brains_pattern, 4, '2:b02'))
+        (['b03', 'b04', 'b05', 'b06'], '5:b07'),
+        self._data_store._list_resources(
+            brains_pattern, 4, data_store.ListOptions('3:b03')))
 
     self.assertEqual(
-        (['b07', 'b08', 'b09', 'b10'], '6:b10'),
-        self._data_store._list_resources(brains_pattern, 4, '5:b06'))
+        (['b07', 'b08', 'b09', 'b10'], '7:b11'),
+        self._data_store._list_resources(
+            brains_pattern, 4, data_store.ListOptions('5:b07')))
 
     self.assertEqual(
         (brain_ids, None),
-        self._data_store._list_resources(brains_pattern, 20, None))
+        self._data_store._list_resources(brains_pattern, 20))
 
     self.assertEqual(
         (brain_ids, None),
-        self._data_store._list_resources(brains_pattern, 30, None))
+        self._data_store._list_resources(brains_pattern, 30))
 
     self.assertEqual(
-        (brain_ids[:-1], '14:b18'),
-        self._data_store._list_resources(brains_pattern, 19, None))
+        (brain_ids[:-1], '15:b19'),
+        self._data_store._list_resources(brains_pattern, 19))
 
     self.assertEqual(
         (['b19'], None),
-        self._data_store._list_resources(brains_pattern, 10, '14:b18'))
+        self._data_store._list_resources(
+            brains_pattern, 10, data_store.ListOptions('15:b19')))
 
     self.assertEqual(
         ([], None),
-        self._data_store._list_resources(brains_pattern, 10, '700:bzzz'))
+        self._data_store._list_resources(
+            brains_pattern, 10, data_store.ListOptions('700:bzzz')))
 
     self.assertEqual(
         ([], None),
-        self._data_store._list_resources(brains_pattern, 0, '2:b02'))
+        self._data_store._list_resources(
+            brains_pattern, 0, data_store.ListOptions('2:b02')))
+
+    self.assertEqual(
+        (['b03', 'b04', 'b05', 'b06'], '5:b07'),
+        self._data_store._list_resources(
+            brains_pattern, 4, data_store.ListOptions(minimum_timestamp=3)))
+
+    with self.assertRaisesWithLiteralMatch(
+        ValueError,
+        'At least one of page_token and from_timestamp should be None.'):
+      data_store.ListOptions(page_token='5:b07', minimum_timestamp=10)
 
   def test_list_brains(self):
     self._data_store._list_resources = mock.Mock()
     self._data_store._list_resources.return_value = (['b1'], 'next_token')
     self.assertEqual(self._data_store._list_resources.return_value,
-                     self._data_store.list_brains('p1', 2, 'start_token'))
+                     self._data_store.list_brains(
+                         'p1', 2, data_store.ListOptions('start_token')))
     self._data_store._list_resources.assert_called_with(
         self._data_store._get_resource_list_path('brain', ['p1']), 2,
-        'start_token')
+        data_store.ListOptions('start_token'))
 
   def test_list_sessions(self):
     self._data_store._list_resources = mock.Mock()
     self._data_store._list_resources.return_value = (['s1'], 'next_token')
     self.assertEqual(
         self._data_store._list_resources.return_value,
-        self._data_store.list_sessions('p1', 'b1', 2, 'start_token'))
+        self._data_store.list_sessions(
+            'p1', 'b1', 2, data_store.ListOptions('start_token')))
     self._data_store._list_resources.assert_called_with(
         self._data_store._get_resource_list_path('session', ['p1', 'b1']), 2,
-        'start_token')
+        data_store.ListOptions('start_token'))
 
   def test_list_episode_chunks(self):
     self._data_store._list_resources = mock.Mock()
@@ -290,11 +308,11 @@ class DataStoreTest(absltest.TestCase):
     self.assertEqual(
         self._data_store._list_resources.return_value,
         self._data_store.list_episode_chunks(
-            'p1', 'b1', 's1', 'e1', 2, 'start_token'))
+            'p1', 'b1', 's1', 'e1', 2, data_store.ListOptions('start_token')))
     self._data_store._list_resources.assert_called_with(
         self._data_store._get_resource_list_path(
             'episode_chunk', ['p1', 'b1', 's1', 'e1']),
-        2, 'start_token')
+        2, data_store.ListOptions('start_token'))
 
   def test_list_online_evaluations(self):
     self._data_store._list_resources = mock.Mock()
@@ -302,10 +320,11 @@ class DataStoreTest(absltest.TestCase):
     self.assertEqual(
         self._data_store._list_resources.return_value,
         self._data_store.list_online_evaluations(
-            'p1', 'b1', 's1', 2, 'start_token'))
+            'p1', 'b1', 's1', 2, data_store.ListOptions('start_token')))
     self._data_store._list_resources.assert_called_with(
         self._data_store._get_resource_list_path(
-            'online_evaluation', ['p1', 'b1', 's1']), 2, 'start_token')
+            'online_evaluation', ['p1', 'b1', 's1']), 2,
+        data_store.ListOptions('start_token'))
 
   def test_get_resource_id(self):
     self.assertEqual('4567', self._data_store._get_resource_id(
@@ -313,7 +332,8 @@ class DataStoreTest(absltest.TestCase):
 
   def test_get_timestamp(self):
     self.assertEqual(
-        1234, data_store.DataStore._get_timestamp('something_1234.pb'))
+        1234,
+        data_store.DataStore._get_timestamp('/tmp/bla_50/something_1234.pb'))
 
   def test_get_project_path(self):
     self.assertEqual('projects/p1', self._data_store._get_project_path('p1'))

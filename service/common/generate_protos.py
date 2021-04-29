@@ -31,14 +31,16 @@ _EXTERNAL_PROTOS = [(
 def get_generated_protos_dir():
   """Returns path to the directory to contain the generated proto code."""
   return os.path.join(
-      os.environ.get('FALKEN_GENERATED_PROTOS_DIR', os.getcwd()),
+      os.environ.get('FALKEN_GENERATED_PROTOS_DIR',
+                     os.path.dirname(os.path.dirname(
+                         os.path.abspath(__file__)))),
       _PROTO_GEN_DIR)
 
 
 def get_service_dir():
   """Returns the /service directory."""
   # Since this file is in /service/common, return its parent dir.
-  return os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
+  return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def get_source_proto_dirs():
@@ -91,7 +93,11 @@ def generate():
     ] + [f'--proto_path={d}' for d in source_proto_dirs]
     for d in source_proto_dirs:
       args.extend(glob.glob(f'{d}/*.proto'))
-    subprocess.run(args, check=True)
+    try:
+      subprocess.check_call(args, cwd=generated_protos_dir)
+    except subprocess.CalledProcessError as error:
+      clean_up()
+      raise error
   if generated_protos_dir not in sys.path:
     sys.path.append(generated_protos_dir)
   os.environ['FALKEN_GENERATED_PROTOS_DIR'] = (

@@ -17,6 +17,7 @@
 """Tests that protos are generated after using the generate_protos module."""
 import glob
 import os
+import subprocess
 import sys
 import tempfile
 from unittest import mock
@@ -55,6 +56,19 @@ class GenerateProtosTest(absltest.TestCase):
     self.assertEqual(
         os.path.join('custom', 'dir', generate_protos._PROTO_GEN_DIR),
         generate_protos.get_generated_protos_dir())
+
+  @mock.patch.object(generate_protos, 'get_generated_protos_dir')
+  @mock.patch.object(generate_protos, 'clean_up')
+  @mock.patch.object(subprocess, 'check_call')
+  def test_generate_protos_failed(self, mock_check_call, mock_clean_up,
+                                  mock_get_generated_protos_dir):
+    """Call the generate method and make sure it cleans up on failure."""
+    mock_get_generated_protos_dir.return_value = os.path.join(
+        self._temp_dir.name, generate_protos._PROTO_GEN_DIR)
+    mock_check_call.side_effect = subprocess.CalledProcessError(1, 'fake')
+    with self.assertRaises(subprocess.CalledProcessError):
+      generate_protos.generate()
+    mock_clean_up.called_once()
 
   @mock.patch.object(generate_protos, 'get_generated_protos_dir')
   def test_generate_protos(self, mock_get_generated_protos_dir):

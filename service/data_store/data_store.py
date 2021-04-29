@@ -43,7 +43,9 @@ _FILE_PATTERN_BY_RESOURCE_TYPE = {
     'brain': _BRAIN_FILE_PATTERN,
     'session': _SESSION_FILE_PATTERN,
     'episode_chunk': _CHUNK_FILE_PATTERN,
-    'online_evaluation': _ONLINE_EVALUATION_FILE_PATTERN
+    'online_evaluation': _ONLINE_EVALUATION_FILE_PATTERN,
+    'model': _MODEL_FILE_PATTERN,
+    'snapshot': _SNAPSHOT_FILE_PATTERN
 }
 
 
@@ -587,7 +589,8 @@ class DataStore(object):
 
     Args:
       project_id: The project id string to use for finding the brains.
-      page_size: An int describing the max amount of brains to return.
+      page_size: An int describing the max amount of brains to return, or
+        None to return all of them.
       list_options: A ListOptions object specifying what to list, or None.
     Returns:
       A pair (brain_ids, next_token), where brain_ids is a list of
@@ -604,7 +607,8 @@ class DataStore(object):
     Args:
       project_id: The project id string to use for finding the sessions.
       brain_id: The brain id string to use for finding the sessions.
-      page_size: An int describing the max amount of brains to return.
+      page_size: An int describing the max amount of sessions to return, or
+        None to return all of them.
       list_options: A ListOptions object specifying what to list, or None.
     Returns:
       A pair (session_ids, next_token), where session_ids is a list of
@@ -625,7 +629,8 @@ class DataStore(object):
       brain_id: The brain id string to use for finding the chunks.
       session_id: The session id string to use for finding the chunks.
       episode_id: The episode id string to use for finding the chunks.
-      page_size: An int describing the max amount of brains to return.
+      page_size: An int describing the max amount of brains to return, or
+        None to return all of them.
       list_options: A ListOptions object specifying what to list, or None.
     Returns:
       A pair (chunk_ids, next_token), where chunk_ids is a list of
@@ -649,7 +654,8 @@ class DataStore(object):
       brain_id: The brain id string to use for finding the online evaluations.
       session_id: The session id string to use for finding
         the online evaluations.
-      page_size: An int describing the max amount of brains to return.
+      page_size: An int describing the max amount of evaluations to return, or
+        None to return all of them.
       list_options: A ListOptions object specifying what to list, or None.
     Returns:
       A pair (eval_ids, next_token), where eval_ids is a list of
@@ -660,6 +666,33 @@ class DataStore(object):
         self._get_resource_list_path(
             'online_evaluation', [project_id, brain_id, session_id]),
         page_size, list_options)
+
+  def get_most_recent_model(self, project_id, brain_id, session_id):
+    """Gives the most recent model.
+
+    Args:
+      project_id: The project id string to use for finding the model.
+      brain_id: The brain id string to use for finding the model.
+      session_id: The session id string for finding the model.
+    Returns:
+      The string for the most recent model id, or None if no model is found.
+    """
+    resource_ids, _ = self._list_resources(self._get_resource_list_path(
+        'model', [project_id, brain_id, session_id]), page_size=None)
+    return resource_ids[-1] if resource_ids else None
+
+  def get_most_recent_snapshot(self, project_id, brain_id):
+    """Gives the most recent snapshot.
+
+    Args:
+      project_id: The project id string to use for finding the snapshot.
+      brain_id: The brain id string to use for finding the snapshot.
+    Returns:
+      The string for the most recent model id, or None if no snapshot is found.
+    """
+    resource_ids, _ = self._list_resources(self._get_resource_list_path(
+        'snapshot', [project_id, brain_id]), page_size=None)
+    return resource_ids[-1] if resource_ids else None
 
   def _get_resource_list_path(self, resource_type, resource_ids):
     """Gives the path to use for listing resources of a given type.
@@ -674,7 +707,9 @@ class DataStore(object):
         'brain': self._get_project_path,
         'session': self._get_brain_path,
         'episode_chunk': self._get_episode_path,
-        'online_evaluation': self._get_session_path
+        'online_evaluation': self._get_session_path,
+        'model': self._get_session_path,
+        'snapshot': self._get_brain_path
     }
     return os.path.join(
         path_callable_by_resource_type[resource_type](*resource_ids),
@@ -683,12 +718,13 @@ class DataStore(object):
 
   def _list_resources(
       self, glob_path, page_size, list_options=None):
-    """Lists resources for a given glob, in ascending order.
+    """Lists resources for a given glob, from oldest to newest.
 
     Args:
       glob_path: Path to use for glob. Last two components of the path must be:
        * for glob (which matches the resource id), and a file name pattern.
-      page_size: An int describing the max amount of resources to return.
+      page_size: An int describing the max amount of resources to return, or
+        None to return all of them.
       list_options: A ListOptions object specifying what to list, or None.
     Returns:
       A pair (resource_ids, next_token), where resource_ids is a list of
@@ -698,7 +734,7 @@ class DataStore(object):
     page_token = list_options.page_token if list_options else None
     minimum_timestamp = list_options.minimum_timestamp if list_options else None
 
-    if not page_size:
+    if page_size == 0:
       return [], None
 
     # decoded_token is (starting timestamp, starting resource id)
@@ -717,6 +753,7 @@ class DataStore(object):
         [r for r in id_to_token.keys() if id_to_token[r] >= decoded_token],
         key=lambda r: id_to_token[r])
 
+    # If page_size is None, this gives the full list.
     next_page = resource_ids[:page_size]
     # If resource_ids has the same size as next_page, there are no more pages.
     next_token = (self._encode_token(*id_to_token[resource_ids[page_size]])

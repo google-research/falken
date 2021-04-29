@@ -245,6 +245,28 @@ class DataStoreTest(absltest.TestCase):
       self._data_store._write_proto(
           'a/b/c_*.pb', data_store_pb2.Project(created_micros=50))
 
+  def test_get_most_recent_model(self):
+    self._data_store._list_resources = mock.Mock()
+    self._data_store._list_resources.return_value = (
+        ['m1', 'm2', 'm3', 'm4'], None)
+    self.assertEqual(
+        'm4',
+        self._data_store.get_most_recent_model('p1', 'b1', 's1'))
+    self._data_store._list_resources.assert_called_with(
+        self._data_store._get_resource_list_path('model', ['p1', 'b1', 's1']),
+        page_size=None)
+
+  def test_get_most_recent_snapshot(self):
+    self._data_store._list_resources = mock.Mock()
+    self._data_store._list_resources.return_value = (
+        ['s1', 's2', 's3', 's4'], None)
+    self.assertEqual(
+        's4',
+        self._data_store.get_most_recent_snapshot('p1', 'b1'))
+    self._data_store._list_resources.assert_called_with(
+        self._data_store._get_resource_list_path('snapshot', ['p1', 'b1']),
+        page_size=None)
+
   def test_check_type(self):
     self._data_store._check_type(
         data_store_pb2.Session(), data_store_pb2.Session)
@@ -302,6 +324,10 @@ class DataStoreTest(absltest.TestCase):
     self.assertEqual(
         (brain_ids, None),
         self._data_store._list_resources(brains_pattern, 30))
+
+    self.assertEqual(
+        (brain_ids, None),
+        self._data_store._list_resources(brains_pattern, None))
 
     self.assertEqual(
         (brain_ids[:-1], '15:b19'),

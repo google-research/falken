@@ -24,9 +24,46 @@ camera-relative controls.
 
 import collections
 
+from learner.brains import quaternion
 import tensorflow as tf
-from tensorflow_graphics.geometry.transformation import quaternion
-from tensorflow_graphics.math import vector
+
+
+def vector_cross(a, b):
+  """Compute the cross-product between two batches of vectors.
+
+  Args:
+    a: Tensor of shape B1 x ... x Bn x 3
+    b: Tensor of shape B1 x ... x Bn x 3
+  Returns:
+    Tensor of shape B1 x ... x Bn x 3 representing the vector cross product.
+  """
+  # Via https://en.wikipedia.org/wiki/Cross_product#Coordinate_notation
+  a1, a2, a3 = a[..., 0], a[..., 1], a[..., 2]
+  b1, b2, b3 = b[..., 0], b[..., 1], b[..., 2]
+  s1 = a2 * b3 - a3 * b2
+  s2 = a3 * b1 - a1 * b3
+  s3 = a1 * b2 - a2 * b1
+  return tf.stack([s1, s2, s3], axis=-1)
+
+
+def vector_dot(a, b, scalar_out=True):
+  """Compute the vector dot-product between two batches of vectors.
+
+  Args:
+    a: Tensor of shape B1 x ... x Bn x D
+    b: Tensor of shape B1 x ... x Bn x D
+    scalar_out: Whether to output a scalar or a vector length 1 for each sum.
+      This helps with drop-in compatibility with tf_graphics, where vector.dot
+      returns batched vectors of size 1 instead of scalars.
+  Returns:
+    Tensor of shape B1 x ... x Bn if scalar_out=True or B1 x ... x Bn x 1
+    if scalar_out=False that represents the dot product of each
+    pair of vectors in the input.
+  """
+  r = tf.reduce_sum(a * b, axis=-1)
+  if not scalar_out:
+    r = tf.expand_dims(r, axis=-1)
+  return r
 
 
 def vec_to_angle_magnitude(vec2d):
@@ -236,7 +273,7 @@ def egocentric_signal(orientation,
 
   def _project_onto(target_vector, *vs):
     """Project target_vector onto remaining vectors."""
-    return [vector.dot(v, target_vector, axis=-1) for v in vs]
+    return [vector_dot(v, target_vector, scalar_out=False) for v in vs]
 
   def _to_local_frame(orientation, direction):
     """Project a target vector into a local reference frame."""
@@ -312,17 +349,17 @@ def egocentric_signal_to_target_frame(
 
   # Compute intersection of camera YZ plane and entity XZ plane.
   control_fwd = normalize_vector_no_nan(
-      vector.cross(up(orientation),
-                   left(camera_orientation), axis=-1))
+      vector_cross(up(orientation),
+                   left(camera_orientation)))
 
-  control_right = vector.cross(control_fwd, up(orientation))
+  control_right = vector_cross(control_fwd, up(orientation))
 
   # If the camera is upside down, it's possible that the vectors point the
   # wrong way, so we check for that and possibly fix it.
   is_fwd = sign_no_zero(
-      vector.dot(control_fwd, forward(camera_orientation)))
+      vector_dot(control_fwd, forward(camera_orientation), scalar_out=False))
   is_right = sign_no_zero(
-      vector.dot(control_right, right(camera_orientation)))
+      vector_dot(control_right, right(camera_orientation), scalar_out=False))
 
   control_fwd *= is_fwd
   control_right *= is_right
@@ -339,8 +376,10 @@ def egocentric_signal_to_target_frame(
 
   # Project the desired world-space directions into a camera-relative control
   # frame.
-  camera_control_vector_x = vector.dot(control_right, world_space_direction)
-  camera_control_vector_y = vector.dot(control_fwd, world_space_direction)
+  camera_control_vector_x = vector_dot(control_right, world_space_direction,
+                                       scalar_out=False)
+  camera_control_vector_y = vector_dot(control_fwd, world_space_direction,
+                                       scalar_out=False)
 
   camera_control_vector = tf.concat([camera_control_vector_x,
                                      camera_control_vector_y], axis=-1)

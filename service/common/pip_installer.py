@@ -24,9 +24,9 @@ import sys
 _REQUIRED_PYTHON_MODULES = [
     ('absl-py', ''),
     ('tensorflow', ''),
-    ('tensorflow-graphics', ''),
     ('tf-agents', '==0.8.0rc1'),
     ('grpcio-tools', ''),
+    ('googleapis-common-protos', ''),
     ('flatbuffers', ''),
 ]
 

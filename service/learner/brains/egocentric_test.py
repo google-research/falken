@@ -18,11 +18,10 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from learner.brains import egocentric
+from learner.brains import quaternion
 
 import numpy as np
 import tensorflow as tf
-from tensorflow_graphics.geometry.transformation import quaternion
-from tensorflow_graphics.math import vector
 
 
 def tensor_to_list(t):
@@ -60,8 +59,9 @@ def quat_from_string(quat_str):
     axis = quaternion.rotate(tf.constant(rel_axis, dtype=tf.float32), q)
 
     q = quaternion.multiply(
-        quaternion.from_axis_angle(axis,
-                                   [np.radians(angle, dtype=np.float32)]), q)
+        quaternion.from_axis_angle(
+            axis, np.radians(angle, dtype=np.float32)),
+        q)
   return q
 
 
@@ -158,9 +158,9 @@ class EgocentricTest(parameterized.TestCase):
     self.assertFloatTensorEqual(forward_norm, np.ones_like(forward_norm))
 
     # Check orthogonality
-    right_up = vector.dot(right_vecs, up_vecs, axis=-1)
-    forward_up = vector.dot(forward_vecs, up_vecs, axis=-1)
-    right_forward = vector.dot(right_vecs, forward_vecs, axis=-1)
+    right_up = egocentric.vector_dot(right_vecs, up_vecs, False)
+    forward_up = egocentric.vector_dot(forward_vecs, up_vecs, False)
+    right_forward = egocentric.vector_dot(right_vecs, forward_vecs, False)
 
     self.assertFloatTensorEqual(right_up, np.zeros_like(right_up))
     self.assertFloatTensorEqual(forward_up, np.zeros_like(forward_up))

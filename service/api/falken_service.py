@@ -20,8 +20,9 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
-
+from api import create_brain_handler
 import common.generate_protos  # pylint: disable=unused-import
+from data_store import data_store
 import falken_service_pb2_grpc
 import grpc
 
@@ -33,14 +34,20 @@ flags.DEFINE_string('ssl_dir', '', 'Path containing the SSL cert and key.')
 flags.DEFINE_integer(
     'max_workers', 10,
     'The max number of threads to use in the pool to start the grpc server.')
+flags.DEFINE_string('root_dir', '',
+                    'Directory where the Falken service will store data.')
 
 
 class FalkenService(falken_service_pb2_grpc.FalkenService):
   """The Python implementation of the GRPC falken_service.FalkenService."""
 
+  def __init__(self):
+    self.data_store = data_store.DataStore(
+        data_store.FileSystem(FLAGS.root_dir))
+
   def CreateBrain(self, request, context):
     """Creates a new brain from a BrainSpec."""
-    raise NotImplementedError('Method not implemented!')
+    return create_brain_handler.CreateBrain(request, context, self.data_store)
 
   def GetBrain(self, request, context):
     """Retrieves an existing Brain."""

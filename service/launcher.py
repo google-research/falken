@@ -32,6 +32,8 @@ flags.DEFINE_integer('port', 50051,
 flags.DEFINE_string('ssl_dir',
                     os.path.dirname(os.path.abspath(__file__)),
                     'Path containing the SSL cert and key.')
+flags.DEFINE_string('root_dir', os.getcwd(),
+                    'Directory where the Falken service will store data.')
 flags.DEFINE_bool('clean_up_protos', False,
                   'Clean up generated protos at stop.')
 

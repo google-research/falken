@@ -973,6 +973,35 @@ class ProtobufNodeTest(parameterized.TestCase):
             spec, 'observations', 'brain'))
 
   @mock.patch.object(specs.ProtobufValidator, 'check_spec')
+  @mock.patch.object(specs.ProtobufNode, 'add_children')
+  @mock.patch.object(specs.ProtobufNode, '_from_observation_spec')
+  @mock.patch.object(specs.ProtobufNode, '_from_action_spec')
+  def test_from_spec_brain_spec_calls_protobuf_validator(
+      self, from_action_spec, from_observation_spec, add_children, check_spec):
+    """Ensure from_spec() calls check_spec() and add_children()."""
+    mock_action_node = mock.Mock()
+    mock_observation_node = mock.Mock()
+    from_action_spec.return_value = mock_action_node
+    from_observation_spec.return_value = mock_observation_node
+    observation_spec = observation_pb2.ObservationSpec()
+    action_spec = action_pb2.ActionSpec()
+    text_format.Parse(_OBSERVATION_SPEC, observation_spec)
+    text_format.Parse(_ACTION_SPEC, action_spec)
+    spec = brain_pb2.BrainSpec(
+        observation_spec=observation_spec, action_spec=action_spec)
+    specs.ProtobufNode.from_spec(spec)
+    check_spec.assert_has_calls([mock.call(spec, 'BrainSpec')])
+    from_action_spec.assert_has_calls([
+        mock.call(spec.action_spec, 'action_spec', 'BrainSpec', 'action_spec')
+    ])
+    from_observation_spec.assert_has_calls([
+        mock.call(spec.observation_spec, 'observation_spec', 'BrainSpec',
+                  'observation_spec')
+    ])
+    add_children.assert_has_calls(
+        [mock.call([mock_observation_node, mock_action_node])])
+
+  @mock.patch.object(specs.ProtobufValidator, 'check_spec')
   def test_from_spec_observation_spec_calls_protobuf_validator(
       self, check_spec):
     """Ensure from_spec() calls ProtobufValidator.check_spec()."""

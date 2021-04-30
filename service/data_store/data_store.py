@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Lint as: python3
 """Reads and writes data from storage."""
 
 import glob
@@ -22,7 +23,6 @@ import re
 import time
 
 import common.generate_protos  # pylint: disable=g-bad-import-order,unused-import
-
 import data_store_pb2
 
 

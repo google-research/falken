@@ -17,17 +17,21 @@
 
 import os
 import os.path
+import tempfile
 from unittest import mock
 
 from absl import flags
 from absl.testing import absltest
 from api import falken_service
+from api import test_constants
 import grpc
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
+import brain_pb2
 import falken_service_pb2
 import falken_service_pb2_grpc
+from google.protobuf import text_format
 
 FLAGS = flags.FLAGS
 
@@ -35,10 +39,17 @@ FLAGS = flags.FLAGS
 class FalkenServiceTest(absltest.TestCase):
   """Tests FalkenService."""
 
+  def setUp(self):
+    """Create a file system object that uses a temporary directory."""
+    super().setUp()
+    self._temp_dir = tempfile.TemporaryDirectory()
+    FLAGS.root_dir = os.path.join(self._temp_dir.name, 'test')
+
   def tearDown(self):
     """Tear down the testing environment."""
-    super(FalkenServiceTest, self).tearDown()
+    super().tearDown()
     common.generate_protos.clean_up()
+    self._temp_dir.cleanup()
 
   def test_configure_server(self):
     """Test server configuration with a port and credentials."""
@@ -63,11 +74,16 @@ class FalkenServiceTest(absltest.TestCase):
     mock_configure_server.assert_called_with(
         server, 50051, ssl_credentials)
 
+    response = None
     with grpc.insecure_channel('localhost:50051') as channel:
       stub = falken_service_pb2_grpc.FalkenServiceStub(channel)
-      with self.assertRaises(grpc._channel._InactiveRpcError) as e:  # pylint: disable=g-error-prone-assert-raises
-        stub.CreateBrain(falken_service_pb2.CreateBrainRequest())
-        self.assertIn('Method not implemented!', e.details())
+      response = stub.CreateBrain(
+          falken_service_pb2.CreateBrainRequest(
+              project_id='test_project',
+              display_name='test_brain',
+              brain_spec=text_format.Parse(test_constants.TEST_BRAIN_SPEC,
+                                           brain_pb2.BrainSpec())))
+    self.assertIsNotNone(response)
 
     server.stop(None)
 

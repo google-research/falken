@@ -1215,6 +1215,35 @@ class ProtobufNode:
     return node
 
   @staticmethod
+  def _from_brain_spec(spec, name, parent_path, proto_field_name):
+    """Parse an BrainSpec protobuf into a ProtobufNode.
+
+    Args:
+      spec: Protobuf to wrap in a ProtobufNode instance.
+      name: Name of the node.
+      parent_path: String path to this protobuf.
+      proto_field_name: Name of this proto field in the parent proto.
+
+    Returns:
+      ProtobufNode instance.
+    """
+    name, _, path = ProtobufNode._infer_path_components_from_spec(
+        spec, name, parent_path)
+
+    # Add top level "brain spec" node.
+    node = ProtobufNode(name, spec, proto_field_name)
+
+    # Add observation and action specs.
+    node.add_children([
+        ProtobufNode._from_observation_spec(spec.observation_spec,
+                                            'observation_spec', path,
+                                            'observation_spec'),
+        ProtobufNode._from_action_spec(spec.action_spec, 'action_spec', path,
+                                       'action_spec')
+    ])
+    return node
+
+  @staticmethod
   def _from_observation_spec(spec, name, parent_path, proto_field_name):
     """Parse an ObservationSpec protobuf into a ProtobufNode.
 
@@ -1319,6 +1348,7 @@ class ProtobufNode:
           action_pb2.ActionSpec: ProtobufNode._from_action_spec,
           action_pb2.ActionType: ProtobufNode._from_action_type,
           action_pb2.JoystickType: ProtobufNode._from_leaf_spec,
+          brain_pb2.BrainSpec: ProtobufNode._from_brain_spec,
           observation_pb2.EntityFieldType: ProtobufNode._from_entity_field_type,
           observation_pb2.EntityType: ProtobufNode._from_entity_type,
           observation_pb2.FeelerType: ProtobufNode._from_leaf_spec,

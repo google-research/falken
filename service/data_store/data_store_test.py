@@ -240,7 +240,7 @@ class DataStoreTest(absltest.TestCase):
           'a/b/c_*.pb', data_store_pb2.Project(project_id='p3'))
 
     with self.assertRaisesWithLiteralMatch(
-        ValueError,
+        data_store.NotFoundError,
         'Could not update file a/b/c_50.pb as it doesn\'t exist.'):
       self._data_store._write_proto(
           'a/b/c_*.pb', data_store_pb2.Project(created_micros=50))

@@ -65,6 +65,11 @@ _DIRECTORY_BY_RESOURCE_TYPE = {
 }
 
 
+class NotFoundError(Exception):
+  """Raised when datastore cannot find a requested object."""
+  pass
+
+
 class FileSystem(object):
   """Encapsulates file system operations so they can be faked in tests."""
 
@@ -515,11 +520,13 @@ class DataStore(object):
       data_type: The class of the proto to read.
     Returns:
       The proto that was read from storage.
+    Raises:
+      NotFoundError: If the requested file does not exist.
     """
     assert pattern.count('*') == 1
     paths = self._fs.glob(pattern)
     if not paths:
-      raise ValueError(f'File with pattern "{pattern}" does not exist.')
+      raise NotFoundError(f'File with pattern "{pattern}" does not exist.')
     if len(paths) > 1:
       raise ValueError(
           f'More than one file was found matching pattern "{pattern}".')
@@ -535,6 +542,8 @@ class DataStore(object):
       data: A proto to store in that location. If data.created_micros is set,
         it will use its value as timestamp and update an existing file,
         otherwise it will use the current time.
+    Raises:
+      NotFoundError: If the requested file does not exist.
     """
     assert pattern.count('*') == 1
 
@@ -542,7 +551,8 @@ class DataStore(object):
       # When create_micros is set, reflect it in the file path timestamp.
       path = pattern.replace('*', str(data.created_micros))
       if not self._fs.exists(path):
-        raise ValueError(f'Could not update file {path} as it doesn\'t exist.')
+        raise NotFoundError(
+            f'Could not update file {path} as it doesn\'t exist.')
     else:
       existing_files = self._fs.glob(pattern)
       if existing_files:

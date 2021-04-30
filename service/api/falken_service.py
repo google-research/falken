@@ -100,23 +100,53 @@ def read_server_credentials():
   return grpc.ssl_server_credentials(((private_key, certificate_chain),))
 
 
+def log_service_handlers(server):
+  """Log all service handlers for a server.
+
+  Args:
+    server: Server to query.
+  """
+  # pylint: disable=protected-access
+  for service in server._state.generic_handlers:
+    logging.debug('Service: %s', service.service_name())
+    # pylint: disable=protected-access
+    for method in service._method_handlers:
+      logging.debug('- %s', method)
+
+
+def _configure_server(server, port, credentials):
+  """Configure the server to use the specified credentials and port.
+
+  Args:
+    server: grpc.server instance.
+    port: Port number to serve on localhost.
+    credentials: gRPC credentials instance.
+  """
+  server.add_secure_port(f'[::]:{port}', credentials)
+
+
 def serve():
-  """Start API server."""
+  """Start API server.
+
+  Returns:
+    Reference to the server object.
+  """
   server = grpc.server(
       futures.ThreadPoolExecutor(max_workers=FLAGS.max_workers))
   falken_service_pb2_grpc.add_FalkenServiceServicer_to_server(
       FalkenService(), server)
-  server_credentials = read_server_credentials()
-  server.add_secure_port(f'[::]:{FLAGS.port}', server_credentials)
+  _configure_server(server, FLAGS.port, read_server_credentials())
+  log_service_handlers(server)
   server.start()
-  server.wait_for_termination()
+  return server
 
 
 def main(argv):
   if len(argv) > 1:
     logging.error('Non-flag parameters are not allowed: %s', argv)
   logging.debug('Starting the API service...')
-  serve()
+  server = serve()
+  server.wait_for_termination()
 
 
 if __name__ == '__main__':

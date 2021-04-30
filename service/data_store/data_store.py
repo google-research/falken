@@ -539,7 +539,7 @@ class DataStore(object):
     assert pattern.count('*') == 1
 
     if data.created_micros:
-      # When create_micros is set, update the file.
+      # When create_micros is set, reflect it in the file path timestamp.
       path = pattern.replace('*', str(data.created_micros))
       if not self._fs.exists(path):
         raise ValueError(f'Could not update file {path} as it doesn\'t exist.')
@@ -551,7 +551,7 @@ class DataStore(object):
             f'\'{pattern}\', but the following list of files with timestamps '
             f'was found: {existing_files}.')
 
-      data.created_micros = int(time.time() * 1000)
+      data.created_micros = int(time.time() * 1_000_000)
       path = pattern.replace('*', str(data.created_micros))
 
     self._fs.write_file(path, data.SerializeToString())

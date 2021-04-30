@@ -214,28 +214,28 @@ class DataStoreTest(absltest.TestCase):
     self._data_store._write_proto(
         'a/b/c_*.pb', data_store_pb2.Project(project_id='p1'))
 
-    self.assertEqual(['a/b/c_123.pb'], self._fs.glob('a/b/c_*.pb'))
+    self.assertEqual(['a/b/c_123000.pb'], self._fs.glob('a/b/c_*.pb'))
 
     data = self._data_store._read_proto('a/b/c_*.pb', data_store_pb2.Project)
     self.assertEqual('p1', data.project_id)
-    self.assertEqual(123, data.created_micros)
+    self.assertEqual(123000, data.created_micros)
 
     # Verify updating the proto works, and doesn't update the timestamp.
     data.project_id = 'p2'
     mock_time.return_value = 0.456
     self._data_store._write_proto('a/b/c_*.pb', data)
 
-    self.assertEqual(['a/b/c_123.pb'], self._fs.glob('a/b/c_*.pb'))
+    self.assertEqual(['a/b/c_123000.pb'], self._fs.glob('a/b/c_*.pb'))
 
     data = self._data_store._read_proto('a/b/c_*.pb', data_store_pb2.Project)
     self.assertEqual('p2', data.project_id)
-    self.assertEqual(123, data.created_micros)
+    self.assertEqual(123000, data.created_micros)
 
     with self.assertRaisesWithLiteralMatch(
         ValueError,
         'There was an attempt to create a file from a new timestamp at '
         '\'a/b/c_*.pb\', but the following list of files with timestamps was '
-        'found: [\'a/b/c_123.pb\'].'):
+        'found: [\'a/b/c_123000.pb\'].'):
       self._data_store._write_proto(
           'a/b/c_*.pb', data_store_pb2.Project(project_id='p3'))
 
@@ -293,7 +293,7 @@ class DataStoreTest(absltest.TestCase):
     timestamps = [0, 1, 2, 3, 4, 5, 5, 5, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
                   15]
     for i in range(len(brain_ids)):
-      mock_time.return_value = timestamps[i] / 1000.0
+      mock_time.return_value = timestamps[i] / 1_000_000
       self._data_store.write_brain(
           data_store_pb2.Brain(project_id='p1', brain_id=brain_ids[i]))
 

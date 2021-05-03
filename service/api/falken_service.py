@@ -23,6 +23,7 @@ from absl import logging
 from api import create_brain_handler
 import common.generate_protos  # pylint: disable=unused-import
 from data_store import data_store
+from data_store import file_system
 import falken_service_pb2_grpc
 import grpc
 
@@ -43,7 +44,7 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
 
   def __init__(self):
     self.data_store = data_store.DataStore(
-        data_store.FileSystem(FLAGS.root_dir))
+        file_system.FileSystem(FLAGS.root_dir))
 
   def CreateBrain(self, request, context):
     """Creates a new brain from a BrainSpec."""

@@ -22,6 +22,7 @@ import os.path
 import re
 import time
 
+import braceexpand
 import common.generate_protos  # pylint: disable=g-bad-import-order,unused-import
 import data_store_pb2
 
@@ -109,13 +110,16 @@ class FileSystem(object):
     """Encapsulates glob.glob.
 
     Args:
-      pattern: Pattern to search for.
+      pattern: Pattern to search for. May contains brace-style options,
+        e.g., "a/{b,c}/*".
     Returns:
       List of path strings found.
     """
-    return [
-        os.path.relpath(f, start=self._root_path)
-        for f in glob.glob(os.path.join(self._root_path, pattern))]
+    result = []
+    for p in braceexpand.braceexpand(pattern):
+      for f in glob.glob(os.path.join(self._root_path, p)):
+        result.append(f)
+    return result
 
   def exists(self, path):
     """Encapsulates os.path.exists.
@@ -177,7 +181,7 @@ class DataStore(object):
       A Project proto.
     """
     result = self._read_proto(
-        os.path.join(self._get_project_path(project_id), _PROJECT_FILE_PATTERN),
+        os.path.join(self._get_project_glob(project_id), _PROJECT_FILE_PATTERN),
         data_store_pb2.Project)
     self._check_type(result, data_store_pb2.Project)
     return result
@@ -191,7 +195,7 @@ class DataStore(object):
     self._check_type(project, data_store_pb2.Project)
     self._write_proto(
         os.path.join(
-            self._get_project_path(project.project_id), _PROJECT_FILE_PATTERN),
+            self._get_project_glob(project.project_id), _PROJECT_FILE_PATTERN),
         project)
 
   def read_brain(self, project_id, brain_id):
@@ -204,7 +208,7 @@ class DataStore(object):
       A Brain proto.
     """
     result = self._read_proto(
-        os.path.join(self._get_brain_path(project_id, brain_id),
+        os.path.join(self._get_brain_glob(project_id, brain_id),
                      _BRAIN_FILE_PATTERN), data_store_pb2.Brain)
     self._check_type(result, data_store_pb2.Brain)
     return result
@@ -218,7 +222,7 @@ class DataStore(object):
     self._check_type(brain, data_store_pb2.Brain)
     self._write_proto(
         os.path.join(
-            self._get_brain_path(brain.project_id, brain.brain_id),
+            self._get_brain_glob(brain.project_id, brain.brain_id),
             _BRAIN_FILE_PATTERN),
         brain)
 
@@ -234,7 +238,7 @@ class DataStore(object):
     """
     result = self._read_proto(
         os.path.join(
-            self._get_snapshot_path(project_id, brain_id, snapshot_id),
+            self._get_snapshot_glob(project_id, brain_id, snapshot_id),
             _SNAPSHOT_FILE_PATTERN),
         data_store_pb2.Snapshot)
     self._check_type(result, data_store_pb2.Snapshot)
@@ -249,7 +253,7 @@ class DataStore(object):
     self._check_type(snapshot, data_store_pb2.Snapshot)
     self._write_proto(
         os.path.join(
-            self._get_snapshot_path(snapshot.project_id, snapshot.brain_id,
+            self._get_snapshot_glob(snapshot.project_id, snapshot.brain_id,
                                     snapshot.snapshot_id),
             _SNAPSHOT_FILE_PATTERN),
         snapshot)
@@ -266,7 +270,7 @@ class DataStore(object):
     """
     result = self._read_proto(
         os.path.join(
-            self._get_session_path(project_id, brain_id, session_id),
+            self._get_session_glob(project_id, brain_id, session_id),
             _SESSION_FILE_PATTERN),
         data_store_pb2.Session)
     self._check_type(result, data_store_pb2.Session)
@@ -281,7 +285,7 @@ class DataStore(object):
     self._check_type(session, data_store_pb2.Session)
     self._write_proto(
         os.path.join(
-            self._get_session_path(session.project_id, session.brain_id,
+            self._get_session_glob(session.project_id, session.brain_id,
                                    session.session_id), _SESSION_FILE_PATTERN),
         session)
 
@@ -300,7 +304,7 @@ class DataStore(object):
     """
     result = self._read_proto(
         os.path.join(
-            self._get_chunk_path(project_id, brain_id, session_id, episode_id,
+            self._get_chunk_glob(project_id, brain_id, session_id, episode_id,
                                  chunk_id),
             _CHUNK_FILE_PATTERN),
         data_store_pb2.EpisodeChunk)
@@ -316,7 +320,7 @@ class DataStore(object):
     self._check_type(chunk, data_store_pb2.EpisodeChunk)
     self._write_proto(
         os.path.join(
-            self._get_chunk_path(chunk.project_id, chunk.brain_id,
+            self._get_chunk_glob(chunk.project_id, chunk.brain_id,
                                  chunk.session_id, chunk.episode_id,
                                  chunk.chunk_id),
             _CHUNK_FILE_PATTERN),
@@ -336,7 +340,7 @@ class DataStore(object):
     """
     result = self._read_proto(
         os.path.join(
-            self._get_episode_path(project_id, brain_id, session_id,
+            self._get_episode_glob(project_id, brain_id, session_id,
                                    episode_id),
             _ONLINE_EVALUATION_FILE_PATTERN),
         data_store_pb2.OnlineEvaluation)
@@ -352,7 +356,7 @@ class DataStore(object):
     self._check_type(online_evaluation, data_store_pb2.OnlineEvaluation)
     self._write_proto(
         os.path.join(
-            self._get_episode_path(
+            self._get_episode_glob(
                 online_evaluation.project_id, online_evaluation.brain_id,
                 online_evaluation.session_id, online_evaluation.episode_id),
             _ONLINE_EVALUATION_FILE_PATTERN),
@@ -371,7 +375,7 @@ class DataStore(object):
     """
     result = self._read_proto(
         os.path.join(
-            self._get_assignment_path(
+            self._get_assignment_glob(
                 project_id, brain_id, session_id, assignment_id),
             _ASSIGNMENT_FILE_PATTERN),
         data_store_pb2.Assignment)
@@ -387,7 +391,7 @@ class DataStore(object):
     self._check_type(assignment, data_store_pb2.Assignment)
     self._write_proto(
         os.path.join(
-            self._get_assignment_path(assignment.project_id,
+            self._get_assignment_glob(assignment.project_id,
                                       assignment.brain_id,
                                       assignment.session_id,
                                       assignment.assignment_id),
@@ -406,7 +410,7 @@ class DataStore(object):
     """
     result = self._read_proto(
         os.path.join(
-            self._get_model_path(project_id, brain_id, session_id, model_id),
+            self._get_model_glob(project_id, brain_id, session_id, model_id),
             _MODEL_FILE_PATTERN), data_store_pb2.Model)
     self._check_type(result, data_store_pb2.Model)
     return result
@@ -420,7 +424,7 @@ class DataStore(object):
     self._check_type(model, data_store_pb2.Model)
     self._write_proto(
         os.path.join(
-            self._get_model_path(model.project_id, model.brain_id,
+            self._get_model_glob(model.project_id, model.brain_id,
                                  model.session_id, model.model_id),
             _MODEL_FILE_PATTERN), model)
 
@@ -437,7 +441,7 @@ class DataStore(object):
     """
     result = self._read_proto(
         os.path.join(
-            self._get_model_path(project_id, brain_id, session_id, model_id),
+            self._get_model_glob(project_id, brain_id, session_id, model_id),
             _SERIALIZED_MODEL_FILE_PATTERN),
         data_store_pb2.SerializedModel)
     self._check_type(result, data_store_pb2.SerializedModel)
@@ -452,7 +456,7 @@ class DataStore(object):
     self._check_type(serialized_model, data_store_pb2.SerializedModel)
     self._write_proto(
         os.path.join(
-            self._get_model_path(
+            self._get_model_glob(
                 serialized_model.project_id, serialized_model.brain_id,
                 serialized_model.session_id, serialized_model.model_id),
             _SERIALIZED_MODEL_FILE_PATTERN),
@@ -474,7 +478,7 @@ class DataStore(object):
     """
     result = self._read_proto(
         os.path.join(
-            self._get_offline_evaluation_path(project_id, brain_id, session_id,
+            self._get_offline_evaluation_glob(project_id, brain_id, session_id,
                                               model_id, str(evaluation_set_id)),
             _OFFLINE_EVALUATION_FILE_PATTERN), data_store_pb2.OfflineEvaluation)
     self._check_type(result, data_store_pb2.OfflineEvaluation)
@@ -489,7 +493,7 @@ class DataStore(object):
     self._check_type(offline_evaluation, data_store_pb2.OfflineEvaluation)
     self._write_proto(
         os.path.join(
-            self._get_offline_evaluation_path(
+            self._get_offline_evaluation_glob(
                 offline_evaluation.project_id, offline_evaluation.brain_id,
                 offline_evaluation.session_id, offline_evaluation.model_id,
                 str(offline_evaluation.evaluation_set_id)),
@@ -608,7 +612,7 @@ class DataStore(object):
       or None if there is no next page.
     """
     return self._list_resources(
-        self._get_resource_list_path('brain', [project_id]),
+        self._get_resource_list_glob('brain', [project_id]),
         page_size, list_options)
 
   def list_sessions(self, project_id, brain_id, page_size, list_options=None):
@@ -626,7 +630,7 @@ class DataStore(object):
       or None if there is no next page.
     """
     return self._list_resources(
-        self._get_resource_list_path('session', [project_id, brain_id]),
+        self._get_resource_list_glob('session', [project_id, brain_id]),
         page_size, list_options)
 
   def list_episode_chunks(
@@ -648,7 +652,7 @@ class DataStore(object):
       or None if there is no next page.
     """
     chunk_ids, next_token = self._list_resources(
-        self._get_resource_list_path(
+        self._get_resource_list_glob(
             'episode_chunk', [project_id, brain_id, session_id, episode_id]),
         page_size, list_options)
     chunk_ids = [int(s) for s in chunk_ids]
@@ -673,7 +677,7 @@ class DataStore(object):
       page, or None if there is no next page.
     """
     return self._list_resources(
-        self._get_resource_list_path(
+        self._get_resource_list_glob(
             'online_evaluation', [project_id, brain_id, session_id]),
         page_size, list_options)
 
@@ -687,7 +691,7 @@ class DataStore(object):
     Returns:
       The string for the most recent model id, or None if no model is found.
     """
-    resource_ids, _ = self._list_resources(self._get_resource_list_path(
+    resource_ids, _ = self._list_resources(self._get_resource_list_glob(
         'model', [project_id, brain_id, session_id]), page_size=None)
     return resource_ids[-1] if resource_ids else None
 
@@ -700,12 +704,12 @@ class DataStore(object):
     Returns:
       The string for the most recent model id, or None if no snapshot is found.
     """
-    resource_ids, _ = self._list_resources(self._get_resource_list_path(
+    resource_ids, _ = self._list_resources(self._get_resource_list_glob(
         'snapshot', [project_id, brain_id]), page_size=None)
     return resource_ids[-1] if resource_ids else None
 
-  def _get_resource_list_path(self, resource_type, resource_ids):
-    """Gives the path to use for listing resources of a given type.
+  def _get_resource_list_glob(self, resource_type, resource_ids):
+    """Gives the glob pattern to use for listing resources of a given type.
 
     Args:
       resource_type: Type of resource to build the path for.
@@ -714,12 +718,12 @@ class DataStore(object):
       A string with the path to use for listing.
     """
     path_callable_by_resource_type = {
-        'brain': self._get_project_path,
-        'session': self._get_brain_path,
-        'episode_chunk': self._get_episode_path,
-        'online_evaluation': self._get_session_path,
-        'model': self._get_session_path,
-        'snapshot': self._get_brain_path
+        'brain': self._get_project_glob,
+        'session': self._get_brain_glob,
+        'episode_chunk': self._get_episode_glob,
+        'online_evaluation': self._get_session_glob,
+        'model': self._get_session_glob,
+        'snapshot': self._get_brain_glob
     }
     return os.path.join(
         path_callable_by_resource_type[resource_type](*resource_ids),
@@ -799,19 +803,47 @@ class DataStore(object):
       raise ValueError(f'Path {path} does not contain a timestamp.')
     return int(match.group('timestamp'))
 
-  def _get_project_path(self, project_id):
-    """Gives the path for a project.
+  @staticmethod
+  def _as_glob_string(argument):
+    """Interprets an argument to a path function as a glob string.
+
+    Args:
+      argument: An argument that is type string, None, int or list of string.
+    Returns:
+      A glob pattern representing the argument, including '*' and curly brace
+      expressions.
+    """
+    if argument is None:
+      return '*'
+    if isinstance(argument, str):
+      return argument
+    if isinstance(argument, int):
+      return str(argument)
+    try:
+      return '{' + ','.join(str(a) for a in argument) + '}'
+    except TypeError:
+      raise ValueError(
+          f'Could not interpret argument "{argument}" as a path component. ' +
+          'Arguments are expected to be None, type str/int or an iterable of '
+          'strings/ints.')
+
+  def _get_project_glob(self, project_id):
+    """Gives the glob pattern for a project.
+
+    Arguments may be None (indicating any), lists or int/string literals.
 
     Args:
       project_id: The project id string to use for building the path.
     Returns:
       A string describing the project directory path.
     """
-    assert project_id
-    return os.path.join(_DIRECTORY_BY_RESOURCE_TYPE['project'], project_id)
+    return os.path.join(_DIRECTORY_BY_RESOURCE_TYPE['project'],
+                        self._as_glob_string(project_id))
 
-  def _get_brain_path(self, project_id, brain_id):
-    """Gives the path for a brain.
+  def _get_brain_glob(self, project_id, brain_id):
+    """Gives the glob pattern for a brain.
+
+    Arguments may be None (indicating any), lists or int/string literals.
 
     Args:
       project_id: The project id string to use for building the path.
@@ -819,12 +851,14 @@ class DataStore(object):
     Returns:
       A string describing the brain directory path.
     """
-    assert brain_id
-    return os.path.join(self._get_project_path(project_id),
-                        _DIRECTORY_BY_RESOURCE_TYPE['brain'], brain_id)
+    return os.path.join(self._get_project_glob(project_id),
+                        _DIRECTORY_BY_RESOURCE_TYPE['brain'],
+                        self._as_glob_string(brain_id))
 
-  def _get_snapshot_path(self, project_id, brain_id, snapshot_id):
-    """Gives the path for a snapshot.
+  def _get_snapshot_glob(self, project_id, brain_id, snapshot_id):
+    """Gives the glob pattern for a snapshot.
+
+    Arguments may be None (indicating any), lists or int/string literals.
 
     Args:
       project_id: The project id string to use for building the path.
@@ -833,13 +867,15 @@ class DataStore(object):
     Returns:
       A string describing the snapshot directory path.
     """
-    assert snapshot_id
     return os.path.join(
-        self._get_brain_path(project_id, brain_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['snapshot'], snapshot_id)
+        self._get_brain_glob(project_id, brain_id),
+        _DIRECTORY_BY_RESOURCE_TYPE['snapshot'],
+        self._as_glob_string(snapshot_id))
 
-  def _get_session_path(self, project_id, brain_id, session_id):
-    """Gives the path for a session.
+  def _get_session_glob(self, project_id, brain_id, session_id):
+    """Gives the glob pattern for a session.
+
+    Arguments may be None (indicating any), lists or int/string literals.
 
     Args:
       project_id: The project id string to use for building the path.
@@ -848,13 +884,15 @@ class DataStore(object):
     Returns:
       A string describing the session directory path.
     """
-    assert session_id
     return os.path.join(
-        self._get_brain_path(project_id, brain_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['session'], session_id)
+        self._get_brain_glob(project_id, brain_id),
+        _DIRECTORY_BY_RESOURCE_TYPE['session'],
+        self._as_glob_string(session_id))
 
-  def _get_episode_path(self, project_id, brain_id, session_id, episode_id):
-    """Gives the path for an episode.
+  def _get_episode_glob(self, project_id, brain_id, session_id, episode_id):
+    """Gives the glob pattern for an episode.
+
+    Arguments may be None (indicating any), lists or int/string literals.
 
     Args:
       project_id: The project id string to use for building the path.
@@ -864,14 +902,16 @@ class DataStore(object):
     Returns:
       A string describing the episode directory path.
     """
-    assert episode_id
     return os.path.join(
-        self._get_session_path(project_id, brain_id, session_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['episode'], episode_id)
+        self._get_session_glob(project_id, brain_id, session_id),
+        _DIRECTORY_BY_RESOURCE_TYPE['episode'],
+        self._as_glob_string(episode_id))
 
-  def _get_chunk_path(
+  def _get_chunk_glob(
       self, project_id, brain_id, session_id, episode_id, chunk_id):
-    """Gives the path for an episode chunk.
+    """Gives the glob pattern for an episode chunk.
+
+    Arguments may be None (indicating any), lists or int/string literals.
 
     Args:
       project_id: The project id string to use for building the path.
@@ -883,12 +923,15 @@ class DataStore(object):
       A string describing the episode chunk directory path.
     """
     return os.path.join(
-        self._get_episode_path(project_id, brain_id, session_id, episode_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['episode_chunk'], str(chunk_id))
+        self._get_episode_glob(project_id, brain_id, session_id, episode_id),
+        _DIRECTORY_BY_RESOURCE_TYPE['episode_chunk'],
+        self._as_glob_string(chunk_id))
 
-  def _get_assignment_path(
+  def _get_assignment_glob(
       self, project_id, brain_id, session_id, assignment_id):
-    """Gives the path for an assignment.
+    """Gives the glob pattern for an assignment.
+
+    Arguments may be None (indicating any), lists or int/string literals.
 
     Args:
       project_id: The project id string to use for building the path.
@@ -898,15 +941,30 @@ class DataStore(object):
     Returns:
       A string describing the assignment directory path.
     """
-    assert assignment_id
-    return os.path.join(
-        self._get_session_path(project_id, brain_id, session_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['assignment'],
-        hashlib.sha256(assignment_id.encode('utf-8')).hexdigest())
+    def _encode(id_string):
+      """Encode an assignment ID into a file path."""
+      return hashlib.sha256(id_string.encode('utf-8')).hexdigest()
 
-  def _get_model_path(
+    if isinstance(assignment_id, str):
+      assignment_id = _encode(assignment_id)
+    elif assignment_id is not None:
+      try:
+        assignment_id = [_encode(id_string) for id_string in assignment_id]
+      except TypeError:
+        raise ValueError(
+            f'assignment_id has unexpected type {type(assignment_id)}, '
+            'must be str, iterable of strings or None')
+
+    return os.path.join(
+        self._get_session_glob(project_id, brain_id, session_id),
+        _DIRECTORY_BY_RESOURCE_TYPE['assignment'],
+        self._as_glob_string(assignment_id))
+
+  def _get_model_glob(
       self, project_id, brain_id, session_id, model_id):
-    """Gives the path for a model.
+    """Gives the glob pattern for a model.
+
+    Arguments may be None (indicating any), lists or int/string literals.
 
     Args:
       project_id: The project id string to use for building the path.
@@ -916,14 +974,16 @@ class DataStore(object):
     Returns:
       A string describing the model directory path.
     """
-    assert model_id
     return os.path.join(
-        self._get_session_path(project_id, brain_id, session_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['model'], model_id)
+        self._get_session_glob(project_id, brain_id, session_id),
+        _DIRECTORY_BY_RESOURCE_TYPE['model'],
+        self._as_glob_string(model_id))
 
-  def _get_offline_evaluation_path(
+  def _get_offline_evaluation_glob(
       self, project_id, brain_id, session_id, model_id, evaluation_set_id):
-    """Gives the path for an offline evaluation.
+    """Gives the glob pattern for an offline evaluation.
+
+    Arguments may be None (indicating any), lists or int/string literals.
 
     Args:
       project_id: The project id string to use for building the path.
@@ -935,7 +995,7 @@ class DataStore(object):
     Returns:
       A string describing the offline evaluation directory path.
     """
-    assert evaluation_set_id
     return os.path.join(
-        self._get_model_path(project_id, brain_id, session_id, model_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['offline_evaluation'], evaluation_set_id)
+        self._get_model_glob(project_id, brain_id, session_id, model_id),
+        _DIRECTORY_BY_RESOURCE_TYPE['offline_evaluation'],
+        self._as_glob_string(evaluation_set_id))

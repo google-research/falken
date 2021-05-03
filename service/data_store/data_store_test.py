@@ -22,6 +22,7 @@ import time
 from unittest import mock
 
 from absl.testing import absltest
+from absl.testing import parameterized
 from data_store import data_store
 
 import common.generate_protos  # pylint: disable=g-bad-import-order,unused-import
@@ -80,7 +81,7 @@ class FakeFileSystem(object):
     return path in self._path_to_proto
 
 
-class FileSystemTest(absltest.TestCase):
+class FileSystemTest(parameterized.TestCase):
 
   def setUp(self):
     """Create a file system object that uses a temporary directory."""
@@ -121,8 +122,33 @@ class FileSystemTest(absltest.TestCase):
     self._fs.write_file(path, self._text)
     self.assertTrue(self._fs.exists(path))
 
+  def test_list_by_globbing(self):
+    ds = data_store.DataStore(self._fs)
+    s0 = data_store_pb2.Session(
+        project_id='p0',
+        brain_id='b0',
+        session_id='s0')
+    s1 = data_store_pb2.Session(
+        project_id='p0',
+        brain_id='b0',
+        session_id='s1')
+    s2 = data_store_pb2.Session(
+        project_id='p1',
+        brain_id='b1',
+        session_id='s2')
+    s3 = data_store_pb2.Session(
+        project_id='p2',
+        brain_id='b2',
+        session_id='s3')
+    ds.write_session(s0)
+    ds.write_session(s1)
+    ds.write_session(s2)
+    ds.write_session(s3)
+    ids, _ = ds.list_sessions(['p0', 'p2'], None, 10)
+    self.assertEqual(ids, ['s0', 's1', 's3'])
 
-class DataStoreTest(absltest.TestCase):
+
+class DataStoreTest(parameterized.TestCase):
 
   def setUp(self):
     """Create a datastore object that uses a temporary directory."""
@@ -253,7 +279,7 @@ class DataStoreTest(absltest.TestCase):
         'm4',
         self._data_store.get_most_recent_model('p1', 'b1', 's1'))
     self._data_store._list_resources.assert_called_with(
-        self._data_store._get_resource_list_path('model', ['p1', 'b1', 's1']),
+        self._data_store._get_resource_list_glob('model', ['p1', 'b1', 's1']),
         page_size=None)
 
   def test_get_most_recent_snapshot(self):
@@ -264,7 +290,7 @@ class DataStoreTest(absltest.TestCase):
         's4',
         self._data_store.get_most_recent_snapshot('p1', 'b1'))
     self._data_store._list_resources.assert_called_with(
-        self._data_store._get_resource_list_path('snapshot', ['p1', 'b1']),
+        self._data_store._get_resource_list_glob('snapshot', ['p1', 'b1']),
         page_size=None)
 
   def test_check_type(self):
@@ -285,7 +311,7 @@ class DataStoreTest(absltest.TestCase):
   @mock.patch.object(time, 'time', autospec=True)
   def test_list_resources(self, mock_time):
     brains_pattern = os.path.join(
-        self._data_store._get_project_path('p1'), 'brains', '*',
+        self._data_store._get_project_glob('p1'), 'brains', '*',
         data_store._BRAIN_FILE_PATTERN)
 
     brain_ids = [f'b{i:02}' for i in range(20)]
@@ -365,7 +391,7 @@ class DataStoreTest(absltest.TestCase):
                      self._data_store.list_brains(
                          'p1', 2, data_store.ListOptions('start_token')))
     self._data_store._list_resources.assert_called_with(
-        self._data_store._get_resource_list_path('brain', ['p1']), 2,
+        self._data_store._get_resource_list_glob('brain', ['p1']), 2,
         data_store.ListOptions('start_token'))
 
   def test_list_sessions(self):
@@ -376,7 +402,7 @@ class DataStoreTest(absltest.TestCase):
         self._data_store.list_sessions(
             'p1', 'b1', 2, data_store.ListOptions('start_token')))
     self._data_store._list_resources.assert_called_with(
-        self._data_store._get_resource_list_path('session', ['p1', 'b1']), 2,
+        self._data_store._get_resource_list_glob('session', ['p1', 'b1']), 2,
         data_store.ListOptions('start_token'))
 
   def test_list_episode_chunks(self):
@@ -387,7 +413,7 @@ class DataStoreTest(absltest.TestCase):
         self._data_store.list_episode_chunks(
             'p1', 'b1', 's1', 'e1', 2, data_store.ListOptions('start_token')))
     self._data_store._list_resources.assert_called_with(
-        self._data_store._get_resource_list_path(
+        self._data_store._get_resource_list_glob(
             'episode_chunk', ['p1', 'b1', 's1', 'e1']),
         2, data_store.ListOptions('start_token'))
 
@@ -399,57 +425,73 @@ class DataStoreTest(absltest.TestCase):
         self._data_store.list_online_evaluations(
             'p1', 'b1', 's1', 2, data_store.ListOptions('start_token')))
     self._data_store._list_resources.assert_called_with(
-        self._data_store._get_resource_list_path(
+        self._data_store._get_resource_list_glob(
             'online_evaluation', ['p1', 'b1', 's1']), 2,
         data_store.ListOptions('start_token'))
 
   def test_get_resource_id(self):
-    self.assertEqual('4567', self._data_store._get_resource_id(
-        'something/something/4567/somefile.pb'))
+    self.assertEqual(
+        self._data_store._get_resource_id(
+            'something/something/4567/somefile.pb'),
+        '4567')
 
   def test_get_timestamp(self):
     self.assertEqual(
         1234,
         data_store.DataStore._get_timestamp('/tmp/bla_50/something_1234.pb'))
 
-  def test_get_project_path(self):
-    self.assertEqual('projects/p1', self._data_store._get_project_path('p1'))
-
-  def test_get_brain_path(self):
-    self.assertEqual('projects/p1/brains/b1',
-                     self._data_store._get_brain_path('p1', 'b1'))
-
-  def test_get_snapshot_path(self):
-    self.assertEqual('projects/p1/brains/b1/snapshots/s1',
-                     self._data_store._get_snapshot_path('p1', 'b1', 's1'))
-
-  def test_get_session_path(self):
-    self.assertEqual('projects/p1/brains/b1/sessions/s1',
-                     self._data_store._get_session_path('p1', 'b1', 's1'))
-
-  def test_get_episode_path(self):
-    self.assertEqual('projects/p1/brains/b1/sessions/s1/episodes/e1',
-                     self._data_store._get_episode_path('p1', 'b1', 's1', 'e1'))
-
-  def test_get_chunk_path(self):
+  def test_get_project_glob(self):
     self.assertEqual(
-        'projects/p1/brains/b1/sessions/s1/episodes/e1/chunks/c1',
-        self._data_store._get_chunk_path('p1', 'b1', 's1', 'e1', 'c1'))
+        self._data_store._get_project_glob('p1'),
+        'projects/p1')
 
-  def test_get_assignment_path(self):
-    self.assertSequenceStartsWith(
-        'projects/p1/brains/b1/sessions/s1/assignments/',
-        self._data_store._get_assignment_path('p1', 'b1', 's1', 'a1'))
-
-  def test_get_model_path(self):
-    self.assertEqual('projects/p1/brains/b1/sessions/s1/models/m1',
-                     self._data_store._get_model_path('p1', 'b1', 's1', 'm1'))
-
-  def test_get_offline_evaluation_path(self):
+  def test_get_brain_glob(self):
     self.assertEqual(
-        'projects/p1/brains/b1/sessions/s1/models/m1/offline_evaluations/o1',
-        self._data_store._get_offline_evaluation_path(
-            'p1', 'b1', 's1', 'm1', 'o1'))
+        self._data_store._get_brain_glob('p1', 'b1'), 'projects/p1/brains/b1')
+
+  def test_get_snapshot_glob(self):
+    self.assertEqual(
+        self._data_store._get_snapshot_glob('p1', 'b1', 's1'),
+        'projects/p1/brains/b1/snapshots/s1')
+
+  def test_get_session_glob(self):
+    self.assertEqual(
+        self._data_store._get_session_glob('p1', 'b1', 's1'),
+        'projects/p1/brains/b1/sessions/s1')
+
+  def test_get_episode_glob(self):
+    self.assertEqual(
+        self._data_store._get_episode_glob('p1', 'b1', 's1', 'e1'),
+        'projects/p1/brains/b1/sessions/s1/episodes/e1')
+
+  def test_get_chunk_glob(self):
+    self.assertEqual(
+        self._data_store._get_chunk_glob('p1', 'b1', 's1', 'e1', 'c1'),
+        'projects/p1/brains/b1/sessions/s1/episodes/e1/chunks/c1')
+
+  def test_get_assignment_glob(self):
+    self.assertStartsWith(
+        self._data_store._get_assignment_glob('p1', 'b1', 's1', 'a1'),
+        'projects/p1/brains/b1/sessions/s1/assignments/')
+
+  def test_get_model_glob(self):
+    self.assertEqual(
+        self._data_store._get_model_glob('p1', 'b1', 's1', 'm1'),
+        'projects/p1/brains/b1/sessions/s1/models/m1')
+
+  def test_get_offline_evaluation_glob(self):
+    self.assertEqual(
+        self._data_store._get_offline_evaluation_glob('p1', 'b1', 's1', 'm1',
+                                                      'o1'),
+        'projects/p1/brains/b1/sessions/s1/models/m1/offline_evaluations/o1')
+
+  def test_any_and_braced_path_arguments_to_glob(self):
+    self.assertEqual(
+        self._data_store._get_offline_evaluation_glob(['p1', 'p2'], None,
+                                                      ['s1', 's2'], None,
+                                                      ['o1', 'o2']),
+        'projects/{p1,p2}/brains/*/sessions/{s1,s2}/models/*/' +
+        'offline_evaluations/{o1,o2}')
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@ import glob
 import os.path
 import re
 import tempfile
+import threading
 import time
 from unittest import mock
 
@@ -146,6 +147,23 @@ class FileSystemTest(parameterized.TestCase):
     ds.write_session(s3)
     ids, _ = ds.list_sessions(['p0', 'p2'], None, 10)
     self.assertEqual(ids, ['s0', 's1', 's3'])
+
+  def test_callback(self):
+    """Tests callback system."""
+    callback_called = threading.Event()
+    found_assignments = []
+
+    def callback(assignment):
+      nonlocal found_assignments
+      found_assignments.append(assignment)
+      callback_called.set()
+
+    self._fs.add_file_callback(callback)
+    self._fs.write_file('dir1/trigger.txt', self._text)
+    self.assertTrue(callback_called.wait(timeout=3))
+
+    self.assertEqual(['dir1/trigger.txt'], found_assignments)
+    self._fs.remove_all_file_callbacks()
 
 
 class DataStoreTest(parameterized.TestCase):

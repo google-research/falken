@@ -29,6 +29,7 @@ _REQUIRED_PYTHON_MODULES = [
     ('grpcio-tools', ''),
     ('googleapis-common-protos', ''),
     ('flatbuffers', ''),
+    ('watchdog', ''),
 ]
 
 _PIP_INSTALL_ARGS = [sys.executable, '-m', 'pip', 'install']

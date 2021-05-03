@@ -20,10 +20,15 @@ import hashlib
 import os
 import os.path
 import re
+import shutil
 import time
 
 import braceexpand
-import common.generate_protos  # pylint: disable=g-bad-import-order,unused-import
+import watchdog.events
+import watchdog.observers
+
+# pylint: disable=g-bad-import-order
+import common.generate_protos  # pylint: disable=unused-import
 import data_store_pb2
 
 
@@ -71,6 +76,29 @@ class NotFoundError(Exception):
   pass
 
 
+class FileMovedEventHandler(watchdog.events.FileSystemEventHandler):
+  """Event handler for file moves."""
+
+  def __init__(self, root_path, callback):
+    """Initializes the event handler.
+
+    Args:
+      root_path: Path where all Falken files will be stored.
+      callback: Function that takes a single argument for the destination path
+        of the file that was moved.
+    """
+    self._root_path = root_path
+    self._callback = callback
+
+  def on_moved(self, event):
+    """Method called every time a file move is detected.
+
+    Args:
+      event: A watchdog.events.FileMovedEvent object.
+    """
+    self._callback(os.path.relpath(event.dest_path, self._root_path))
+
+
 class FileSystem(object):
   """Encapsulates file system operations so they can be faked in tests."""
 
@@ -81,6 +109,42 @@ class FileSystem(object):
       root_path: Path where all Falken files will be stored.
     """
     self._root_path = root_path
+    self._observers = {}
+
+  def __del__(self):
+    self.remove_all_file_callbacks()
+
+  def add_file_callback(self, callback):
+    """Sets up a callback function.
+
+    The callback function will be called every time a file is created with
+    write_file(..., trigger_callback=True).
+
+    Args:
+      callback: Function that takes a single argument for the destination path
+        of the file that was moved.
+    """
+    event_handler = FileMovedEventHandler(self._root_path, callback)
+
+    observer = watchdog.observers.Observer()
+    observer.schedule(event_handler, self._root_path, recursive=True)
+    observer.start()
+
+    if callback in self._observers:
+      raise ValueError('Added callback twice.')
+
+    self._observers[callback] = observer
+
+  def remove_file_callback(self, callback):
+    """Removes all file callbacks."""
+    observer = self._observers.pop(callback)
+    observer.stop()
+    observer.join()
+
+  def remove_all_file_callbacks(self):
+    """Removes all file callbacks."""
+    for callback in list(self._observers):
+      self.remove_file_callback(callback)
 
   def read_file(self, path):
     """Reads a file.
@@ -100,11 +164,16 @@ class FileSystem(object):
       path: The path of the file to write the data to.
       data: A bytes-like object containing the data to write.
     """
-    path = os.path.join(self._root_path, path)
+    destination_path = os.path.join(self._root_path, path)
+    directory = os.path.dirname(destination_path)
 
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, 'wb') as f:
+    os.makedirs(directory, exist_ok=True)
+    source_path = os.path.join(
+        directory, '~' + os.path.basename(destination_path))
+    with open(source_path, 'wb') as f:
       f.write(data)
+
+    shutil.move(source_path, destination_path)
 
   def glob(self, pattern):
     """Encapsulates glob.glob.

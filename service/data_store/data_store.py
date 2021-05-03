@@ -15,17 +15,11 @@
 # Lint as: python3
 """Reads and writes data from storage."""
 
-import glob
 import hashlib
 import os
 import os.path
 import re
-import shutil
 import time
-
-import braceexpand
-import watchdog.events
-import watchdog.observers
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
@@ -74,131 +68,6 @@ _DIRECTORY_BY_RESOURCE_TYPE = {
 class NotFoundError(Exception):
   """Raised when datastore cannot find a requested object."""
   pass
-
-
-class FileMovedEventHandler(watchdog.events.FileSystemEventHandler):
-  """Event handler for file moves."""
-
-  def __init__(self, root_path, callback):
-    """Initializes the event handler.
-
-    Args:
-      root_path: Path where all Falken files will be stored.
-      callback: Function that takes a single argument for the destination path
-        of the file that was moved.
-    """
-    self._root_path = root_path
-    self._callback = callback
-
-  def on_moved(self, event):
-    """Method called every time a file move is detected.
-
-    Args:
-      event: A watchdog.events.FileMovedEvent object.
-    """
-    self._callback(os.path.relpath(event.dest_path, self._root_path))
-
-
-class FileSystem(object):
-  """Encapsulates file system operations so they can be faked in tests."""
-
-  def __init__(self, root_path):
-    """Initializes the file system object with a given root path.
-
-    Args:
-      root_path: Path where all Falken files will be stored.
-    """
-    self._root_path = root_path
-    self._observers = {}
-
-  def __del__(self):
-    self.remove_all_file_callbacks()
-
-  def add_file_callback(self, callback):
-    """Sets up a callback function.
-
-    The callback function will be called every time a file is created with
-    write_file(..., trigger_callback=True).
-
-    Args:
-      callback: Function that takes a single argument for the destination path
-        of the file that was moved.
-    """
-    event_handler = FileMovedEventHandler(self._root_path, callback)
-
-    observer = watchdog.observers.Observer()
-    observer.schedule(event_handler, self._root_path, recursive=True)
-    observer.start()
-
-    if callback in self._observers:
-      raise ValueError('Added callback twice.')
-
-    self._observers[callback] = observer
-
-  def remove_file_callback(self, callback):
-    """Removes all file callbacks."""
-    observer = self._observers.pop(callback)
-    observer.stop()
-    observer.join()
-
-  def remove_all_file_callbacks(self):
-    """Removes all file callbacks."""
-    for callback in list(self._observers):
-      self.remove_file_callback(callback)
-
-  def read_file(self, path):
-    """Reads a file.
-
-    Args:
-      path: The path of the file to read.
-    Returns:
-      A bytes-like object containing the contents of the file.
-    """
-    with open(os.path.join(self._root_path, path), 'rb') as f:
-      return f.read()
-
-  def write_file(self, path, data):
-    """Writes into a file.
-
-    Args:
-      path: The path of the file to write the data to.
-      data: A bytes-like object containing the data to write.
-    """
-    destination_path = os.path.join(self._root_path, path)
-    directory = os.path.dirname(destination_path)
-
-    os.makedirs(directory, exist_ok=True)
-    source_path = os.path.join(
-        directory, '~' + os.path.basename(destination_path))
-    with open(source_path, 'wb') as f:
-      f.write(data)
-
-    shutil.move(source_path, destination_path)
-
-  def glob(self, pattern):
-    """Encapsulates glob.glob.
-
-    Args:
-      pattern: Pattern to search for. May contains brace-style options,
-        e.g., "a/{b,c}/*".
-    Returns:
-      List of path strings found.
-    """
-    result = []
-    for p in braceexpand.braceexpand(pattern):
-      for f in glob.glob(os.path.join(self._root_path, p)):
-        result.append(os.path.relpath(f, self._root_path))
-    return result
-
-  def exists(self, path):
-    """Encapsulates os.path.exists.
-
-    Args:
-      path: Path of file or directory to verify the existence of.
-    Returns:
-      A boolean for whether the file or directory exists.
-    """
-    return os.path.exists(os.path.join(self._root_path, path))
 
 
 class ListOptions(object):

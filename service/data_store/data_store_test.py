@@ -14,156 +14,18 @@
 
 """Tests for DataStore."""
 
-import glob
 import os.path
-import re
-import tempfile
-import threading
 import time
 from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
 from data_store import data_store
+from data_store import file_system
 
 import common.generate_protos  # pylint: disable=g-bad-import-order,unused-import
 
 import data_store_pb2
-
-
-class FakeFileSystem(object):
-  """In-memory implementation of the FileSystem class."""
-
-  def __init__(self):
-    # Stores the proto contained in each path.
-    self._path_to_proto = {}
-
-  def read_file(self, path):
-    """Reads a file.
-
-    Args:
-      path: The path of the file to read.
-    Returns:
-      A string containing the contents of the file.
-    """
-    return self._path_to_proto[path]
-
-  def write_file(self, path, data):
-    """Writes into a file.
-
-    Args:
-      path: The path of the file to write the data to.
-      data: A string containing the data to write.
-    """
-    self._path_to_proto[path] = data
-
-  def glob(self, pattern):
-    """Encapsulates glob.glob.
-
-    Args:
-      pattern: Pattern to search for.
-    Returns:
-      List of path strings found.
-    """
-    # The fake file system doesn't support recursive globs.
-    assert '**' not in pattern
-    pattern = pattern.replace('*', '[^/]*')
-    return [path for path in sorted(self._path_to_proto)
-            if re.match(pattern, path)]
-
-  def exists(self, path):
-    """Encapsulates os.path.exists.
-
-    Args:
-      path: Path of file or directory to verify the existence of.
-    Returns:
-      A boolean for whether the file or directory exists.
-    """
-    return path in self._path_to_proto
-
-
-class FileSystemTest(parameterized.TestCase):
-
-  def setUp(self):
-    """Create a file system object that uses a temporary directory."""
-    super().setUp()
-    self._temporary_directory = tempfile.TemporaryDirectory()
-    self._fs = data_store.FileSystem(self._temporary_directory.name)
-    self._text = 'Hello Falken'.encode('utf-8')
-
-  def tearDown(self):
-    """Clean up the temporary directory and file system."""
-    super().tearDown()
-    self._temporary_directory.cleanup()
-    self._fs = None
-    self._text = None
-
-  def test_read_write_file(self):
-    """Tests files read and writing files, and verify writing location."""
-    path = 'some-project.pb'
-    self._fs.write_file(path, self._text)
-
-    files = glob.glob(os.path.join(self._temporary_directory.name, path))
-    self.assertLen(files, 1)
-
-    self.assertEqual(self._text, self._fs.read_file(path))
-
-  def test_glob(self):
-    """Tests FileSystem.glob."""
-    files = ['dirA1/dirB1/p1.pb', 'dirA1/dirB2/p1.pb', 'dirA2/dirC1/p1.pb']
-    for f in files:
-      self._fs.write_file(f, self._text)
-
-    found_files = self._fs.glob('dir*/dir*/p1.pb')
-    self.assertEqual(set(files), set(found_files))
-
-  def test_exists(self):
-    """Tests FileSystem.exists."""
-    path = 'dirA/dirB/file.pb'
-    self._fs.write_file(path, self._text)
-    self.assertTrue(self._fs.exists(path))
-
-  def test_list_by_globbing(self):
-    ds = data_store.DataStore(self._fs)
-    s0 = data_store_pb2.Session(
-        project_id='p0',
-        brain_id='b0',
-        session_id='s0')
-    s1 = data_store_pb2.Session(
-        project_id='p0',
-        brain_id='b0',
-        session_id='s1')
-    s2 = data_store_pb2.Session(
-        project_id='p1',
-        brain_id='b1',
-        session_id='s2')
-    s3 = data_store_pb2.Session(
-        project_id='p2',
-        brain_id='b2',
-        session_id='s3')
-    ds.write_session(s0)
-    ds.write_session(s1)
-    ds.write_session(s2)
-    ds.write_session(s3)
-    ids, _ = ds.list_sessions(['p0', 'p2'], None, 10)
-    self.assertEqual(ids, ['s0', 's1', 's3'])
-
-  def test_callback(self):
-    """Tests callback system."""
-    callback_called = threading.Event()
-    found_assignments = []
-
-    def callback(assignment):
-      nonlocal found_assignments
-      found_assignments.append(assignment)
-      callback_called.set()
-
-    self._fs.add_file_callback(callback)
-    self._fs.write_file('dir1/trigger.txt', self._text)
-    self.assertTrue(callback_called.wait(timeout=3))
-
-    self.assertEqual(['dir1/trigger.txt'], found_assignments)
-    self._fs.remove_all_file_callbacks()
 
 
 class DataStoreTest(parameterized.TestCase):
@@ -171,7 +33,7 @@ class DataStoreTest(parameterized.TestCase):
   def setUp(self):
     """Create a datastore object that uses a temporary directory."""
     super().setUp()
-    self._fs = FakeFileSystem()
+    self._fs = file_system.FakeFileSystem()
     self._data_store = data_store.DataStore(self._fs)
 
   def tearDown(self):

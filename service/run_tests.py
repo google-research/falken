@@ -56,6 +56,7 @@ _DEFAULT_TEST_MODULES = [
     'api.proto_conversion_test',
     'api.resource_id_test',
     'data_store.data_store_test',
+    'data_store.file_system_test',
     'learner.brains.action_postprocessor_test',
     'learner.brains.brain_cache_test',
     'learner.brains.continuous_imitation_brain_test',

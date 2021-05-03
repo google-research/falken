@@ -118,7 +118,7 @@ class FileSystem(object):
     result = []
     for p in braceexpand.braceexpand(pattern):
       for f in glob.glob(os.path.join(self._root_path, p)):
-        result.append(f)
+        result.append(os.path.relpath(f, self._root_path))
     return result
 
   def exists(self, path):

@@ -20,8 +20,13 @@ class InvalidResourceError(Exception):
   pass
 
 
-class ResourceId:
-  """A class to represent and validate resource ids.
+class InvalidSpecError(Exception):
+  """Raised when a resource spec is invalid."""
+  pass
+
+
+class ResourceSpec(dict):
+  """A syntax specification for a class of valid resource IDs.
 
   A resource ID is a path-like string of the following form:
     "/collection_1/elem_id_1/.../collection_k/elem_id_k"
@@ -30,17 +35,102 @@ class ResourceId:
   "authors" and "books" are collections, and "RWilson" and "Illuminatus" are,
   respectively, IDs of the corresponding elements in those collections.
 
-  Construction of a ResourceID from a dictionary requires a resource spec in the
-  form of a nested dictionary that represents the hierarchy of collections.
+  A resource spec represents the hierarchy of collections for the purpose of
+  ResourceID validation and provides friendly names for the accessor functions.
+
   Consider the example spec below:
 
-    {'countries': {'celebrities': None, 'dishes': {'ingredients'}}}
+  ResourceSpec(
+    {'countries': {'celebrities': None, 'dishes': {'ingredients'}}},
+    accessor_map={
+        'countries': 'country',
+        'celebrities': 'celebrity',
+        'dishes': 'dish',
+        'ingredients': 'ingredient'})
 
   This would admit the following resource IDs:
     /countries/austria
     /countries/austria/celebrities/sigmund_freud
     /countries/austria/dishes/wienerschnitzel
     /countries/austria/dishes/wienerschnitzel/ingredients/eggs
+
+  Furthermore, the optional accessor_map argument enables aliasing for
+  collection ids for convenience as follows:
+
+    rid = ResourceId(country='austria', 'celebrity'='sigmund_freud')
+    assert rid.country == 'austria'
+    assert str(rid) == 'countries/austria/celebrities/sigmund_freud'
+  """
+
+  def _initialize(self, spec_node, seen, accessor_map):
+    """Recursively initialize data structures and validate spec.
+
+    Args:
+      spec_node: An node in the nested spec dictionary, dictionary or iterable.
+      seen: A set of collection_ids that have been visited already.
+      accessor_map: A mapping from collection ids to accessor names.
+    Raises:
+      InvalidSpecError: If errors in the spec are found.
+    """
+    if not spec_node:
+      return
+    for collection_id in spec_node:
+      if collection_id in seen:
+        raise InvalidSpecError(
+            f'Encountered collection_id twice: {collection_id}')
+      seen.add(collection_id)
+      if collection_id in accessor_map:
+        name = accessor_map[collection_id]
+      else:
+        name = collection_id
+
+      if name in self.accessor_name_to_collection_id:
+        raise InvalidSpecError(
+            f'Accessor name "{name}" is used for both "{collection_id}" and '
+            f'"{self.accessor_name_to_collection_id[name]}."')
+      self.accessor_name_to_collection_id[name] = collection_id
+      self.collection_id_to_accessor_name[collection_id] = name
+
+    try:
+      subnodes = spec_node.values()
+    except AttributeError:
+      subnodes = []
+    for subnode in subnodes:
+      self._initialize(subnode, seen, accessor_map)
+
+  def __init__(self, spec_nest, accessor_map=None):
+    """Create a new spec from a spec dictionary and an optional accessor map.
+
+    Args:
+      spec_nest: A nest of stirngs representing the spec.
+          See class-level comment.
+      accessor_map: A map from collection_ids to friendly names used to access
+          this collection in ResourceID instances.
+    Raises:
+      InvalidSpecError: If there are problems with the spec or accessor_map.
+    """
+    if not isinstance(spec_nest, dict):
+      spec_nest = {key: None for key in spec_nest}
+    super().__init__(spec_nest)
+    accessor_map = accessor_map or dict()
+    self.collection_id_to_accessor_name = dict()
+    self.accessor_name_to_collection_id = dict()
+    seen = set()
+    self._initialize(self, seen, accessor_map)
+    for collection_id in accessor_map:
+      if collection_id not in self.collection_id_to_accessor_name:
+        raise InvalidSpecError(
+            f'Accessor for collection_id {collection_id} does not match a '
+            f'collection_id in the spec.')
+
+
+class ResourceId:
+  """A class to represent and validate resource ids.
+
+  A resource ID is a path-like string
+    "/collection_1/elem_id_1/.../collection_k/elem_id_k"
+
+  See ResourceSpec class comments for examples.
 
   Attributes:
     id_string: A string representation of the resource id, e.g.,
@@ -55,17 +145,20 @@ class ResourceId:
     """Create a new resource ID matching the provided spec.
 
     Args:
-      resource_spec: A nested dictionary (with leaves of type None, or of
-          iterable type), specifiying the hierarchical relationships between
-          collections. See class-level comment.
+      resource_spec: A ResourceSpec object describing the hierarchy of
+          collection.
       id_or_parts: A string representing the resource id or a list of strings
           representing individual resource id components.
-      **kwargs: Direct assignments of strings to collections.
+      **kwargs: Direct assignments of strings to collections. Addressing a
+          collection must be done via its accessor name (if provided in the
+          spec), otherwise it uses the collection_id.
 
     Raises:
       InvalidResourceError: If a specified resource is invalid (e.g., does not
           match spec).
     """
+    if resource_spec and not isinstance(resource_spec, ResourceSpec):
+      raise ValueError('resource_spec must be of type ResourceSpec.')
     self._resource_spec = resource_spec
 
     if bool(id_or_parts) + bool(kwargs) != 1:
@@ -98,7 +191,18 @@ class ResourceId:
           self._resource_spec, self.parts)
     else:
       # Initialize from kw_args.
-      self.collection_map = dict(**kwargs)
+      if not resource_spec:
+        raise ValueError(
+            'ResourceSpec must be provided when initializing from kwargs.')
+      self.collection_map = dict()
+      for accessor_name, elem_id in kwargs.items():
+        try:
+          collection_id = (
+              resource_spec.accessor_name_to_collection_id[accessor_name])
+        except KeyError:
+          raise InvalidResourceError('Unknown collection: ' + accessor_name)
+        self.collection_map[collection_id] = elem_id
+
       self.parts = self._compute_parts(
           self._resource_spec, self.collection_map)
       self.id_string = '/'.join(self.parts)
@@ -109,6 +213,29 @@ class ResourceId:
 
   def __hash__(self) -> int:
     return self.id_string.__hash__()
+
+  def __getattr__(self, attr_name):
+    """Allows access to collection_map values using accessor names.
+
+    E.g.:
+      spec = ResourceSpec({'countries': {'dishes'}},
+                          {'countries': 'country', 'dishes': 'dish'})
+      rid = ResourceId(spec, 'countries/mexico/dishes/pozole'
+      print(rid.country)  # prints 'mexico'
+      print(rid.dish)     # prints 'pozole'
+
+    Args:
+      attr_name: The accessor name of a collection or its collection_id if no
+        name was provided.
+    Returns:
+      The element name in the corresponding collection.
+    """
+    try:
+      collection_id = (
+          self._resource_spec.accessor_name_to_collection_id[attr_name])
+    except KeyError:
+      return super().__getattr__(attr_name)
+    return self.collection_map[collection_id]
 
   @staticmethod
   def _compute_collection_map(resource_spec, parts):
@@ -161,18 +288,19 @@ class ResourceId:
     """
     keys_to_process = set(collection_map)
     parts = []
-    if not resource_spec:
-      raise ValueError(
-          'Resource spec must be provided in order to initialize from kwargs.')
     current_spec_node = resource_spec
+
     while keys_to_process and current_spec_node:
       handled = False
       for key in current_spec_node:
+        if not key:
+          raise InvalidResourceError('Collection IDs in spec may not be empty.')
+
         if key in keys_to_process:
           parts.append(key)
           parts.append(collection_map[key])
-          if not key or not collection_map[key]:
-            raise InvalidResourceError('Components and IDs may not be empty.')
+          if not parts[-1]:
+            raise InvalidResourceError('Element IDs may not be empty.')
           keys_to_process.remove(key)
           try:
             current_spec_node = current_spec_node[key]
@@ -193,22 +321,34 @@ class ResourceId:
 class FalkenResourceId(ResourceId):
   """A ResourceId with a fixed spec representing Falken resources."""
 
-  FALKEN_RESOURCE_SPEC = {
-      'projects': {
-          'brains': {
-              'sessions': {
-                  'episodes': {
-                      'chunks',
+  FALKEN_RESOURCE_SPEC = ResourceSpec(
+      {
+          'projects': {
+              'brains': {
+                  'sessions': {
+                      'episodes': {
+                          'chunks',
+                      },
+                      'online_evaluations': None,
+                      'offline_evaluations': None,
+                      'assignments': None,
+                      'models': None,
                   },
-                  'online_evaluations': None,
-                  'offline_evaluations': None,
-                  'assignments': None,
-                  'models': None,
-              },
-              'snapshots': None,
+                  'snapshots': None,
+              }
           }
-      }
-  }
+      },
+      accessor_map={
+          'projects': 'project',
+          'brains': 'brain',
+          'sessions': 'session',
+          'episodes': 'episode',
+          'chunks': 'chunk',
+          'online_evaluations': 'online_evaluation',
+          'assignments': 'assignment',
+          'models': 'model',
+          'snapshots': 'snapshot'
+      })
 
   def __init__(self, *args, **kwargs):
     super().__init__(

@@ -23,15 +23,20 @@ from unittest import mock
 from absl import flags
 from absl.testing import absltest
 from api import falken_service
+from api import resource_id
 from api import test_constants
-import grpc
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
 import brain_pb2
+from data_store import data_store
+import data_store_pb2
 import falken_service_pb2
 import falken_service_pb2_grpc
 from google.protobuf import text_format
+from google.rpc import code_pb2
+import grpc
+
 
 FLAGS = flags.FLAGS
 
@@ -61,7 +66,12 @@ class FalkenServiceTest(absltest.TestCase):
 
   @mock.patch.object(falken_service, 'read_server_credentials', autospec=True)
   @mock.patch.object(falken_service, '_configure_server', autospec=True)
-  def test_serve(self, mock_configure_server, mock_read_credentials):
+  @mock.patch.object(falken_service.FalkenService, '_create_api_keys')
+  @mock.patch.object(falken_service.FalkenService,
+                     '_validate_project_and_api_key')
+  def test_serve(self, unused_validate_project_and_api_key,
+                 unused_mock_create_api_keys, mock_configure_server,
+                 mock_read_credentials):
     """Test that Falken service can be started up and connected to."""
     FLAGS.port = 50051
     ssl_credentials = grpc.ssl_server_credentials(
@@ -83,8 +93,13 @@ class FalkenServiceTest(absltest.TestCase):
               display_name='test_brain',
               brain_spec=text_format.Parse(test_constants.TEST_BRAIN_SPEC,
                                            brain_pb2.BrainSpec())))
-    self.assertIsNotNone(response)
-
+    self.assertIsNotNone(response.brain_id)
+    self.assertEqual(response.project_id, 'test_project')
+    self.assertEqual(response.display_name, 'test_brain')
+    self.assertEqual(
+        response.brain_spec,
+        text_format.Parse(test_constants.TEST_BRAIN_SPEC,
+                          brain_pb2.BrainSpec()))
     server.stop(None)
 
   def test_read_server_credentials(self):
@@ -101,6 +116,103 @@ class FalkenServiceTest(absltest.TestCase):
         hash(
             grpc.ssl_server_credentials(
                 ((test_private_key, test_certificate_chain),))))
+
+  @mock.patch.object(resource_id, 'generate_base64_id')
+  @mock.patch.object(data_store, 'DataStore')
+  def test_create_api_keys(self, datastore, generate_base64_id):
+    """Test creation of API keys for project_ids specified in FLAGS."""
+    mock_ds = mock.Mock()
+    datastore.return_value = mock_ds
+    generate_base64_id.return_value = 'api_key'
+    FLAGS.project_ids = ['project_id_1', 'project_id_2']
+    expected_write_project_calls = [
+        mock.call(
+            data_store_pb2.Project(
+                project_id='project_id_1',
+                name='project_id_1',
+                api_key='api_key')),
+        mock.call(
+            data_store_pb2.Project(
+                project_id='project_id_2',
+                name='project_id_2',
+                api_key='api_key')),
+    ]
+    falken_service.FalkenService()
+    self.assertEqual(generate_base64_id.call_count, 2)
+    self.assertCountEqual(mock_ds.write_project.call_args_list,
+                          expected_write_project_calls)
+
+  @mock.patch.object(falken_service.FalkenService, '_create_api_keys')
+  @mock.patch.object(data_store, 'DataStore')
+  def test_validate_project_and_api_key(self, ds, unused_create_api_keys):
+    """Test validation of project and api key."""
+    request = mock.Mock()
+    request.project_id = 'test_project_id'
+    context = mock.Mock()
+    context.invocation_metadata.return_value = [
+        (falken_service._API_METADATA_KEY, 'test_api_key')
+    ]
+    datastore = mock.Mock()
+    datastore.read_project.return_value = data_store_pb2.Project(
+        project_id='test_project_id', api_key='test_api_key')
+    ds.return_value = datastore
+
+    falken_service.FalkenService()._validate_project_and_api_key(
+        request, context)
+    ds.read_project.called_once_with('test_project_id')
+    context.abort.assert_not_called()
+
+  @mock.patch.object(falken_service.FalkenService, '_create_api_keys')
+  @mock.patch.object(data_store, 'DataStore')
+  def test_validate_project_and_no_api_key(
+      self, unused_ds, unused_create_api_keys):
+    """Test validation of project and api key when api key is not set."""
+    context = mock.Mock()
+    context.invocation_metadata.return_value = []
+    falken_service.FalkenService()._validate_project_and_api_key(
+        mock.Mock(), context)
+    context.abort.assert_called_with(code_pb2.UNAUTHENTICATED,
+                                     'No API key found in the metadata.')
+
+  @mock.patch.object(falken_service.FalkenService, '_create_api_keys')
+  @mock.patch.object(data_store, 'DataStore')
+  def test_validate_project_and_no_project_id(
+      self, unused_ds, unused_create_api_keys):
+    """Test validation of project and api key when project ID is not set."""
+    context = mock.Mock()
+    context.invocation_metadata.return_value = [
+        (falken_service._API_METADATA_KEY, 'test_api_key')
+    ]
+    request = mock.Mock()
+    request.project_id = ''
+    falken_service.FalkenService()._validate_project_and_api_key(
+        request, context)
+    context.abort.assert_called_with(code_pb2.UNAUTHENTICATED,
+                                     'No project ID set in the request.')
+
+  @mock.patch.object(falken_service.FalkenService, '_create_api_keys')
+  @mock.patch.object(data_store, 'DataStore')
+  def test_validate_unmatching_project_id_and_api_key(
+      self, ds, unused_create_api_keys):
+    """Test validation of project and api key when api key does not match."""
+    context = mock.Mock()
+    context.invocation_metadata.return_value = [
+        (falken_service._API_METADATA_KEY, 'test_api_key')
+    ]
+    request = mock.Mock()
+    request.project_id = 'test_project_id'
+    datastore = mock.Mock()
+    datastore.read_project.return_value = data_store_pb2.Project(
+        project_id='test_project_id', api_key='different_api_key')
+    ds.return_value = datastore
+
+    falken_service.FalkenService()._validate_project_and_api_key(
+        request, context)
+    context.abort.assert_called_with(
+        code_pb2.UNAUTHENTICATED,
+        'Project ID test_project_id and API key test_api_key does not match. '
+        'Found different_api_key instead.')
+    ds.read_project.called_once_with('test_project_id')
 
 
 if __name__ == '__main__':

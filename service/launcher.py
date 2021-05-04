@@ -36,6 +36,9 @@ flags.DEFINE_string('root_dir', os.getcwd(),
                     'Directory where the Falken service will store data.')
 flags.DEFINE_bool('clean_up_protos', False,
                   'Clean up generated protos at stop.')
+flags.DEFINE_multi_string(
+    'project_ids', [],
+    'Project IDs to create API keys for and use with Falken.')
 
 
 def check_ssl():
@@ -78,10 +81,15 @@ def run_api(current_path):
   Returns:
     Popen instance where the API service is running.
   """
-  return subprocess.Popen(
-      [sys.executable, '-m', 'api.falken_service', '--port', str(FLAGS.port),
-       '--ssl_dir', FLAGS.ssl_dir, '--verbosity', str(FLAGS.verbosity),
-       '--alsologtostderr'], env=os.environ, cwd=current_path)
+  args = [
+      sys.executable, '-m', 'api.falken_service', '--port',
+      str(FLAGS.port), '--ssl_dir', FLAGS.ssl_dir, '--verbosity',
+      str(FLAGS.verbosity), '--alsologtostderr'
+  ]
+  for project_id in FLAGS.project_ids:
+    args.append('--project_ids')
+    args.append(project_id)
+  return subprocess.Popen(args, env=os.environ, cwd=current_path)
 
 
 def run_learner(current_path):

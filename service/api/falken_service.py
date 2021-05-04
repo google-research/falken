@@ -21,10 +21,14 @@ from absl import app
 from absl import flags
 from absl import logging
 from api import create_brain_handler
+from api import resource_id
+
 import common.generate_protos  # pylint: disable=unused-import
 from data_store import data_store
 from data_store import file_system
+import data_store_pb2
 import falken_service_pb2_grpc
+from google.rpc import code_pb2
 import grpc
 
 FLAGS = flags.FLAGS
@@ -37,61 +41,124 @@ flags.DEFINE_integer(
     'The max number of threads to use in the pool to start the grpc server.')
 flags.DEFINE_string('root_dir', '',
                     'Directory where the Falken service will store data.')
+flags.DEFINE_multi_string(
+    'project_ids', [],
+    'Project IDs to create API keys for and use with Falken.')
+
+# Clients must specify the API key value using this metadata key.
+_API_METADATA_KEY = 'x-goog-api-key'
 
 
 class FalkenService(falken_service_pb2_grpc.FalkenService):
   """The Python implementation of the GRPC falken_service.FalkenService."""
 
   def __init__(self):
+    """Initializes datastore and sets up API keys."""
     self.data_store = data_store.DataStore(
         file_system.FileSystem(FLAGS.root_dir))
+    self._create_api_keys(FLAGS.project_ids)
+
+  def _create_api_keys(self, project_ids):
+    """Creates API keys in storage, and logs the generated keys for use.
+
+    Args:
+      project_ids: Project IDs to generate the API keys for. API keys will work
+        only when used in combination with their respective project IDs.
+    """
+    for project_id in project_ids:
+      api_key = resource_id.generate_base64_id()
+      project = data_store_pb2.Project(
+          project_id=project_id, name=project_id, api_key=api_key)
+      self.data_store.write_project(project)
+      logging.info('Generated key for %s: %s', project_id, api_key)
+
+  def _validate_project_and_api_key(self, request, context):
+    """Validate the project and API key.
+
+    Aborts the RPC when the validation fails.
+
+    Args:
+      request: RPC request which must contain the project_id field.
+      context: RPC context which must contain the api_key in its metadata.
+    """
+    if not request.project_id:
+      context.abort(code_pb2.UNAUTHENTICATED,
+                    'No project ID set in the request.')
+      return
+    metadata = context.invocation_metadata()
+    api_key_list = [kv[1] for kv in metadata if kv[0] == _API_METADATA_KEY]
+    if not api_key_list:
+      context.abort(code_pb2.UNAUTHENTICATED,
+                    'No API key found in the metadata.')
+      return
+    api_key = api_key_list[0]
+    project_id = request.project_id
+    api_key_for_project = self.data_store.read_project(project_id).api_key
+    if api_key_for_project != api_key:
+      context.abort(
+          code_pb2.UNAUTHENTICATED,
+          f'Project ID {project_id} and API key {api_key} does not match. '
+          f'Found {api_key_for_project} instead.')
+    return
 
   def CreateBrain(self, request, context):
     """Creates a new brain from a BrainSpec."""
+    self._validate_project_and_api_key(request, context)
     return create_brain_handler.CreateBrain(request, context, self.data_store)
 
   def GetBrain(self, request, context):
     """Retrieves an existing Brain."""
+    self._validate_project_and_api_key(request, context)
     raise NotImplementedError('Method not implemented!')
 
   def ListBrains(self, request, context):
     """Returns a list of Brains in the project."""
+    self._validate_project_and_api_key(request, context)
     raise NotImplementedError('Method not implemented!')
 
   def CreateSession(self, request, context):
     """Creates a Session to begin training using the given Brain."""
+    self._validate_project_and_api_key(request, context)
     raise NotImplementedError('Method not implemented!')
 
   def GetSessionCount(self, request, context):
     """Retrieves session count for a given brain."""
+    self._validate_project_and_api_key(request, context)
     raise NotImplementedError('Method not implemented!')
 
   def GetSession(self, request, context):
     """Retrieves a Session by ID."""
+    self._validate_project_and_api_key(request, context)
     raise NotImplementedError('Method not implemented!')
 
   def GetSessionByIndex(self, request, context):
     """Retrieves a Session by index."""
+    self._validate_project_and_api_key(request, context)
     raise NotImplementedError('Method not implemented!')
 
   def ListSessions(self, request, context):
     """Returns a list of Sessions for a given Brain."""
+    self._validate_project_and_api_key(request, context)
     raise NotImplementedError('Method not implemented!')
 
   def StopSession(self, request, context):
     """Stops an active Session."""
+    self._validate_project_and_api_key(request, context)
     raise NotImplementedError('Method not implemented!')
 
   def ListEpisodeChunks(self, request, context):
     """Returns all Steps in all Episodes for the Session."""
+    self._validate_project_and_api_key(request, context)
     raise NotImplementedError('Method not implemented!')
 
   def SubmitEpisodeChunks(self, request, context):
     """Submits EpisodeChunks."""
+    self._validate_project_and_api_key(request, context)
     raise NotImplementedError('Method not implemented!')
 
   def GetModel(self, request, context):
     """Returns a serialized model."""
+    self._validate_project_and_api_key(request, context)
     raise NotImplementedError('Method not implemented!')
 
 

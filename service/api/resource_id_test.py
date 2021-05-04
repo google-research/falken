@@ -15,6 +15,7 @@
 # Lint as: python3
 """Tests for proto_conversion."""
 
+import base64
 from unittest import mock
 import uuid
 
@@ -30,6 +31,17 @@ class ResourceIdTest(absltest.TestCase):
     self.assertEqual(resource_id.generate_resource_id(),
                      '4adccb90-b03b-4397-b192-ee1941fd130b')
 
+  @mock.patch.object(uuid, 'uuid4')
+  @mock.patch.object(base64, 'b64encode')
+  def test_generate_base64_id(self, b64encode, uuid4):
+    mock_uuid4 = mock.Mock()
+    mock_uuid4.bytes = b'\xbb\xc40\x19%*HP\xb5\x1b\xab\\\xae\xef\x91\x16'
+    uuid4.return_value = mock_uuid4
+    b64encode.return_value = b'u8QwGSUqSFC1G6tcru+RFg=='
+    self.assertEqual(resource_id.generate_base64_id(),
+                     b64encode.return_value.decode('utf-8'))
+    uuid4.called_once_with()
+    b64encode.called_once_with(mock_uuid4.bytes)
 
 if __name__ == '__main__':
   absltest.main()

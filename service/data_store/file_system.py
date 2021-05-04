@@ -93,8 +93,8 @@ class FileSystem(object):
 
   def remove_all_file_callbacks(self):
     """Removes all file callbacks."""
-    for callback in list(self._observers):
-      self.remove_file_callback(callback)
+    while self._observers:
+      self.remove_file_callback(next(iter(self._observers)))
 
   def read_file(self, path):
     """Reads a file.

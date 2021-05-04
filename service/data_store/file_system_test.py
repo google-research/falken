@@ -98,18 +98,18 @@ class FileSystemTest(parameterized.TestCase):
   def test_callback(self):
     """Tests callback system."""
     callback_called = threading.Event()
-    found_assignments = []
+    found_files = []
 
-    def callback(assignment):
-      nonlocal found_assignments
-      found_assignments.append(assignment)
+    def callback(file):
+      nonlocal found_files
+      found_files.append(file)
       callback_called.set()
 
     self._fs.add_file_callback(callback)
     self._fs.write_file('dir1/trigger.txt', self._text)
     self.assertTrue(callback_called.wait(timeout=3))
 
-    self.assertEqual(['dir1/trigger.txt'], found_assignments)
+    self.assertEqual(['dir1/trigger.txt'], found_files)
     self._fs.remove_all_file_callbacks()
 
 

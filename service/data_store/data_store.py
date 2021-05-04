@@ -109,6 +109,10 @@ class DataStore(object):
       file_system: A FileSystem or MockFileSystem object.
     """
     self._fs = file_system
+    self._callbacks = {}
+
+  def __del__(self):
+    self.remove_all_assignment_callbacks()
 
   def read_project(self, project_id):
     """Retrieves a project proto from storage.
@@ -937,3 +941,34 @@ class DataStore(object):
         self._get_model_glob(project_id, brain_id, session_id, model_id),
         _DIRECTORY_BY_RESOURCE_TYPE['offline_evaluation'],
         self._as_glob_string(evaluation_set_id))
+
+  def add_assignment_callback(self, callback):
+    """Adds a callback function for newly created assignments.
+
+    Args:
+      callback: A function that will be called with a single argument,
+        an assignment id.
+    """
+    def file_callback(file_name):
+      # TODO(b/185940506): check file matches assignment, read file,
+      # and return the parsed id.
+      callback(file_name)
+
+    if callback in self._callbacks:
+      raise ValueError('Added assignment callback twice.')
+
+    self._callbacks[callback] = file_callback
+    self._fs.add_file_callback(file_callback)
+
+  def remove_assignment_callback(self, callback):
+    """Removes a function from the assignment callbacks.
+
+    Args:
+      callback: The callback function to remove.
+    """
+    self._fs.remove_file_callback(self._callbacks.pop(callback))
+
+  def remove_all_assignment_callbacks(self):
+    """Removes all assignment callbacks."""
+    while self._callbacks:
+      self.remove_assignment_callback(next(iter(self._callbacks)))

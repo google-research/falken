@@ -122,11 +122,9 @@ class DataStore(object):
     Returns:
       A Project proto.
     """
-    result = self._read_proto(
+    return self._read_proto(
         os.path.join(self._get_project_glob(project_id), _PROJECT_FILE_PATTERN),
         data_store_pb2.Project)
-    self._check_type(result, data_store_pb2.Project)
-    return result
 
   def write_project(self, project):
     """Writes a project proto to storage.
@@ -149,11 +147,9 @@ class DataStore(object):
     Returns:
       A Brain proto.
     """
-    result = self._read_proto(
+    return self._read_proto(
         os.path.join(self._get_brain_glob(project_id, brain_id),
                      _BRAIN_FILE_PATTERN), data_store_pb2.Brain)
-    self._check_type(result, data_store_pb2.Brain)
-    return result
 
   def write_brain(self, brain):
     """Writes a brain proto to storage.
@@ -178,13 +174,11 @@ class DataStore(object):
     Returns:
       A Snapshot proto.
     """
-    result = self._read_proto(
+    return self._read_proto(
         os.path.join(
             self._get_snapshot_glob(project_id, brain_id, snapshot_id),
             _SNAPSHOT_FILE_PATTERN),
         data_store_pb2.Snapshot)
-    self._check_type(result, data_store_pb2.Snapshot)
-    return result
 
   def write_snapshot(self, snapshot):
     """Writes a snapshot proto to storage.
@@ -210,13 +204,11 @@ class DataStore(object):
     Returns:
       A Session proto.
     """
-    result = self._read_proto(
+    return self._read_proto(
         os.path.join(
             self._get_session_glob(project_id, brain_id, session_id),
             _SESSION_FILE_PATTERN),
         data_store_pb2.Session)
-    self._check_type(result, data_store_pb2.Session)
-    return result
 
   def write_session(self, session):
     """Writes a session proto to storage.
@@ -244,14 +236,12 @@ class DataStore(object):
     Returns:
       An EpisodeChunk proto.
     """
-    result = self._read_proto(
+    return self._read_proto(
         os.path.join(
             self._get_chunk_glob(project_id, brain_id, session_id, episode_id,
                                  chunk_id),
             _CHUNK_FILE_PATTERN),
         data_store_pb2.EpisodeChunk)
-    self._check_type(result, data_store_pb2.EpisodeChunk)
-    return result
 
   def write_episode_chunk(self, chunk):
     """Writes an episode chunk proto to storage.
@@ -280,14 +270,12 @@ class DataStore(object):
     Returns:
       An OnlineEvaluation proto.
     """
-    result = self._read_proto(
+    return self._read_proto(
         os.path.join(
             self._get_episode_glob(project_id, brain_id, session_id,
                                    episode_id),
             _ONLINE_EVALUATION_FILE_PATTERN),
         data_store_pb2.OnlineEvaluation)
-    self._check_type(result, data_store_pb2.OnlineEvaluation)
-    return result
 
   def write_online_evaluation(self, online_evaluation):
     """Writes an online evaluation proto to storage.
@@ -315,14 +303,12 @@ class DataStore(object):
     Returns:
       An Assignment proto.
     """
-    result = self._read_proto(
+    return self._read_proto(
         os.path.join(
             self._get_assignment_glob(
                 project_id, brain_id, session_id, assignment_id),
             _ASSIGNMENT_FILE_PATTERN),
         data_store_pb2.Assignment)
-    self._check_type(result, data_store_pb2.Assignment)
-    return result
 
   def write_assignment(self, assignment):
     """Writes an assignment proto to storage.
@@ -350,12 +336,10 @@ class DataStore(object):
     Returns:
       A Model proto.
     """
-    result = self._read_proto(
+    return self._read_proto(
         os.path.join(
             self._get_model_glob(project_id, brain_id, session_id, model_id),
             _MODEL_FILE_PATTERN), data_store_pb2.Model)
-    self._check_type(result, data_store_pb2.Model)
-    return result
 
   def write_model(self, model):
     """Writes a model proto to storage.
@@ -381,13 +365,11 @@ class DataStore(object):
     Returns:
       An SerializedModel proto.
     """
-    result = self._read_proto(
+    return self._read_proto(
         os.path.join(
             self._get_model_glob(project_id, brain_id, session_id, model_id),
             _SERIALIZED_MODEL_FILE_PATTERN),
         data_store_pb2.SerializedModel)
-    self._check_type(result, data_store_pb2.SerializedModel)
-    return result
 
   def write_serialized_model(self, serialized_model):
     """Writes a serialized model proto to storage.
@@ -418,13 +400,11 @@ class DataStore(object):
     Returns:
       An OfflineEvaluation proto.
     """
-    result = self._read_proto(
+    return self._read_proto(
         os.path.join(
             self._get_offline_evaluation_glob(project_id, brain_id, session_id,
                                               model_id, str(evaluation_set_id)),
             _OFFLINE_EVALUATION_FILE_PATTERN), data_store_pb2.OfflineEvaluation)
-    self._check_type(result, data_store_pb2.OfflineEvaluation)
-    return result
 
   def write_offline_evaluation(self, offline_evaluation):
     """Writes an offline evaluation proto to storage.

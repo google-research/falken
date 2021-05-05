@@ -31,14 +31,14 @@ from google.protobuf import timestamp_pb2
 
 class ProtoConversionTest(absltest.TestCase):
 
-  def test_convert_data_store_brain_proto(self):
+  def test_brain_proto(self):
     brain_spec = text_format.Parse(test_constants.TEST_BRAIN_SPEC,
                                    brain_pb2.BrainSpec())
     data_store_brain = data_store_pb2.Brain(brain_spec=brain_spec)
     expected_common_brain = brain_pb2.Brain(
         brain_spec=brain_spec, create_time=timestamp_pb2.Timestamp(seconds=0))
     self.assertEqual(
-        proto_conversion.ProtoConverter.convert_data_store_proto(
+        proto_conversion.ProtoConverter.convert_proto(
             data_store_brain), expected_common_brain)
 
   def test_get_target_proto_brain(self):

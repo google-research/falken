@@ -48,9 +48,9 @@ class CreateBrainHandlerTest(absltest.TestCase):
     self._temp_dir.cleanup()
 
   @mock.patch.object(proto_conversion.ProtoConverter,
-                     'convert_data_store_proto')
+                     'convert_proto')
   @mock.patch.object(resource_id, 'generate_resource_id')
-  def test_valid_request(self, generate_resource_id, convert_data_store_proto):
+  def test_valid_request(self, generate_resource_id, convert_proto):
     generate_resource_id.return_value = 'test_brain_uuid'
     request = falken_service_pb2.CreateBrainRequest(
         display_name='test_brain',
@@ -74,7 +74,7 @@ class CreateBrainHandlerTest(absltest.TestCase):
                                      brain_pb2.BrainSpec()),
         create_time=timestamp_pb2.Timestamp(seconds=1619726720))
     self._ds.read_brain.return_value = (data_store_brain)
-    convert_data_store_proto.return_value = expected_brain
+    convert_proto.return_value = expected_brain
 
     self.assertEqual(
         create_brain_handler.CreateBrain(request, context, self._ds),
@@ -84,7 +84,7 @@ class CreateBrainHandlerTest(absltest.TestCase):
     self._ds.write_brain.assert_called_once_with(write_brain)
     self._ds.read_brain.assert_called_once_with(request.project_id,
                                                 data_store_brain.brain_id)
-    convert_data_store_proto.called_once_with(data_store_brain)
+    convert_proto.called_once_with(data_store_brain)
 
   def test_missing_brain_spec(self):
     request = falken_service_pb2.CreateBrainRequest(

@@ -179,7 +179,7 @@ class ProtoConverter:
           f'converted to {target_field.name}.')
 
   @staticmethod
-  def convert_data_store_proto(data_store_proto):
+  def convert_proto(data_store_proto):
     """Converts a data_store proto to a falken.common.proto.
 
     Args:

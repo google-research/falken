@@ -44,8 +44,10 @@ class ListBrainsHandlerTest(absltest.TestCase):
 
   def test_list_brains_no_project_id(self):
     mock_context = mock.Mock()
-    list_brains_handler.ListBrains(
-        falken_service_pb2.ListBrainsRequest(), mock_context, None)
+    mock_context.abort.side_effect = Exception()
+    with self.assertRaises(Exception):
+      list_brains_handler.ListBrains(
+          falken_service_pb2.ListBrainsRequest(), mock_context, None)
     mock_context.abort.assert_called_once_with(
         code_pb2.INVALID_ARGUMENT,
         'Project ID not specified in the ListBrains call.')

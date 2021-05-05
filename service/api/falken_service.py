@@ -22,6 +22,7 @@ from absl import flags
 from absl import logging
 from api import create_brain_handler
 from api import create_session_handler
+from api import get_session_handler
 from api import list_brains_handler
 from api import resource_id
 
@@ -127,7 +128,7 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def GetSession(self, request, context):
     """Retrieves a Session by ID."""
     self._validate_project_and_api_key(request, context)
-    raise NotImplementedError('Method not implemented!')
+    return get_session_handler.GetSession(request, context, self.data_store)
 
   def GetSessionByIndex(self, request, context):
     """Retrieves a Session by index."""

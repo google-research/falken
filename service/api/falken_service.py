@@ -21,6 +21,7 @@ from absl import app
 from absl import flags
 from absl import logging
 from api import create_brain_handler
+from api import create_session_handler
 from api import list_brains_handler
 from api import resource_id
 
@@ -85,14 +86,10 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
     if not request.project_id:
       context.abort(code_pb2.UNAUTHENTICATED,
                     'No project ID set in the request.')
-      return
-    metadata = context.invocation_metadata()
-    api_key_list = [kv[1] for kv in metadata if kv[0] == _API_METADATA_KEY]
-    if not api_key_list:
+    api_key = resource_id.extract_metadata_value(context, _API_METADATA_KEY)
+    if not api_key:
       context.abort(code_pb2.UNAUTHENTICATED,
                     'No API key found in the metadata.')
-      return
-    api_key = api_key_list[0]
     project_id = request.project_id
     api_key_for_project = self.data_store.read_project(project_id).api_key
     if api_key_for_project != api_key:
@@ -100,7 +97,6 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
           code_pb2.UNAUTHENTICATED,
           f'Project ID {project_id} and API key {api_key} does not match. '
           f'Found {api_key_for_project} instead.')
-    return
 
   def CreateBrain(self, request, context):
     """Creates a new brain from a BrainSpec."""
@@ -120,7 +116,8 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def CreateSession(self, request, context):
     """Creates a Session to begin training using the given Brain."""
     self._validate_project_and_api_key(request, context)
-    raise NotImplementedError('Method not implemented!')
+    return create_session_handler.CreateSession(
+        request, context, self.data_store)
 
   def GetSessionCount(self, request, context):
     """Retrieves session count for a given brain."""

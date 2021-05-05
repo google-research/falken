@@ -19,6 +19,7 @@ import common.generate_protos  # pylint: disable=g-bad-import-order,unused-impor
 import brain_pb2
 import data_store_pb2
 from google.protobuf import timestamp_pb2
+import session_pb2
 
 
 class ProtoConverter:
@@ -70,6 +71,8 @@ class ProtoConverter:
     field_descriptor = target_proto.DESCRIPTOR.fields_by_name[field_name]
     if field_descriptor.type == field_descriptor.TYPE_MESSAGE:
       getattr(target_proto, field_name).CopyFrom(value)
+    elif field_descriptor.label == field_descriptor.LABEL_REPEATED:
+      getattr(target_proto, field_name).extend(value)
     else:
       setattr(target_proto, field_name, value)
 
@@ -88,7 +91,10 @@ class ProtoConverter:
       ValueError: If the source proto type does not map to any proto.
     """
     if not ProtoConverter._PROTO_MAP:
-      ProtoConverter._PROTO_MAP = {data_store_pb2.Brain: brain_pb2.Brain}
+      ProtoConverter._PROTO_MAP = {
+          data_store_pb2.Brain: brain_pb2.Brain,
+          data_store_pb2.Session: session_pb2.Session
+      }
     target_proto_type = ProtoConverter._PROTO_MAP.get(source_proto_type)
     if not target_proto_type:
       raise ValueError(
@@ -113,6 +119,9 @@ class ProtoConverter:
       ProtoConverter._PROTO_FIELD_NAME_MAP = {
           data_store_pb2.Brain: {
               'name': 'display_name',
+          },
+          data_store_pb2.Session: {
+              'session_id': 'name',
           },
           None: {
               'created_micros': 'create_time',

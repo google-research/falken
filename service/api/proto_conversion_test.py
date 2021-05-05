@@ -25,6 +25,7 @@ from api import test_constants
 import common.generate_protos  # pylint: disable=unused-import
 import brain_pb2
 import data_store_pb2
+import session_pb2
 from google.protobuf import text_format
 from google.protobuf import timestamp_pb2
 
@@ -45,6 +46,12 @@ class ProtoConversionTest(absltest.TestCase):
     self.assertEqual(
         proto_conversion.ProtoConverter._get_target_proto(data_store_pb2.Brain),
         brain_pb2.Brain)
+
+  def test_get_target_proto_session(self):
+    self.assertEqual(
+        proto_conversion.ProtoConverter._get_target_proto(
+            data_store_pb2.Session),
+        session_pb2.Session)
 
   def test_get_target_proto_not_found(self):
     with self.assertRaisesWithLiteralMatch(

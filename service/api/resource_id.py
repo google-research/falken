@@ -25,3 +25,20 @@ def generate_resource_id():
 
 def generate_base64_id():
   return base64.b64encode(uuid.uuid4().bytes).decode('utf-8')
+
+
+def extract_metadata_value(context, key):
+  """Extract value from server-side context metadata given a key.
+
+  Args:
+    context: RPC context containing metadata such as the user-agent.
+    key: Key existing in the metadata, such as 'user-agent'.
+
+  Returns:
+    Value string, e.g. 'grpc-c/16.0.0 (linux; chttp2)'
+  """
+  metadata = context.invocation_metadata()
+  value_list = [kv[1] for kv in metadata if kv[0] == key]
+  if value_list:
+    return value_list[0]
+  return ''

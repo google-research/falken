@@ -149,6 +149,7 @@ class FalkenServiceTest(absltest.TestCase):
     request = mock.Mock()
     request.project_id = 'test_project_id'
     context = mock.Mock()
+    context.abort.side_effect = Exception()
     context.invocation_metadata.return_value = [
         (falken_service._API_METADATA_KEY, 'test_api_key')
     ]
@@ -168,9 +169,12 @@ class FalkenServiceTest(absltest.TestCase):
       self, unused_ds, unused_create_api_keys):
     """Test validation of project and api key when api key is not set."""
     context = mock.Mock()
+    context.abort.side_effect = Exception()
     context.invocation_metadata.return_value = []
-    falken_service.FalkenService()._validate_project_and_api_key(
-        mock.Mock(), context)
+
+    with self.assertRaises(Exception):
+      falken_service.FalkenService()._validate_project_and_api_key(
+          mock.Mock(), context)
     context.abort.assert_called_with(code_pb2.UNAUTHENTICATED,
                                      'No API key found in the metadata.')
 
@@ -180,13 +184,16 @@ class FalkenServiceTest(absltest.TestCase):
       self, unused_ds, unused_create_api_keys):
     """Test validation of project and api key when project ID is not set."""
     context = mock.Mock()
+    context.abort.side_effect = Exception()
     context.invocation_metadata.return_value = [
         (falken_service._API_METADATA_KEY, 'test_api_key')
     ]
     request = mock.Mock()
     request.project_id = ''
-    falken_service.FalkenService()._validate_project_and_api_key(
-        request, context)
+
+    with self.assertRaises(Exception):
+      falken_service.FalkenService()._validate_project_and_api_key(
+          request, context)
     context.abort.assert_called_with(code_pb2.UNAUTHENTICATED,
                                      'No project ID set in the request.')
 
@@ -196,6 +203,7 @@ class FalkenServiceTest(absltest.TestCase):
       self, ds, unused_create_api_keys):
     """Test validation of project and api key when api key does not match."""
     context = mock.Mock()
+    context.abort.side_effect = Exception()
     context.invocation_metadata.return_value = [
         (falken_service._API_METADATA_KEY, 'test_api_key')
     ]
@@ -206,8 +214,9 @@ class FalkenServiceTest(absltest.TestCase):
         project_id='test_project_id', api_key='different_api_key')
     ds.return_value = datastore
 
-    falken_service.FalkenService()._validate_project_and_api_key(
-        request, context)
+    with self.assertRaises(Exception):
+      falken_service.FalkenService()._validate_project_and_api_key(
+          request, context)
     context.abort.assert_called_with(
         code_pb2.UNAUTHENTICATED,
         'Project ID test_project_id and API key test_api_key does not match. '

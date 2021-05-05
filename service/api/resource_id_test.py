@@ -43,5 +43,14 @@ class ResourceIdTest(absltest.TestCase):
     uuid4.called_once_with()
     b64encode.called_once_with(mock_uuid4.bytes)
 
+  def test_extract_metadata_value(self):
+    mock_context = mock.Mock()
+    mock_context.invocation_metadata.return_value = [
+        ('user-agent', 'grpc-c/16.0.0 (linux; chttp2)')
+    ]
+    self.assertEqual(resource_id.extract_metadata_value(
+        mock_context, 'user=agent'),
+                     'grpc-c/16.0.0 (linux; chttp2)')
+
 if __name__ == '__main__':
   absltest.main()

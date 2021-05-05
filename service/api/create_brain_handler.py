@@ -38,7 +38,7 @@ def CreateBrain(request, context, data_store):
   Stores the brain in data_store and converts the data_store to the API-accepted
   proto and returns it.
 
-  Aborts the RPC when the spec is invalid.
+  Aborts the RPC when the brain spec is invalid.
 
   Args:
     request: falken_service_pb2.CreateBrainRequest containing information about
@@ -49,6 +49,9 @@ def CreateBrain(request, context, data_store):
   Returns:
     brain: brain_pb2.Brain proto object of the brain that was just created.
   """
+  logging.debug(
+      'CreateBrain called for project %s and brain_spec %s for brain '
+      'name %s.', request.project_id, request.brain_spec, request.display_name)
   try:
     _ = specs.ProtobufNode.from_spec(request.brain_spec)
 

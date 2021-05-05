@@ -333,6 +333,7 @@ class FalkenResourceId(ResourceId):
                       'offline_evaluations': None,
                       'assignments': None,
                       'models': None,
+                      'serialized_models': None,
                   },
                   'snapshots': None,
               }
@@ -347,6 +348,7 @@ class FalkenResourceId(ResourceId):
           'online_evaluations': 'online_evaluation',
           'assignments': 'assignment',
           'models': 'model',
+          'serialized_models': 'serialized_model',
           'snapshots': 'snapshot'
       })
 

@@ -108,6 +108,7 @@ class ResourceIdTest(parameterized.TestCase):
       'projects/p0/brains/b0/sessions/s0/offline_evaluations/e0',
       'projects/p0/brains/b0/sessions/s0/assignments/a0',
       'projects/p0/brains/b0/sessions/s0/models/m0',
+      'projects/p0/brains/b0/sessions/s0/serialized_models/m0',
       'projects/p0/brains/b0/sessions/s0',
       'projects/p0/brains/b0/snapshots/s0',
       'projects/p0')

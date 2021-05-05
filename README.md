@@ -20,5 +20,7 @@ This repository provides:
   models.
 - [C++](sdk/cpp) and [Unity](sdk/unity) SDKs and to integrate into your game
   to train models.
-- [C++](environments/cpp) and [Unity](environments/unity) that you can use to
-  experiment with Falken.
+- [C++](environments/cpp) and [Unity](environments/unity) environments that
+  you can use to experiment with Falken.
+
+**NOTE**: This is not an officially supported Google product.

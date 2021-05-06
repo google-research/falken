@@ -38,16 +38,15 @@ class GetSessionHandlerTest(absltest.TestCase):
           falken_service_pb2.GetSessionRequest(), mock_context, None)
     mock_context.abort.assert_called_once_with(
         code_pb2.INVALID_ARGUMENT,
-        'Project ID, brain ID, session ID must be specified in '
+        'Project ID, brain ID, and session ID must be specified in '
         'GetSessionRequest.')
 
-  @mock.patch.object(proto_conversion.ProtoConverter, 'convert_proto')
-  def test_get_session(self, convert_proto):
+  @mock.patch.object(get_session_handler, '_read_and_convert_session')
+  def test_get_session(self, read_and_convert_session):
     mock_context = mock.Mock()
     mock_context.abort.side_effect = Exception()
     mock_ds = mock.Mock()
-    mock_ds.read_session.return_value = data_store_pb2.Session()
-    convert_proto.return_value = session_pb2.Session()
+    read_and_convert_session.return_value = session_pb2.Session()
 
     self.assertEqual(
         get_session_handler.GetSession(
@@ -56,9 +55,76 @@ class GetSessionHandlerTest(absltest.TestCase):
                 brain_id='test_brain_id',
                 session_id='test_session_id'),
             mock_context, mock_ds),
-        convert_proto.return_value)
+        read_and_convert_session.return_value)
 
     mock_context.abort.assert_not_called()
+    read_and_convert_session.assert_called_once_with(
+        mock_ds, 'test_project_id', 'test_brain_id', 'test_session_id')
+
+  def test_get_session_by_index_bad_request(self):
+    mock_context = mock.Mock()
+    mock_context.abort.side_effect = Exception()
+    with self.assertRaises(Exception):
+      get_session_handler.GetSessionByIndex(
+          falken_service_pb2.GetSessionByIndexRequest(), mock_context, None)
+    mock_context.abort.assert_called_once_with(
+        code_pb2.INVALID_ARGUMENT,
+        'Project ID, brain ID, and session index must be specified in '
+        'GetSessionByIndexRequest.')
+
+  def test_get_session_by_index_session_not_found(self):
+    mock_context = mock.Mock()
+    mock_context.abort.side_effect = Exception()
+    mock_ds = mock.Mock()
+    mock_ds.list_sessions.return_value = ([], None)
+
+    with self.assertRaises(Exception):
+      get_session_handler.GetSessionByIndex(
+          falken_service_pb2.GetSessionByIndexRequest(
+              project_id='test_project_id',
+              brain_id='test_brain_id',
+              session_index=20), mock_context, mock_ds)
+    mock_context.abort.assert_called_once_with(
+        code_pb2.INVALID_ARGUMENT,
+        'Session at index 20 was not found.')
+    mock_ds.list_sessions.assert_called_once_with(
+        'test_project_id', 'test_brain_id', 21)
+
+  @mock.patch.object(get_session_handler, '_read_and_convert_session')
+  def test_get_session_by_index(self, read_and_convert_session):
+    mock_context = mock.Mock()
+    mock_context.abort.side_effect = Exception()
+    mock_ds = mock.Mock()
+    mock_ds.list_sessions.return_value = (
+        ['test_session_id_0', 'test_session_id_1', 'test_session_id_2'], None)
+    read_and_convert_session.return_value = session_pb2.Session()
+
+    self.assertEqual(
+        get_session_handler.GetSessionByIndex(
+            falken_service_pb2.GetSessionByIndexRequest(
+                project_id='test_project_id',
+                brain_id='test_brain_id',
+                session_index=2),
+            mock_context, mock_ds),
+        read_and_convert_session.return_value)
+
+    mock_context.abort.assert_not_called()
+    mock_ds.list_sessions.assert_called_once_with(
+        'test_project_id', 'test_brain_id', 3)
+    read_and_convert_session.assert_called_once_with(
+        mock_ds, 'test_project_id', 'test_brain_id', 'test_session_id_2')
+
+  @mock.patch.object(proto_conversion.ProtoConverter, 'convert_proto')
+  def test_read_and_convert_session(self, convert_proto):
+    mock_ds = mock.Mock()
+    mock_ds.read_session.return_value = data_store_pb2.Session()
+    convert_proto.return_value = session_pb2.Session()
+
+    self.assertEqual(
+        get_session_handler._read_and_convert_session(
+            mock_ds, 'test_project_id', 'test_brain_id', 'test_session_id'),
+        convert_proto.return_value)
+
     mock_ds.read_session.assert_called_once_with(
         'test_project_id', 'test_brain_id', 'test_session_id')
     convert_proto.assert_called_once_with(mock_ds.read_session.return_value)

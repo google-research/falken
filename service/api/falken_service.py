@@ -134,7 +134,8 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def GetSessionByIndex(self, request, context):
     """Retrieves a Session by index."""
     self._validate_project_and_api_key(request, context)
-    raise NotImplementedError('Method not implemented!')
+    return get_session_handler.GetSessionByIndex(
+        request, context, self.data_store)
 
   def ListSessions(self, request, context):
     """Returns a list of Sessions for a given Brain."""

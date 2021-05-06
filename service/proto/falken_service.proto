@@ -227,7 +227,7 @@ message ListEpisodeChunksRequest {
   string episode_id = 7;
 }
 
-// Response to GetSession.
+// Response for ListEpisodeChunks.
 message ListEpisodeChunksResponse {
   // List of episodes in this session.
   repeated falken.proto.EpisodeChunk episode_chunks = 1;

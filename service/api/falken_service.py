@@ -23,7 +23,7 @@ from absl import logging
 from api import create_brain_handler
 from api import create_session_handler
 from api import get_session_handler
-from api import list_brains_handler
+from api import list_handler
 from api import resource_id
 
 import common.generate_protos  # pylint: disable=unused-import
@@ -112,7 +112,8 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def ListBrains(self, request, context):
     """Returns a list of Brains in the project."""
     self._validate_project_and_api_key(request, context)
-    return list_brains_handler.ListBrains(request, context, self.data_store)
+    return list_handler.ListBrainsHandler(
+        request, context, self.data_store).list()
 
   def CreateSession(self, request, context):
     """Creates a Session to begin training using the given Brain."""
@@ -138,7 +139,8 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def ListSessions(self, request, context):
     """Returns a list of Sessions for a given Brain."""
     self._validate_project_and_api_key(request, context)
-    raise NotImplementedError('Method not implemented!')
+    return list_handler.ListSessionsHandler(
+        request, context, self.data_store).list()
 
   def StopSession(self, request, context):
     """Stops an active Session."""
@@ -148,7 +150,8 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def ListEpisodeChunks(self, request, context):
     """Returns all Steps in all Episodes for the Session."""
     self._validate_project_and_api_key(request, context)
-    raise NotImplementedError('Method not implemented!')
+    return list_handler.ListEpisodeChunksHandler(
+        request, context, self.data_store).list()
 
   def SubmitEpisodeChunks(self, request, context):
     """Submits EpisodeChunks."""

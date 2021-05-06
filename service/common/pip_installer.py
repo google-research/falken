@@ -30,6 +30,7 @@ _REQUIRED_PYTHON_MODULES = [
     ('googleapis-common-protos', ''),
     ('flatbuffers', ''),
     ('watchdog', ''),
+    ('flufl.lock', ''),
 ]
 
 _PIP_INSTALL_ARGS = [sys.executable, '-m', 'pip', 'install']

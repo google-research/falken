@@ -15,6 +15,8 @@
 # Lint as: python3
 """Reads and writes data from storage."""
 
+import contextlib
+import datetime
 import glob
 import os
 import os.path
@@ -22,8 +24,14 @@ import re
 import shutil
 
 import braceexpand
+import flufl.lock
 import watchdog.events
 import watchdog.observers
+
+
+class UnableToLockFileError(RuntimeError):
+  """Signals that we were unable to lock a file."""
+  pass
 
 
 class FileMovedEventHandler(watchdog.events.FileSystemEventHandler):
@@ -149,6 +157,62 @@ class FileSystem(object):
       A boolean for whether the file or directory exists.
     """
     return os.path.exists(os.path.join(self._root_path, path))
+
+  def lock_file(self, path, expire_after=60*60):
+    """Locks a file.
+
+     Lock is shared with other files in the same directory (excluding
+     files contained in subdirectories).
+
+    Args:
+      path: Path of file or directory to lock.
+      expire_after: How many seconds to wait for the lock to expire.
+        Default is one hour.
+    Returns:
+      A lock object that can be put in a with statement.
+    """
+    path = os.path.join(self._root_path, path)
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    return self._get_lock(self._get_lock_path(path), expire_after)
+
+  def _get_lock_path(self, path):
+    """Gives the path of the lock file corresponding to path.
+
+    Args:
+      path: Path of file or directory to find the lock file for.
+    Returns:
+      The path to the lock file.
+    """
+    return os.path.join(os.path.dirname(path), '.lock')
+
+  @contextlib.contextmanager
+  def _get_lock(self, absolute_path, expire_after):
+    """Gives a context manager that locks the given file.
+
+    Args:
+      absolute_path: Absolute path of the lock file to use.
+      expire_after: How many seconds to wait for the lock to expire.
+        Default is one hour.
+    Yields:
+      Uses an empty yield only for the purposes of implementing the context
+      manager.
+    """
+    lock_failure_text = f'Could not lock file {absolute_path}.'
+
+    lock = flufl.lock.Lock(absolute_path)
+    lock.lifetime = datetime.timedelta(seconds=expire_after)
+    try:
+      # Return immediately if we can't get the lock.
+      lock.lock(timeout=0)
+      if not lock.is_locked:
+        raise UnableToLockFileError(lock_failure_text)
+      yield
+    except (flufl.lock.TimeOutError, flufl.lock.AlreadyLockedError):
+      raise UnableToLockFileError(lock_failure_text)
+    finally:
+      if lock.is_locked:
+        lock.unlock()
 
 
 class FakeFileSystem(object):

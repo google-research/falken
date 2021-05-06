@@ -112,6 +112,17 @@ class FileSystemTest(parameterized.TestCase):
     self.assertEqual(['dir1/trigger.txt'], found_files)
     self._fs.remove_all_file_callbacks()
 
+  def test_lock(self):
+    """Tests locking system."""
+    path = 'dir1/to_lock.txt'
+    with self._fs.lock_file(path):
+      self.assertTrue(self._fs.exists(self._fs._get_lock_path(path)))
+      with self.assertRaises(file_system.UnableToLockFileError):
+        with self._fs.lock_file(path):
+          pass
+
+    self.assertFalse(self._fs.exists(self._fs._get_lock_path(path)))
+
 
 if __name__ == '__main__':
   absltest.main()

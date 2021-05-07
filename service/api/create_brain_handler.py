@@ -22,6 +22,7 @@ import data_store_pb2
 import traceback
 
 from absl import logging
+from api import data_cache
 from api import proto_conversion
 from api import resource_id
 from learner.brains import specs
@@ -68,5 +69,5 @@ def CreateBrain(request, context, data_store):
       brain_spec=request.brain_spec)
   data_store.write_brain(write_data_store_brain)
   return proto_conversion.ProtoConverter.convert_proto(
-      data_store.read_brain(write_data_store_brain.project_id,
-                            write_data_store_brain.brain_id))
+      data_cache.get_brain(data_store, write_data_store_brain.project_id,
+                           write_data_store_brain.brain_id))

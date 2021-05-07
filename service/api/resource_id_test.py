@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for proto_conversion."""
+"""Tests for resource_id."""
 
 import base64
 from unittest import mock

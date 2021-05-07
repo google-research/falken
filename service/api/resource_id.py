@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Creates resource_ids for the project."""
+"""Handles resource ids for the project."""
 
 import base64
 import uuid

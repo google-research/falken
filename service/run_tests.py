@@ -53,6 +53,7 @@ _DEFAULT_SUBPROCESS_TESTS = [
 _DEFAULT_TEST_MODULES = [
     'api.create_brain_handler_test',
     'api.create_session_handler_test',
+    'api.data_cache_test',
     'api.get_session_handler_test',
     'api.list_handler_test',
     'api.falken_service_test',

@@ -209,6 +209,7 @@ _ACTION_SPEC = """
 
 
 _ACTION_DATA = """
+  source: 2
   actions {
     category {
       value: 1
@@ -758,15 +759,27 @@ class ProtobufValidatorTest(parameterized.TestCase):
 
   def test_check_action_data_valid(self):
     """Check a valid ActionData."""
-    data = action_pb2.ActionData()
+    data = action_pb2.ActionData(
+        source=action_pb2.ActionData.HUMAN_DEMONSTRATION)
     data.actions.add()
     spec = action_pb2.ActionSpec()
     spec.actions.add()
     specs.ProtobufValidator.check_data(data, spec, 'actions', True)
 
+  def test_check_action_data_no_source(self):
+    """Check ActionData with no source."""
+    data = action_pb2.ActionData()
+    data.actions.add()
+    spec = action_pb2.ActionSpec()
+    spec.actions.add()
+    with self.assertRaisesWithLiteralMatch(
+        specs.TypingError, 'ActionData action data\'s source is unknown.'):
+      specs.ProtobufValidator.check_data(data, spec, 'ActionData', True)
+
   def test_check_action_data_mismatched_actions(self):
     """Ensure validation fails when the number of actions mismatch."""
-    data = action_pb2.ActionData()
+    data = action_pb2.ActionData(
+        source=action_pb2.ActionData.HUMAN_DEMONSTRATION)
     spec = action_pb2.ActionSpec()
     spec.actions.add()
     with self.assertRaisesWithLiteralMatch(

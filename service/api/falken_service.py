@@ -25,6 +25,7 @@ from api import create_session_handler
 from api import get_session_handler
 from api import list_handler
 from api import resource_id
+from api import submit_episode_chunks_handler
 
 import common.generate_protos  # pylint: disable=unused-import
 from data_store import data_store
@@ -157,7 +158,8 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def SubmitEpisodeChunks(self, request, context):
     """Submits EpisodeChunks."""
     self._validate_project_and_api_key(request, context)
-    raise NotImplementedError('Method not implemented!')
+    return submit_episode_chunks_handler.submit_episode_chunks(
+        request, context, self.data_store)
 
   def GetModel(self, request, context):
     """Returns a serialized model."""

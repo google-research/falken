@@ -829,11 +829,14 @@ class ProtobufValidator:
       check_spec_class: Whether this method should check the spec proto class.
 
     Raises:
-      TypingError: If the data has a unexpected number of actions.
+      TypingError: If the data has a unexpected number of actions or the action
+        source is unknown.
     """
     if check_spec_class:
       ProtobufValidator._check_spec_proto_class(
           data, spec, action_pb2.ActionSpec, path_prefix)
+    if data.source == action_pb2.ActionData.SOURCE_UNKNOWN:
+      raise TypingError(f'{path_prefix} action data\'s source is unknown.')
     ProtobufValidator._check_repeated_count_matches(
         data.actions, 'actions', 'actions', spec.actions, 'actions',
         path_prefix)

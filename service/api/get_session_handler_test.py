@@ -34,7 +34,7 @@ class GetSessionHandlerTest(absltest.TestCase):
     mock_context = mock.Mock()
     mock_context.abort.side_effect = Exception()
     with self.assertRaises(Exception):
-      get_session_handler.GetSession(
+      get_session_handler.get_session(
           falken_service_pb2.GetSessionRequest(), mock_context, None)
     mock_context.abort.assert_called_once_with(
         code_pb2.INVALID_ARGUMENT,
@@ -49,7 +49,7 @@ class GetSessionHandlerTest(absltest.TestCase):
     read_and_convert_session.return_value = session_pb2.Session()
 
     self.assertEqual(
-        get_session_handler.GetSession(
+        get_session_handler.get_session(
             falken_service_pb2.GetSessionRequest(
                 project_id='test_project_id',
                 brain_id='test_brain_id',
@@ -65,7 +65,7 @@ class GetSessionHandlerTest(absltest.TestCase):
     mock_context = mock.Mock()
     mock_context.abort.side_effect = Exception()
     with self.assertRaises(Exception):
-      get_session_handler.GetSessionByIndex(
+      get_session_handler.get_session_by_index(
           falken_service_pb2.GetSessionByIndexRequest(), mock_context, None)
     mock_context.abort.assert_called_once_with(
         code_pb2.INVALID_ARGUMENT,
@@ -79,7 +79,7 @@ class GetSessionHandlerTest(absltest.TestCase):
     mock_ds.list_sessions.return_value = ([], None)
 
     with self.assertRaises(Exception):
-      get_session_handler.GetSessionByIndex(
+      get_session_handler.get_session_by_index(
           falken_service_pb2.GetSessionByIndexRequest(
               project_id='test_project_id',
               brain_id='test_brain_id',
@@ -100,7 +100,7 @@ class GetSessionHandlerTest(absltest.TestCase):
     read_and_convert_session.return_value = session_pb2.Session()
 
     self.assertEqual(
-        get_session_handler.GetSessionByIndex(
+        get_session_handler.get_session_by_index(
             falken_service_pb2.GetSessionByIndexRequest(
                 project_id='test_project_id',
                 brain_id='test_brain_id',

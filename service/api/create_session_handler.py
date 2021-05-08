@@ -25,7 +25,7 @@ from google.rpc import code_pb2
 import session_pb2
 
 
-def CreateSession(request, context, data_store):  # pylint: disable=invalid-name
+def create_session(request, context, data_store):
   """Creates a new session.
 
   Stores the session in data_store and converts the data_store to the

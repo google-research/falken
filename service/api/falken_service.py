@@ -103,7 +103,7 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def CreateBrain(self, request, context):
     """Creates a new brain from a BrainSpec."""
     self._validate_project_and_api_key(request, context)
-    return create_brain_handler.CreateBrain(request, context, self.data_store)
+    return create_brain_handler.create_brain(request, context, self.data_store)
 
   def GetBrain(self, request, context):
     """Retrieves an existing Brain."""
@@ -119,7 +119,7 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def CreateSession(self, request, context):
     """Creates a Session to begin training using the given Brain."""
     self._validate_project_and_api_key(request, context)
-    return create_session_handler.CreateSession(
+    return create_session_handler.create_session(
         request, context, self.data_store)
 
   def GetSessionCount(self, request, context):
@@ -130,12 +130,12 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def GetSession(self, request, context):
     """Retrieves a Session by ID."""
     self._validate_project_and_api_key(request, context)
-    return get_session_handler.GetSession(request, context, self.data_store)
+    return get_session_handler.get_session(request, context, self.data_store)
 
   def GetSessionByIndex(self, request, context):
     """Retrieves a Session by index."""
     self._validate_project_and_api_key(request, context)
-    return get_session_handler.GetSessionByIndex(
+    return get_session_handler.get_session_by_index(
         request, context, self.data_store)
 
   def ListSessions(self, request, context):

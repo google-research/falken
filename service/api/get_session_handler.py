@@ -22,7 +22,7 @@ import common.generate_protos  # pylint: disable=unused-import
 from google.rpc import code_pb2
 
 
-def GetSession(request, context, data_store):
+def get_session(request, context, data_store):
   """Retrieve an existing session for a given brain by name.
 
   Args:
@@ -53,7 +53,7 @@ def GetSession(request, context, data_store):
       data_store, request.project_id, request.brain_id, request.session_id)
 
 
-def GetSessionByIndex(request, context, data_store):
+def get_session_by_index(request, context, data_store):
   """Retrieve a session from a given brain from the data store by index.
 
   Args:

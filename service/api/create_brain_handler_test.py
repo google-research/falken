@@ -77,7 +77,7 @@ class CreateBrainHandlerTest(absltest.TestCase):
     convert_proto.return_value = expected_brain
 
     self.assertEqual(
-        create_brain_handler.CreateBrain(request, context, self._ds),
+        create_brain_handler.create_brain(request, context, self._ds),
         expected_brain)
 
     generate_resource_id.assert_called_once_with()
@@ -91,7 +91,7 @@ class CreateBrainHandlerTest(absltest.TestCase):
         display_name='test_brain', brain_spec=None, project_id='test_project')
     context = mock.Mock()
     self.assertIsNone(
-        create_brain_handler.CreateBrain(request, context, self._ds))
+        create_brain_handler.create_brain(request, context, self._ds))
     context.abort.assert_called_with(
         code_pb2.INVALID_ARGUMENT,
         'Unable to create Brain. BrainSpec spec invalid. Error: '

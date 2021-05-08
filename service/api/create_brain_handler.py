@@ -33,7 +33,7 @@ from google.rpc import status_pb2
 from google.rpc import error_details_pb2
 
 
-def CreateBrain(request, context, data_store):
+def create_brain(request, context, data_store):
   """Creates a new brain.
 
   Stores the brain in data_store and converts the data_store to the API-accepted

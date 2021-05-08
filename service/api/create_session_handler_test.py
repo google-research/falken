@@ -101,7 +101,7 @@ class CreateSessionHandlerTest(parameterized.TestCase):
         session_id=previous_session.session_id)
 
     self.assertEqual(
-        create_session_handler.CreateSession(request, context, self._ds),
+        create_session_handler.create_session(request, context, self._ds),
         expected_session)
 
     validate_session.assert_called_once_with(

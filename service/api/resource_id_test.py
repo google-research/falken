@@ -49,7 +49,7 @@ class ResourceIdTest(absltest.TestCase):
         ('user-agent', 'grpc-c/16.0.0 (linux; chttp2)')
     ]
     self.assertEqual(resource_id.extract_metadata_value(
-        mock_context, 'user=agent'),
+        mock_context, 'user-agent'),
                      'grpc-c/16.0.0 (linux; chttp2)')
 
 if __name__ == '__main__':

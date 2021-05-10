@@ -61,9 +61,10 @@ def create_session(request, context, data_store):
       project_id=request.spec.project_id,
       brain_id=request.spec.brain_id,
       session_id=resource_id.generate_resource_id(),
-      starting_snapshot_ids=[starting_snapshot_id],
       session_type=request.spec.session_type,
       user_agent=resource_id.extract_metadata_value(context, 'user-agent'))
+  if starting_snapshot_id:
+    write_data_store_session.starting_snapshot_ids.append(starting_snapshot_id)
 
   data_store.write_session(write_data_store_session)
   return proto_conversion.ProtoConverter.convert_proto(

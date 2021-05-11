@@ -14,27 +14,109 @@
 
 """Tests for resource_id."""
 
+import collections
+
 from absl.testing import absltest
 from absl.testing import parameterized
 from data_store import resource_id
+
+TestCase = collections.namedtuple(
+    'TestCase',
+    ['spec', 'attribute_map', 'id_string', 'collection_map'])
 
 # Shared testcases to test translation back and forth between id_string
 # and collection map representation. A missing value indicates an expected
 # error result.
 COMPUTE_FUNCTION_TESTCASES = [
-    ({'A'}, 'A/0', {'A': '0'}),
-    ({'A'}, 'A/0/B/1', None),
-    ({'A'}, 'B/1/A/0', None),
-    ({'A'}, None, {'A': '0', 'B': '1'}),
-    ({'A': {'B'}}, 'A/0/B/1', {'A': '0', 'B': '1'}),
-    ({'A': {'B', 'C'}}, 'A/0/B/1', {'A': '0', 'B': '1'}),
-    ({'A': {'B', 'C'}}, 'A/0/C/2', {'A': '0', 'C': '2'}),
-    ({'A': {'B': {'C'}}}, 'A/0/B/1/C/2', {'A': '0', 'B': '1', 'C': '2'}),
-    ({'A': {'B': {'C'}}}, 'A/0/B/1/C/2/', None),  # trailing '/'
-    ({'A': {'B': {'C'}}}, '/A/0/B/1/C/2', None),  # leading '/'
-    ({'A': {'B': {'C'}}}, 'A//B/1/C/2', None),  # Empty element.
-    ({'A': {'B': {'C'}}}, 'A/0//1/C/2', None),  # Empty collection.
-    ({'A': {'B': {'C'}}}, '/A/B/1/C/2', None)  # Missing element.
+    # Tests without attributes.
+    TestCase(
+        spec={'A'},
+        attribute_map=None,
+        id_string='A/0',
+        collection_map={'A': '0'}),
+    TestCase(
+        spec={'A'},
+        attribute_map=None,
+        id_string='A/0/B/1',
+        collection_map=None),
+    TestCase(
+        spec={'A'},
+        attribute_map=None,
+        id_string='B/1/A/0',
+        collection_map=None),
+    TestCase(
+        spec={'A'},
+        attribute_map=None,
+        id_string=None,
+        collection_map={'A': '0', 'B': '1'}),
+    TestCase(
+        spec={'A': {'B'}},
+        attribute_map=None,
+        id_string='A/0/B/1',
+        collection_map={'A': '0', 'B': '1'}),
+    TestCase(
+        spec={'A': {'B', 'C'}},
+        attribute_map=None,
+        id_string='A/0/B/1',
+        collection_map={'A': '0', 'B': '1'}),
+    TestCase(
+        spec={'A': {'B', 'C'}},
+        attribute_map=None,
+        id_string='A/0/C/2',
+        collection_map={'A': '0', 'C': '2'}),
+    TestCase(
+        spec={'A': {'B': {'C'}}},
+        attribute_map=None,
+        id_string='A/0/B/1/C/2',
+        collection_map={'A': '0', 'B': '1', 'C': '2'}),
+    TestCase(  # trailing '/'
+        spec={'A': {'B': {'C'}}},
+        attribute_map=None,
+        id_string='A/0/B/1/C/2/',
+        collection_map=None),
+    TestCase(  # leading '/'
+        spec={'A': {'B': {'C'}}},
+        attribute_map=None,
+        id_string='/A/0/B/1/C/2',
+        collection_map=None),
+    TestCase(  # Empty element.
+        spec={'A': {'B': {'C'}}},
+        attribute_map=None,
+        id_string='A//B/1/C/2',
+        collection_map=None),
+    TestCase(  # Empty collection.
+        spec={'A': {'B': {'C'}}},
+        attribute_map=None,
+        id_string='A/0//1/C/2',
+        collection_map=None),
+    TestCase(  # Missing element.
+        spec={'A': {'B': {'C'}}},
+        attribute_map=None,
+        id_string='/A/B/1/C/2',
+        collection_map=None),
+
+    # Tests with attributes.
+    TestCase(
+        spec={'A'},
+        attribute_map={'A': 'b'},
+        id_string='A/0/b',
+        collection_map={'A': '0', resource_id.ATTRIBUTE: 'b'}),
+    TestCase(
+        spec={'A'},
+        attribute_map=None,
+        id_string=None,
+        collection_map={'A': '0', resource_id.ATTRIBUTE: 'b'}),
+    TestCase(
+        spec={'A'},
+        attribute_map=None,
+        id_string='A/0/b',
+        collection_map=None),
+    TestCase(
+        spec={'A': {'B': {'C'}}},
+        attribute_map={'C': 'test_attr'},
+        id_string='A/1/B/2/C/3/test_attr',
+        collection_map={
+            'A': '1', 'B': '2', 'C': '3', resource_id.ATTRIBUTE: 'test_attr'}),
 ]
 
 
@@ -54,9 +136,10 @@ class ResourceSpecTest(parameterized.TestCase):
 class ResourceIdTest(parameterized.TestCase):
 
   @parameterized.parameters(*COMPUTE_FUNCTION_TESTCASES)
-  def test_compute_collection_map(self, spec, id_string, collection_map):
+  def test_compute_collection_map(
+      self, spec, attribute_map, id_string, collection_map):
     """Test translation of parts into a collection_map using a spec."""
-    spec = resource_id.ResourceSpec(spec)
+    spec = resource_id.ResourceSpec(spec, attribute_map=attribute_map)
     if id_string:  # Pick out relevant shared testcases.
       parts = id_string.split('/') if id_string else None
       if collection_map:
@@ -68,9 +151,9 @@ class ResourceIdTest(parameterized.TestCase):
           resource_id.ResourceId._compute_collection_map(spec, parts)
 
   @parameterized.parameters(*COMPUTE_FUNCTION_TESTCASES)
-  def test_compute_parts(self, spec, id_string, collection_map):
+  def test_compute_parts(self, spec, attribute_map, id_string, collection_map):
     """Test translation of collection_map into parts using a spec."""
-    spec = resource_id.ResourceSpec(spec)
+    spec = resource_id.ResourceSpec(spec, attribute_map=attribute_map)
     if collection_map:  # Pick out relevant shared testcases.
       if id_string:
         parts = id_string.split('/') if id_string else None
@@ -81,6 +164,30 @@ class ResourceIdTest(parameterized.TestCase):
       else:
         with self.assertRaises(resource_id.InvalidResourceError):
           resource_id.ResourceId._compute_parts(spec, collection_map)
+
+  def test_from_string_attribute_not_supported(self):
+    spec = resource_id.ResourceSpec(
+        {'foo'},
+        attribute_map={'foo': 'cherry'})
+    resource_id.ResourceId(spec, 'foo/1/cherry')  # cherry is a valid attribute
+    with self.assertRaisesRegex(resource_id.InvalidResourceError,
+                                '.*"foo".*"banana".*'):
+      resource_id.ResourceId(spec, 'foo/1/banana')
+
+  def test_from_map_attribute_not_supported(self):
+    spec = resource_id.ResourceSpec(
+        {'foo'},
+        attribute_map={'foo': 'cherry'})
+    resource_id.ResourceId(
+        spec,
+        foo='1',
+        attribute='cherry')
+    with self.assertRaisesRegex(resource_id.InvalidResourceError,
+                                '.*"foo".*"banana".*'):
+      resource_id.ResourceId(
+          spec,
+          foo='1',
+          attribute='banana')
 
   def test_specless_from_id_string(self):
     """Test that id strings can be translated into resource ids without spec."""

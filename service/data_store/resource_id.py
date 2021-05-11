@@ -28,15 +28,19 @@ class InvalidSpecError(Exception):
 class ResourceSpec(dict):
   """A syntax specification for a class of valid resource IDs.
 
-  A resource ID is a path-like string of the following form:
+  A resource ID is a path-like string of one of the following forms:
     "/collection_1/elem_id_1/.../collection_k/elem_id_k"
+  or
+    "/collection_1/elem_id_1/.../collection_k/elem_id_k/attribute"
 
-  For example: "/authors/RWilson/books/Illuminatus", where
+  For example: "/authors/RWilson/books/Illuminatus/date_published", where
   "authors" and "books" are collections, and "RWilson" and "Illuminatus" are,
-  respectively, IDs of the corresponding elements in those collections.
+  respectively, IDs of the corresponding elements in those collections and
+  'date_published' is an attribute of books.
 
   A resource spec represents the hierarchy of collections for the purpose of
-  ResourceID validation and provides friendly names for the accessor functions.
+  ResourceID validation, a specification valid attributes for each collection
+  type and friendly names for the accessor functions.
 
   Consider the example spec below:
 
@@ -46,12 +50,16 @@ class ResourceSpec(dict):
         'countries': 'country',
         'celebrities': 'celebrity',
         'dishes': 'dish',
-        'ingredients': 'ingredient'})
+        'ingredients': 'ingredient'},
+    attributes={
+      'dishes': ['inventor']
+    })
 
   This would admit the following resource IDs:
     /countries/austria
     /countries/austria/celebrities/sigmund_freud
     /countries/austria/dishes/wienerschnitzel
+    /countries/austria/dishes/wienerschnitzel/inventor
     /countries/austria/dishes/wienerschnitzel/ingredients/eggs
 
   Furthermore, the optional accessor_map argument enables aliasing for
@@ -90,6 +98,10 @@ class ResourceSpec(dict):
             f'"{self.accessor_name_to_collection_id[name]}."')
       self.accessor_name_to_collection_id[name] = collection_id
       self.collection_id_to_accessor_name[collection_id] = name
+      if collection_id == ATTRIBUTE or name == ATTRIBUTE:
+        raise InvalidSpecError(
+            f'Reserved name "{ATTRIBUTE}" may not be used for accessor names '
+            'or collection IDs.')
 
     try:
       subnodes = spec_node.values()
@@ -98,7 +110,7 @@ class ResourceSpec(dict):
     for subnode in subnodes:
       self._initialize(subnode, seen, accessor_map)
 
-  def __init__(self, spec_nest, accessor_map=None):
+  def __init__(self, spec_nest, accessor_map=None, attribute_map=None):
     """Create a new spec from a spec dictionary and an optional accessor map.
 
     Args:
@@ -106,12 +118,15 @@ class ResourceSpec(dict):
           See class-level comment.
       accessor_map: A map from collection_ids to friendly names used to access
           this collection in ResourceID instances.
+      attribute_map: A map from collection_ids to attributes supported by
+          elements of that collection.
     Raises:
       InvalidSpecError: If there are problems with the spec or accessor_map.
     """
     if not isinstance(spec_nest, dict):
       spec_nest = {key: None for key in spec_nest}
     super().__init__(spec_nest)
+    self.attribute_map = attribute_map or dict()
     accessor_map = accessor_map or dict()
     self.collection_id_to_accessor_name = dict()
     self.accessor_name_to_collection_id = dict()
@@ -124,21 +139,30 @@ class ResourceSpec(dict):
             f'collection_id in the spec.')
 
 
+# Used as a special key in ResourceId constructor dictionaries.
+# We use a friendly name, so that it can also be used in kwargs.
+ATTRIBUTE = 'attribute'
+
+
 class ResourceId:
   """A class to represent and validate resource ids.
 
   A resource ID is a path-like string
     "/collection_1/elem_id_1/.../collection_k/elem_id_k"
+  or
+    "/collection_1/elem_id_1/.../collection_k/elem_id_k/attribute_name"
 
   See ResourceSpec class comments for examples.
 
   Attributes:
     id_string: A string representation of the resource id, e.g.,
-      'authors/RWilson/books/Illuminatus'.
+      'authors/RWilson/books/Illuminatus/date_published'.
     parts: A list of path parts, e.g.,
-      ['authors', 'RWilson', 'books', 'Illuminatus']
-    collection_map: A map from collection name to element ID, e.g.,
-      {'authors': 'RWilson', 'books': 'Illuminatus'},
+      ['authors', 'RWilson', 'books', 'Illuminatus', 'date_published']
+    collection_map: A map from collection names and the special key
+      ATTRIBUTE to element IDs and attribute names, e.g.,
+          {'authors': 'RWilson', 'books': 'Illuminatus',
+           ATTRIBUTE: 'date_published'},
   """
 
   def __init__(self, resource_spec, id_or_parts=None, **kwargs):
@@ -146,7 +170,7 @@ class ResourceId:
 
     Args:
       resource_spec: A ResourceSpec object describing the hierarchy of
-          collection.
+          collections and supported attributes.
       id_or_parts: A string representing the resource id or a list of strings
           representing individual resource id components.
       **kwargs: Direct assignments of strings to collections. Addressing a
@@ -184,9 +208,6 @@ class ResourceId:
           raise ValueError('Expected string or iterable for "id_or_parts", got '
                            + type(id_or_parts))
         self.id_string = '/'.join(self.parts)
-      if len(self.parts) % 2 != 0:
-        raise InvalidResourceError(
-            'Resource is expected to have an even number of parts.')
       self.collection_map = self._compute_collection_map(
           self._resource_spec, self.parts)
     else:
@@ -199,9 +220,11 @@ class ResourceId:
         try:
           collection_id = (
               resource_spec.accessor_name_to_collection_id[accessor_name])
+          self.collection_map[collection_id] = str(elem_id)
         except KeyError:
-          raise InvalidResourceError('Unknown collection: ' + accessor_name)
-        self.collection_map[collection_id] = str(elem_id)
+          if accessor_name != ATTRIBUTE:
+            raise InvalidResourceError('Unknown collection: ' + accessor_name)
+          self.collection_map[ATTRIBUTE] = str(elem_id)
 
       self.parts = self._compute_parts(
           self._resource_spec, self.collection_map)
@@ -251,18 +274,27 @@ class ResourceId:
 
     Args:
       resource_spec: The resource spec as a dictionary. See class-level comment.
-      parts: A list of strings.
+      parts: A list of strings representing an alternation of collection_id
+        and element_id, possible with a final attribute.
     Returns:
-      A dictionary mapping collection names to collection element IDs.
+      A dictionary mapping collection names to collection element IDs and
+      the special string ATTRIBUTE to the attribute name.
     Raises:
       InvalidResourceError: If parts do not match spec.
     """
     current_spec_node = resource_spec
     collection_map = {}
 
-    if len(parts) % 2 != 0:
+    if len(parts) % 2 == 0:
+      attribute = None
+    else:
+      attribute = None
+      parts, attribute = parts[:-1], parts[-1]
+
+    assert len(parts) % 2 == 0
+    if not parts:
       raise InvalidResourceError(
-          'Spec must have an even number of components')
+          'Spec must have an even, non-zero number of components')
 
     for i in range(0, len(parts), 2):
       collection, elem_id = parts[i], parts[i+1]
@@ -280,6 +312,14 @@ class ResourceId:
       except TypeError:
         current_spec_node = None
 
+    if attribute is not None:
+      last_collection_id = parts[-2]
+      if attribute not in resource_spec.attribute_map.get(
+          last_collection_id, []):
+        raise InvalidResourceError(
+            f'Collection "{last_collection_id}" does not support attribute '
+            f'"{attribute}"')
+      collection_map[ATTRIBUTE] = attribute
     return collection_map
 
   @staticmethod
@@ -294,22 +334,27 @@ class ResourceId:
     Raises:
       InvalidResourceError: If parts do not match spec.
     """
-    keys_to_process = set(collection_map)
+    collection_ids_to_process = set(collection_map)
+    try:
+      collection_ids_to_process.remove(ATTRIBUTE)
+    except KeyError:
+      pass
+
     parts = []
     current_spec_node = resource_spec
 
-    while keys_to_process and current_spec_node:
+    while collection_ids_to_process and current_spec_node:
       handled = False
       for key in current_spec_node:
         if not key:
           raise InvalidResourceError('Collection IDs in spec may not be empty.')
 
-        if key in keys_to_process:
+        if key in collection_ids_to_process:
           parts.append(key)
           parts.append(collection_map[key])
           if not parts[-1]:
             raise InvalidResourceError('Element IDs may not be empty.')
-          keys_to_process.remove(key)
+          collection_ids_to_process.remove(key)
           try:
             current_spec_node = current_spec_node[key]
           except TypeError:
@@ -319,10 +364,25 @@ class ResourceId:
           break
       if not handled:
         break
-    if keys_to_process:
+
+    if collection_ids_to_process:
       raise InvalidResourceError(
-          'Could not match the following keys to spec: '
-          + str(keys_to_process))
+          'Could not match the following collection ids to spec: '
+          + str(collection_ids_to_process))
+    if not parts:
+      raise InvalidResourceError(
+          'Resource does not specify an element within a collection: '
+          + str(collection_map))
+
+    last_collection_id = parts[-2]
+    attribute = collection_map.get(ATTRIBUTE, None)
+    if attribute:
+      if attribute not in resource_spec.attribute_map.get(
+          last_collection_id, []):
+        raise InvalidResourceError(
+            f'Collection "{last_collection_id}" does not support attribute '
+            f'"{attribute}"')
+      parts.append(attribute)
     return parts
 
   def __eq__(self, o):

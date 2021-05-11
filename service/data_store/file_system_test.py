@@ -115,10 +115,10 @@ class FileSystemTest(parameterized.TestCase):
   def test_lock(self):
     """Tests locking system."""
     path = 'dir1/to_lock.txt'
-    with self._fs.lock_file(path):
+    with self._fs.lock_file_context(path):
       self.assertTrue(self._fs.exists(self._fs._get_lock_path(path)))
       with self.assertRaises(file_system.UnableToLockFileError):
-        with self._fs.lock_file(path):
+        with self._fs.lock_file_context(path):
           pass
 
     self.assertFalse(self._fs.exists(self._fs._get_lock_path(path)))

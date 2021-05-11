@@ -206,6 +206,8 @@ class FalkenResourceHandler:
 class ResourceStore:
   """Stores resources with ResourceIDs in a filesystem."""
 
+  _RESOURCE_PREFIX = 'resource.'
+
   def __init__(self, fs: file_system.FileSystem,
                resource_encoder: _FalkenResourceEncoder,
                resource_resolver: FalkenResourceHandler,
@@ -218,7 +220,7 @@ class ResourceStore:
   def _get_filename(self, timestamp_micros: int) -> str:
     """Returns file name from microsecond timestamp."""
     # 16 leading zeros should have us covered until year 3.16e8.
-    return f'{timestamp_micros:016d}'
+    return f'{self._RESOURCE_PREFIX}{timestamp_micros:016d}'
 
   def _get_path(self, res_id: resource_id.ResourceId,
                 timestamp_micros: int) -> str:
@@ -259,7 +261,8 @@ class ResourceStore:
 
   def read_timestamp_micros(self, res_id: resource_id.ResourceId) -> int:
     """Read the timestamp of a resource from the filesystem."""
-    files = self._fs.glob(os.path.join(str(res_id), '*'))
+    files = self._fs.glob(os.path.join(str(res_id),
+                                       f'{self._RESOURCE_PREFIX}*'))
     if not files:
       raise NotFoundError(f'Could not find resource "{res_id}"')
     if len(files) > 1:
@@ -267,7 +270,7 @@ class ResourceStore:
           f'Found more than one file for resource id "{res_id}"')
     (file,) = files
     try:
-      return int(os.path.basename(file))
+      return int(os.path.basename(file)[len(self._RESOURCE_PREFIX):])
     except ValueError:
       raise InternalError(
           f'Could not translate filename to microsecond timestamp: "{file}"')
@@ -342,7 +345,8 @@ class ResourceStore:
     glob_path = os.path.join(str(res_id_glob), '*')
     files = self._fs.glob(glob_path)
     paths = [os.path.dirname(f) for f in files]
-    timestamps = [int(os.path.basename(f)) for f in files]
+    timestamps = [
+        int(os.path.basename(f)[len(self._RESOURCE_PREFIX):]) for f in files]
     by_timestamp = sorted(zip(timestamps, paths))
 
     combined_min_timestamp = min_timestamp_micros

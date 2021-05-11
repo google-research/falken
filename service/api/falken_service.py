@@ -30,6 +30,7 @@ from api import submit_episode_chunks_handler
 import common.generate_protos  # pylint: disable=unused-import
 from data_store import data_store
 from data_store import file_system
+from data_store import resource_id as data_resource_id
 import data_store_pb2
 import falken_service_pb2_grpc
 from google.rpc import code_pb2
@@ -73,7 +74,7 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
       api_key = resource_id.generate_base64_id()
       project = data_store_pb2.Project(
           project_id=project_id, name=project_id, api_key=api_key)
-      self.data_store.write_project(project)
+      self.data_store.write(project)
       logging.info('Generated key for %s: %s', project_id, api_key)
 
   def _validate_project_and_api_key(self, request, context):
@@ -93,12 +94,12 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
       context.abort(code_pb2.UNAUTHENTICATED,
                     'No API key found in the metadata.')
     project_id = request.project_id
-    api_key_for_project = self.data_store.read_project(project_id).api_key
+    api_key_for_project = self.data_store.read(
+        data_resource_id.FalkenResourceId(f'projects/{project_id}')).api_key
     if api_key_for_project != api_key:
       context.abort(
           code_pb2.UNAUTHENTICATED,
-          f'Project ID {project_id} and API key {api_key} does not match. '
-          f'Found {api_key_for_project} instead.')
+          f'Project ID {project_id} and API key {api_key} does not match.')
 
   def CreateBrain(self, request, context):
     """Creates a new brain from a BrainSpec."""

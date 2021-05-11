@@ -24,6 +24,7 @@ from api import proto_conversion
 from api import resource_id
 
 import common.generate_protos  # pylint: disable=unused-import
+from data_store import resource_id as data_resource_id
 import data_store_pb2
 import falken_service_pb2
 from google.protobuf import timestamp_pb2
@@ -87,12 +88,17 @@ class CreateSessionHandlerTest(parameterized.TestCase):
         session_type=request.spec.session_type,
         starting_snapshot_ids=[],
         create_time=timestamp_pb2.Timestamp(seconds=1619726720))
-    self._ds.read_session.side_effect = [previous_session, data_store_session]
-    self._ds.read_snapshot.return_value = data_store_pb2.Snapshot(
+    snapshot = data_store_pb2.Snapshot(
         project_id=request.spec.snapshot_id,
         brain_id=request.spec.brain_id,
         snapshot_id='test_snapshot_id',
         session_id=previous_session.session_id)
+    if snapshot_id:
+      self._ds.read.side_effect = [
+          snapshot, previous_session, data_store_session
+      ]
+    else:
+      self._ds.read.side_effect = [previous_session, data_store_session]
     convert_proto.return_value = expected_session
     self._ds.get_most_recent_snapshot.return_value = data_store_pb2.Snapshot(
         project_id=request.spec.snapshot_id,
@@ -108,26 +114,34 @@ class CreateSessionHandlerTest(parameterized.TestCase):
         request.spec, context, 'test_snapshot_id', previous_session)
     generate_resource_id.assert_called_once_with()
     context.invocation_metadata.assert_called_once_with()
+    expected_read_calls = []
     if snapshot_id:
-      self._ds.read_snapshot.assert_called_once_with(
-          'test_project', 'test_brain_id', 'test_snapshot_id')
+      expected_read_calls.append(
+          mock.call(
+              data_resource_id.FalkenResourceId(
+                  f'projects/{request.spec.project_id}/brains/'
+                  f'{request.spec.brain_id}/snapshots/test_snapshot_id')))
     else:
       self._ds.get_most_recent_snapshot.assert_called_once_with(
           request.spec.project_id, request.spec.brain_id)
-
-    self._ds.write_session.assert_called_once_with(write_session)
-    self._ds.read_session.assert_has_calls([
+    expected_read_calls.extend([
         mock.call(
-            request.spec.project_id, request.spec.brain_id,
-            previous_session.session_id),
+            data_resource_id.FalkenResourceId(
+                f'projects/{request.spec.project_id}/brains/'
+                f'{request.spec.brain_id}/sessions/'
+                f'{previous_session.session_id}')),
         mock.call(
-            request.spec.project_id, request.spec.brain_id,
-            data_store_session.session_id)])
+            data_resource_id.FalkenResourceId(
+                f'projects/{request.spec.project_id}/brains/'
+                f'{request.spec.brain_id}/sessions/'
+                f'{data_store_session.session_id}'))])
+    self._ds.write.assert_called_once_with(write_session)
+    self._ds.read.assert_has_calls(expected_read_calls)
     convert_proto.called_once_with(data_store_session)
 
   def test_get_snapshot_id_and_previous_session_id(self):
     mock_data_store = mock.Mock()
-    mock_data_store.read_snapshot.return_value = data_store_pb2.Snapshot(
+    mock_data_store.read.return_value = data_store_pb2.Snapshot(
         project_id='test_project_id', brain_id='test_brain_id',
         snapshot_id='test_snapshot_id', session_id='test_prev_session_id')
     mock_session_spec = mock.Mock(
@@ -141,8 +155,10 @@ class CreateSessionHandlerTest(parameterized.TestCase):
             mock_data_store),
         (expected_snapshot_id, expected_prev_session_id)
     )
-    mock_data_store.read_snapshot.assert_called_once_with(
-        'test_project_id', 'test_brain_id', 'test_snapshot_id')
+    mock_data_store.read.assert_called_once_with(
+        data_resource_id.FalkenResourceId(
+            'projects/test_project_id/brains/test_brain_id/snapshots/'
+            'test_snapshot_id'))
 
   def test_get_snapshot_id_and_previous_session_id_not_specified(self):
     mock_data_store = mock.Mock()

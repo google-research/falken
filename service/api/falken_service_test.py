@@ -30,6 +30,7 @@ from api import test_constants
 import common.generate_protos  # pylint: disable=unused-import
 import brain_pb2
 from data_store import data_store
+from data_store import resource_id as data_resource_id
 import data_store_pb2
 import falken_service_pb2
 import falken_service_pb2_grpc
@@ -125,7 +126,7 @@ class FalkenServiceTest(absltest.TestCase):
     datastore.return_value = mock_ds
     generate_base64_id.return_value = 'api_key'
     FLAGS.project_ids = ['project_id_1', 'project_id_2']
-    expected_write_project_calls = [
+    expected_write_calls = [
         mock.call(
             data_store_pb2.Project(
                 project_id='project_id_1',
@@ -139,8 +140,8 @@ class FalkenServiceTest(absltest.TestCase):
     ]
     falken_service.FalkenService()
     self.assertEqual(generate_base64_id.call_count, 2)
-    self.assertCountEqual(mock_ds.write_project.call_args_list,
-                          expected_write_project_calls)
+    self.assertCountEqual(mock_ds.write.call_args_list,
+                          expected_write_calls)
 
   @mock.patch.object(falken_service.FalkenService, '_create_api_keys')
   @mock.patch.object(data_store, 'DataStore')
@@ -154,13 +155,14 @@ class FalkenServiceTest(absltest.TestCase):
         (falken_service._API_METADATA_KEY, 'test_api_key')
     ]
     datastore = mock.Mock()
-    datastore.read_project.return_value = data_store_pb2.Project(
+    datastore.read.return_value = data_store_pb2.Project(
         project_id='test_project_id', api_key='test_api_key')
     ds.return_value = datastore
 
     falken_service.FalkenService()._validate_project_and_api_key(
         request, context)
-    ds.read_project.called_once_with('test_project_id')
+    ds.read.called_once_with(
+        data_resource_id.FalkenResourceId('projects/test_project_id'))
     context.abort.assert_not_called()
 
   @mock.patch.object(falken_service.FalkenService, '_create_api_keys')
@@ -219,9 +221,9 @@ class FalkenServiceTest(absltest.TestCase):
           request, context)
     context.abort.assert_called_with(
         code_pb2.UNAUTHENTICATED,
-        'Project ID test_project_id and API key test_api_key does not match. '
-        'Found different_api_key instead.')
-    ds.read_project.called_once_with('test_project_id')
+        'Project ID test_project_id and API key test_api_key does not match.')
+    ds.read.called_once_with(
+        data_resource_id.FalkenResourceId('projects/test_project_id'))
 
 
 if __name__ == '__main__':

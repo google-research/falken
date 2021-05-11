@@ -25,7 +25,7 @@ from typing import List, Optional, Union, Tuple, Type
 import common.generate_protos  # pylint: disable=unused-import
 from data_store import resource_id
 import data_store_pb2
-import file_system
+from data_store import file_system
 
 # Map resource collection IDs to proto type of the resource.
 _PROTO_BY_COLLECTION_ID = {

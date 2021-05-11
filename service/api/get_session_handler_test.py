@@ -19,6 +19,7 @@ from unittest import mock
 from absl.testing import absltest
 from api import get_session_handler
 from api import proto_conversion
+from data_store import resource_id
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
@@ -76,7 +77,7 @@ class GetSessionHandlerTest(absltest.TestCase):
     mock_context = mock.Mock()
     mock_context.abort.side_effect = Exception()
     mock_ds = mock.Mock()
-    mock_ds.list_sessions.return_value = ([], None)
+    mock_ds.list.return_value = ([], None)
 
     with self.assertRaises(Exception):
       get_session_handler.get_session_by_index(
@@ -87,15 +88,18 @@ class GetSessionHandlerTest(absltest.TestCase):
     mock_context.abort.assert_called_once_with(
         code_pb2.INVALID_ARGUMENT,
         'Session at index 20 was not found.')
-    mock_ds.list_sessions.assert_called_once_with(
-        'test_project_id', 'test_brain_id', 21)
+    mock_ds.list.assert_called_once_with(
+        resource_id.FalkenResourceId(
+            project='test_project_id',
+            brain='test_brain_id',
+            session='*'), page_size=21)
 
   @mock.patch.object(get_session_handler, '_read_and_convert_session')
   def test_get_session_by_index(self, read_and_convert_session):
     mock_context = mock.Mock()
     mock_context.abort.side_effect = Exception()
     mock_ds = mock.Mock()
-    mock_ds.list_sessions.return_value = (
+    mock_ds.list.return_value = (
         ['test_session_id_0', 'test_session_id_1', 'test_session_id_2'], None)
     read_and_convert_session.return_value = session_pb2.Session()
 
@@ -109,15 +113,18 @@ class GetSessionHandlerTest(absltest.TestCase):
         read_and_convert_session.return_value)
 
     mock_context.abort.assert_not_called()
-    mock_ds.list_sessions.assert_called_once_with(
-        'test_project_id', 'test_brain_id', 3)
+    mock_ds.list.assert_called_once_with(
+        resource_id.FalkenResourceId(
+            project='test_project_id',
+            brain='test_brain_id',
+            session='*'), page_size=3)
     read_and_convert_session.assert_called_once_with(
         mock_ds, 'test_project_id', 'test_brain_id', 'test_session_id_2')
 
   @mock.patch.object(proto_conversion.ProtoConverter, 'convert_proto')
   def test_read_and_convert_session(self, convert_proto):
     mock_ds = mock.Mock()
-    mock_ds.read_session.return_value = data_store_pb2.Session()
+    mock_ds.read.return_value = data_store_pb2.Session()
     convert_proto.return_value = session_pb2.Session()
 
     self.assertEqual(
@@ -125,9 +132,12 @@ class GetSessionHandlerTest(absltest.TestCase):
             mock_ds, 'test_project_id', 'test_brain_id', 'test_session_id'),
         convert_proto.return_value)
 
-    mock_ds.read_session.assert_called_once_with(
-        'test_project_id', 'test_brain_id', 'test_session_id')
-    convert_proto.assert_called_once_with(mock_ds.read_session.return_value)
+    mock_ds.read.assert_called_once_with(
+        resource_id.FalkenResourceId(
+            project='test_project_id',
+            brain='test_brain_id',
+            session='test_session_id'))
+    convert_proto.assert_called_once_with(mock_ds.read.return_value)
 
 
 if __name__ == '__main__':

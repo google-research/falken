@@ -18,11 +18,13 @@ from unittest import mock
 
 from absl.testing import absltest
 from api import list_handler
+from data_store import resource_id
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
 import brain_pb2
 import data_store_pb2
+import episode_pb2
 import falken_service_pb2
 from google.protobuf import timestamp_pb2
 from google.rpc import code_pb2
@@ -37,8 +39,8 @@ class ListHandlerTest(absltest.TestCase):
     mock_ds = mock.Mock()
     list_handler.ListBrainsHandler(mock_request, mock_context, mock_ds)
     list_handler_base.assert_called_with(
-        mock_request, mock_context, mock_ds, ['project_id'], [],
-        mock_ds.list_brains, mock_ds.read_brain,
+        mock_request, mock_context, mock_ds, ['project_id'],
+        'projects/{0}/brains/*',
         falken_service_pb2.ListBrainsResponse,
         'brains')
 
@@ -49,8 +51,8 @@ class ListHandlerTest(absltest.TestCase):
     mock_ds = mock.Mock()
     list_handler.ListSessionsHandler(mock_request, mock_context, mock_ds)
     list_handler_base.assert_called_with(
-        mock_request, mock_context, mock_ds, ['project_id', 'brain_id'], [],
-        mock_ds.list_sessions, mock_ds.read_session,
+        mock_request, mock_context, mock_ds, ['project_id', 'brain_id'],
+        'projects/{0}/brains/{1}/sessions/*',
         falken_service_pb2.ListSessionsResponse,
         'sessions')
 
@@ -62,12 +64,12 @@ class ListHandlerTest(absltest.TestCase):
     list_handler.ListEpisodeChunksHandler(mock_request, mock_context, mock_ds)
     list_handler_base.assert_called_with(
         mock_request, mock_context, mock_ds,
-        ['project_id', 'brain_id', 'session_id'], [],
-        mock_ds.list_episode_chunks, mock_ds.read_episode_chunk,
+        ['project_id', 'brain_id', 'session_id'],
+        'projects/{0}/brains/{1}/sessions/{2}/episodes/*/chunks/*',
         falken_service_pb2.ListEpisodeChunksResponse, 'episode_chunks')
 
   @mock.patch.object(list_handler.ListHandler, '__init__')
-  def test_list_handler_list_episode_chunks_ids_only(self, list_handler_base):
+  def test_list_handler_list_episode_chunk_ids_only(self, list_handler_base):
     request = falken_service_pb2.ListEpisodeChunksRequest(
         filter=falken_service_pb2.ListEpisodeChunksRequest.EPISODE_IDS)
     mock_context = mock.Mock()
@@ -76,11 +78,22 @@ class ListHandlerTest(absltest.TestCase):
         request, mock_context, mock_ds)
     list_handler_base.assert_called_with(
         request, mock_context, mock_ds,
-        ['project_id', 'brain_id', 'session_id'], [],
-        mock_ds.list_episode_chunks, mock_ds.read_episode_chunk,
+        ['project_id', 'brain_id', 'session_id'],
+        'projects/{0}/brains/{1}/sessions/{2}/episodes/*/chunks/*',
         falken_service_pb2.ListEpisodeChunksResponse, 'episode_chunks')
-    self.assertEqual(handler._read_method,
-                     handler._create_episode_chunk_with_id_only)
+    handler._request = request
+    result = handler.read(
+        'projects/p0/brains/b0/sessions/s0/episodes/e0/chunks/0')
+    self.assertEqual(
+        result,
+        data_store_pb2.EpisodeChunk(
+            project_id='p0',
+            brain_id='b0',
+            session_id='s0',
+            episode_id='e0',
+            chunk_id=0,
+            data=episode_pb2.EpisodeChunk(
+                episode_id='e0', chunk_id=0)))
 
   @mock.patch.object(list_handler.ListHandler, '__init__')
   def test_list_handler_list_episode_chunks_specified_episode_id(
@@ -89,14 +102,13 @@ class ListHandlerTest(absltest.TestCase):
         filter=falken_service_pb2.ListEpisodeChunksRequest.SPECIFIED_EPISODE)
     mock_context = mock.Mock()
     mock_ds = mock.Mock()
-    handler = list_handler.ListEpisodeChunksHandler(
+    list_handler.ListEpisodeChunksHandler(
         request, mock_context, mock_ds)
     list_handler_base.assert_called_with(
         request, mock_context, mock_ds,
-        ['project_id', 'brain_id', 'session_id'], [],
-        mock_ds.list_episode_chunks, mock_ds.read_episode_chunk,
+        ['project_id', 'brain_id', 'session_id', 'episode_id'],
+        'projects/{0}/brains/{1}/sessions/{2}/episodes/{3}/chunks/*',
         falken_service_pb2.ListEpisodeChunksResponse, 'episode_chunks')
-    self.assertEqual(handler._request_optional_args, ['episode_id'])
 
   def test_list_missing_ids(self):
     mock_context = mock.Mock()
@@ -114,72 +126,71 @@ class ListHandlerTest(absltest.TestCase):
   def test_list_no_pagination(self, fill_response):
     mock_context = mock.Mock()
     mock_ds = mock.Mock()
-    mock_ds.list_brains.return_value = ([
-        'brain_id_0', 'brain_id_1', 'brain_id_2', 'brain_id_3'], None)
+    res_ids = [f'projects/p0/brains/b{i}' for i in range(4)]
+    mock_ds.list.return_value = (res_ids, None)
 
     expected_response = falken_service_pb2.ListBrainsResponse(
         brains=[],  # Empty because we are mocking out fill_response.
         next_page_token=None)
-    request = falken_service_pb2.ListBrainsRequest(project_id='test_project_id')
+    request = falken_service_pb2.ListBrainsRequest(project_id='p0')
     self.assertEqual(
         list_handler.ListBrainsHandler(request, mock_context, mock_ds).list(),
         expected_response)
 
-    fill_response.assert_called_once_with(
-        mock.ANY, mock_ds.list_brains.return_value[0], 'test_project_id')
-    mock_ds.list_brains.called_once_with('test_project_id', None, mock.ANY)
-    self.assertIsNone(mock_ds.list_brains.call_args.args[2].page_token)
+    fill_response.assert_called_once_with(mock.ANY, res_ids)
+    mock_ds.list.called_once_with(
+        'projects/p0/brains/*', page_token=None, page_size=None)
 
   @mock.patch.object(list_handler.ListHandler, '_fill_response')
   def test_list_with_optional_args(self, fill_response):
     mock_context = mock.Mock()
     mock_ds = mock.Mock()
-    mock_ds.list_episode_chunks.return_value = (
-        ['ep_chunk_id_0', 'ep_chunk_id_1', 'ep_chunk_id_2', 'ep_chunk_id_3'],
+    res_ids = [f'projects/p0/brains/b0/sessions/s0/episodes/e0/chunks/{i}'
+               for i in range(4)]
+    mock_ds.list.return_value = (
+        res_ids,
         None)
 
     expected_response = falken_service_pb2.ListEpisodeChunksResponse(
         episode_chunks=[],  # Empty because we are mocking out fill_response.
         next_page_token=None)
     request = falken_service_pb2.ListEpisodeChunksRequest(
-        project_id='test_project_id', brain_id='test_brain_id',
-        session_id='test_session_id', episode_id='test_episode_id',
+        project_id='p0', brain_id='b0',
+        session_id='s0', episode_id='e0',
         filter=falken_service_pb2.ListEpisodeChunksRequest.SPECIFIED_EPISODE)
     self.assertEqual(
         list_handler.ListEpisodeChunksHandler(
             request, mock_context, mock_ds).list(),
         expected_response)
 
-    fill_response.assert_called_once_with(
-        mock.ANY, mock_ds.list_episode_chunks.return_value[0],
-        'test_project_id', 'test_brain_id', 'test_session_id',
-        'test_episode_id')
-    mock_ds.list_episode_chunks.called_once_with(
-        'test_project_id', 'test_brain_id', 'test_session_id',
-        'test_episode_id', None, mock.ANY)
-    self.assertIsNone(
-        mock_ds.list_episode_chunks.call_args.args[5].page_token)
+    fill_response.assert_called_once_with(mock.ANY, res_ids)
+    mock_ds.list.called_once_with(
+        resource_id.FalkenResourceId(
+            'projects/p0/brains/b0/sessions/s0/episodes/e0/chunks/*'),
+        page_size=None, page_token=None)
 
   @mock.patch.object(list_handler.ListHandler, '_fill_response')
   def test_list_with_pagination(self, fill_response):
     mock_context = mock.Mock()
     mock_ds = mock.Mock()
-    mock_ds.list_brains.return_value = ([
-        'brain_id_1', 'brain_id_2', 'brain_id_3', 'brain_id_4'], '5')
+
+    res_ids = [f'projects/p0/brains/b{i}' for i in range(4)]
+
+    mock_ds.list.return_value = (res_ids, '5')
 
     expected_response = falken_service_pb2.ListBrainsResponse(
         brains=[],  # Empty because we are mocking out fill_response.
         next_page_token='5')
     request = falken_service_pb2.ListBrainsRequest(
-        project_id='test_project_id', page_size=4, page_token='2')
+        project_id='p0', page_size=4, page_token='2')
     self.assertEqual(
         list_handler.ListBrainsHandler(request, mock_context, mock_ds).list(),
         expected_response)
 
-    fill_response.assert_called_once_with(
-        mock.ANY, mock_ds.list_brains.return_value[0], 'test_project_id')
-    mock_ds.list_brains.assert_called_once_with('test_project_id', 4, mock.ANY)
-    self.assertEqual(mock_ds.list_brains.call_args.args[2].page_token, '2')
+    fill_response.assert_called_once_with(mock.ANY, res_ids)
+    mock_ds.list.assert_called_once_with(
+        resource_id.FalkenResourceId('projects/p0/brains/*'),
+        page_size=4, page_token='2')
 
   @staticmethod
   def _ds_brain(index):
@@ -195,7 +206,7 @@ class ListHandlerTest(absltest.TestCase):
 
   def test_fill_response(self):
     mock_ds = mock.Mock()
-    mock_ds.read_brain.side_effect = [
+    mock_ds.read.side_effect = [
         ListHandlerTest._ds_brain(1),
         ListHandlerTest._ds_brain(2),
         ListHandlerTest._ds_brain(3),
@@ -210,15 +221,22 @@ class ListHandlerTest(absltest.TestCase):
     response = falken_service_pb2.ListBrainsResponse()
     list_handler.ListBrainsHandler(
         mock.Mock(), mock.Mock(), mock_ds)._fill_response(
-            response, ['brain_id_1', 'brain_id_2', 'brain_id_3', 'brain_id_4'],
-            'test_project_id')
+            response, [
+                'projects/p0/brains/brain_id_1',
+                'projects/p0/brains/brain_id_2',
+                'projects/p0/brains/brain_id_3',
+                'projects/p0/brains/brain_id_4'])
     self.assertEqual(response, expected_response)
 
-    mock_ds.read_brain.assert_has_calls([
-        mock.call('test_project_id', 'brain_id_1'),
-        mock.call('test_project_id', 'brain_id_2'),
-        mock.call('test_project_id', 'brain_id_3'),
-        mock.call('test_project_id', 'brain_id_4')])
+    mock_ds.read.assert_has_calls([
+        mock.call(resource_id.FalkenResourceId(
+            'projects/p0/brains/brain_id_1')),
+        mock.call(resource_id.FalkenResourceId(
+            'projects/p0/brains/brain_id_2')),
+        mock.call(resource_id.FalkenResourceId(
+            'projects/p0/brains/brain_id_3')),
+        mock.call(resource_id.FalkenResourceId(
+            'projects/p0/brains/brain_id_4'))])
 
 
 if __name__ == '__main__':

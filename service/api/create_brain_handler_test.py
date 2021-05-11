@@ -73,7 +73,7 @@ class CreateBrainHandlerTest(absltest.TestCase):
         brain_spec=text_format.Parse(test_constants.TEST_BRAIN_SPEC,
                                      brain_pb2.BrainSpec()),
         create_time=timestamp_pb2.Timestamp(seconds=1619726720))
-    self._ds.read_brain.return_value = (data_store_brain)
+    self._ds.read.return_value = (data_store_brain)
     convert_proto.return_value = expected_brain
 
     self.assertEqual(
@@ -81,9 +81,10 @@ class CreateBrainHandlerTest(absltest.TestCase):
         expected_brain)
 
     generate_resource_id.assert_called_once_with()
-    self._ds.write_brain.assert_called_once_with(write_brain)
-    self._ds.read_brain.assert_called_once_with(request.project_id,
-                                                data_store_brain.brain_id)
+    self._ds.write.assert_called_once_with(write_brain)
+    self.assertEqual(
+        str(self._ds.read.call_args[0][0]),
+        'projects/test_project/brains/test_brain_uuid')
     convert_proto.called_once_with(data_store_brain)
 
   def test_missing_brain_spec(self):

@@ -179,7 +179,7 @@ class ResourceId:
       else:
         # Initialize from parts list.
         try:
-          self.parts = list(id_or_parts)
+          self.parts = [str(s) for s in id_or_parts]
         except TypeError:
           raise ValueError('Expected string or iterable for "id_or_parts", got '
                            + type(id_or_parts))
@@ -201,7 +201,7 @@ class ResourceId:
               resource_spec.accessor_name_to_collection_id[accessor_name])
         except KeyError:
           raise InvalidResourceError('Unknown collection: ' + accessor_name)
-        self.collection_map[collection_id] = elem_id
+        self.collection_map[collection_id] = str(elem_id)
 
       self.parts = self._compute_parts(
           self._resource_spec, self.collection_map)
@@ -231,11 +231,19 @@ class ResourceId:
       The element name in the corresponding collection.
     """
     try:
-      collection_id = (
-          self._resource_spec.accessor_name_to_collection_id[attr_name])
+      if self._resource_spec:
+        collection_id = (
+            self._resource_spec.accessor_name_to_collection_id[attr_name])
+      else:
+        collection_id = attr_name
     except KeyError:
       return super().__getattr__(attr_name)
     return self.collection_map[collection_id]
+
+  def get_accessor_name(self, collection_id):
+    if not self._resource_spec:
+      return collection_id
+    return self._resource_spec.collection_id_to_accessor_name[collection_id]
 
   @staticmethod
   def _compute_collection_map(resource_spec, parts):
@@ -317,6 +325,9 @@ class ResourceId:
           + str(keys_to_process))
     return parts
 
+  def __eq__(self, o):
+    return str(self) == str(o)
+
 
 class FalkenResourceId(ResourceId):
   """A ResourceId with a fixed spec representing Falken resources."""
@@ -330,9 +341,8 @@ class FalkenResourceId(ResourceId):
                           'chunks',
                       },
                       'online_evaluations': None,
-                      'offline_evaluations': None,
                       'assignments': None,
-                      'models': None,
+                      'models': {'offline_evaluations'},
                       'serialized_models': None,
                   },
                   'snapshots': None,
@@ -349,7 +359,8 @@ class FalkenResourceId(ResourceId):
           'assignments': 'assignment',
           'models': 'model',
           'serialized_models': 'serialized_model',
-          'snapshots': 'snapshot'
+          'snapshots': 'snapshot',
+          'offline_evaluations': 'offline_evaluation',
       })
 
   def __init__(self, *args, **kwargs):

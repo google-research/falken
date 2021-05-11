@@ -25,17 +25,17 @@ class DataCacheTest(absltest.TestCase):
 
   def test_get_brain(self):
     mock_ds = mock.Mock()
-    mock_ds.read_brain.return_value = mock.Mock()
+    mock_ds.read.return_value = mock.Mock()
     # Call twice.
     self.assertEqual(
         data_cache.get_brain(mock_ds, 'test_project_id', 'test_brain_id'),
-        mock_ds.read_brain.return_value)
+        mock_ds.read.return_value)
     self.assertEqual(
         data_cache.get_brain(mock_ds, 'test_project_id', 'test_brain_id'),
-        mock_ds.read_brain.return_value)
+        mock_ds.read.return_value)
     # Read brain only called once.
-    mock_ds.read_brain.assert_called_once_with(
-        'test_project_id', 'test_brain_id')
+    mock_ds.read.assert_called_once_with(
+        'projects/test_project_id/brains/test_brain_id')
 
   @mock.patch.object(data_cache, 'get_brain')
   def test_get_brain_spec(self, get_brain):

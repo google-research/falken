@@ -88,12 +88,16 @@ class FileSystemTest(parameterized.TestCase):
         project_id='p2',
         brain_id='b2',
         session_id='s3')
-    ds.write_session(s0)
-    ds.write_session(s1)
-    ds.write_session(s2)
-    ds.write_session(s3)
-    ids, _ = ds.list_sessions(['p0', 'p2'], None, 10)
-    self.assertEqual(ids, ['s0', 's1', 's3'])
+    ds.write(s0)
+    ds.write(s1)
+    ds.write(s2)
+    ds.write(s3)
+    rids, _ = ds.list('projects/{p0,p2}/brains/*/sessions/*')
+    self.assertEqual(
+        rids,
+        ['projects/p0/brains/b0/sessions/s0',
+         'projects/p0/brains/b0/sessions/s1',
+         'projects/p2/brains/b2/sessions/s3'])
 
   def test_callback(self):
     """Tests callback system."""

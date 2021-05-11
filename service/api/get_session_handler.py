@@ -17,8 +17,9 @@
 
 from absl import logging
 from api import proto_conversion
+from data_store import resource_id
 
-import common.generate_protos  # pylint: disable=unused-import
+import common.generate_protos  # pylint: disable=unused-import,g-bad-import-order
 from google.rpc import code_pb2
 
 
@@ -79,8 +80,12 @@ def get_session_by_index(request, context, data_store):
         'Project ID, brain ID, and session index must be specified in '
         'GetSessionByIndexRequest.')
 
-  session_ids, _ = data_store.list_sessions(
-      request.project_id, request.brain_id, request.session_index+1)
+  session_ids, _ = data_store.list(
+      resource_id.FalkenResourceId(
+          project=request.project_id,
+          brain=request.brain_id,
+          session='*'),
+      page_size=request.session_index + 1)
   if len(session_ids) < request.session_index:
     context.abort(
         code_pb2.INVALID_ARGUMENT,
@@ -93,5 +98,9 @@ def get_session_by_index(request, context, data_store):
 
 def _read_and_convert_session(data_store, project_id, brain_id, session_id):  # pylint: disable=invalid-name
   return proto_conversion.ProtoConverter.convert_proto(
-      data_store.read_session(project_id, brain_id, session_id))
+      data_store.read(
+          resource_id.FalkenResourceId(
+              project=project_id,
+              brain=brain_id,
+              session=session_id)))
 

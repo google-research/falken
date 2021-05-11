@@ -18,51 +18,41 @@
 import hashlib
 import os
 import os.path
-import re
 import time
+from typing import List, Optional, Union, Tuple, Type
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
+from data_store import resource_id
 import data_store_pb2
+import file_system
 
-
-_PROJECT_FILE_PATTERN = 'project_*.pb'
-_BRAIN_FILE_PATTERN = 'brain_*.pb'
-_SNAPSHOT_FILE_PATTERN = 'snapshot_*.pb'
-_SESSION_FILE_PATTERN = 'session_*.pb'
-_CHUNK_FILE_PATTERN = 'episode-chunk_*.pb'
-_ONLINE_EVALUATION_FILE_PATTERN = 'online-evaluation_*.pb'
-_ASSIGNMENT_FILE_PATTERN = 'assignment_*.pb'
-_MODEL_FILE_PATTERN = 'model_*.pb'
-_SERIALIZED_MODEL_FILE_PATTERN = 'serialized-model_*.pb'
-_OFFLINE_EVALUATION_FILE_PATTERN = 'offline-evaluation_*.pb'
-
-
-# Allow retrieving file patterns by the corresponding file type.
-_FILE_PATTERN_BY_RESOURCE_TYPE = {
-    'brain': _BRAIN_FILE_PATTERN,
-    'session': _SESSION_FILE_PATTERN,
-    'episode_chunk': _CHUNK_FILE_PATTERN,
-    'online_evaluation': _ONLINE_EVALUATION_FILE_PATTERN,
-    'model': _MODEL_FILE_PATTERN,
-    'snapshot': _SNAPSHOT_FILE_PATTERN
+# Map resource collection IDs to proto type of the resource.
+_PROTO_BY_COLLECTION_ID = {
+    'projects': data_store_pb2.Project,
+    'brains': data_store_pb2.Brain,
+    'snapshots': data_store_pb2.Snapshot,
+    'sessions': data_store_pb2.Session,
+    'chunks': data_store_pb2.EpisodeChunk,
+    'online_evaluations': data_store_pb2.OnlineEvaluation,
+    'assignments': data_store_pb2.Assignment,
+    'models': data_store_pb2.Model,
+    'serialized_models': data_store_pb2.SerializedModel,
+    'offline_evaluations': data_store_pb2.OfflineEvaluation,
 }
 
-
-# Allow retrieving the parent directory in which a resource of a given
-# resource type is stored.
-_DIRECTORY_BY_RESOURCE_TYPE = {
-    'project': 'projects',
-    'brain': 'brains',
-    'snapshot': 'snapshots',
-    'session': 'sessions',
-    'episode': 'episodes',
-    'episode_chunk': 'chunks',
-    'online_evaluation': 'episodes',
-    'assignment': 'assignments',
-    'model': 'models',
-    'offline_evaluation': 'offline_evaluations'
-}
+DatastoreProto = Union[
+    data_store_pb2.Assignment,
+    data_store_pb2.Brain,
+    data_store_pb2.EpisodeChunk,
+    data_store_pb2.Model,
+    data_store_pb2.OfflineEvaluation,
+    data_store_pb2.OnlineEvaluation,
+    data_store_pb2.Project,
+    data_store_pb2.Session,
+    data_store_pb2.SerializedModel,
+    data_store_pb2.Snapshot,
+]
 
 
 class NotFoundError(Exception):
@@ -70,433 +60,241 @@ class NotFoundError(Exception):
   pass
 
 
-class ListOptions(object):
-  """List options for methods like DataStore.list_brains."""
+class InternalError(Exception):
+  """Raised when filesystem is not in the expected state."""
+  pass
 
-  def __init__(self, page_token=None, minimum_timestamp=None):
-    """Initializes the list options.
 
-    Only one of page_token or minimum_timestamp arguments should be specified.
+class _FalkenResourceEncoder:
+  """Encodes/decodes protos to/from bytes based on resource id."""
+
+  def _get_proto_type(self,
+                      res_id: resource_id.ResourceId) -> Type[DatastoreProto]:
+    """Determines the protobuf type from a resource id."""
+    assert len(res_id.parts) >= 2  # Valid resource ids have at least 2 parts.
+    collection_id = res_id.parts[-2]
+    try:
+      return _PROTO_BY_COLLECTION_ID[collection_id]
+    except KeyError:
+      raise ValueError(f'Not a supported resource type: {res_id}')
+
+  def encode_resource(self,
+                      res_id: resource_id.ResourceId,
+                      resource: DatastoreProto) -> str:
+    """Typecheck and encode a resource into a bytes-like string.
 
     Args:
-      page_token: A string token indicating where to start pagination, or None.
-      minimum_timestamp: An integer indicating which timestamp to start listing
-        from; or None.
+      res_id: The resource id of resource.
+      resource: A proto representing the resource data.
+
+    Returns:
+      A bytes-like object that can be written to a file.
     """
-    if page_token and minimum_timestamp is not None:
+    expected_type = self._get_proto_type(res_id)
+
+    if not isinstance(resource, expected_type):
       raise ValueError(
-          'At least one of page_token and from_timestamp should be None.')
-
-    self.page_token = page_token
-    self.minimum_timestamp = minimum_timestamp
-
-  def __eq__(self, obj):
-    """Overrides equality method."""
-    return (obj.page_token == self.page_token and
-            obj.minimum_timestamp == self.minimum_timestamp)
-
-
-class DataStore(object):
-  """Reads and writes data from storage."""
-
-  _FILENAME_METADATA_RE = re.compile(
-      r'^(?P<name>[^_]+)_(?P<timestamp>[0-9]+)\..*')
-
-  def __init__(self, file_system):
-    """Initializes the data store with a given root path.
-
-    Args:
-      file_system: A FileSystem or MockFileSystem object.
-    """
-    self._fs = file_system
-    self._callbacks = {}
-
-  def __del__(self):
-    self.remove_all_assignment_callbacks()
-
-  def read_project(self, project_id):
-    """Retrieves a project proto from storage.
-
-    Args:
-      project_id: The project id string for the object to retrieve.
-    Returns:
-      A Project proto.
-    """
-    return self._read_proto(
-        os.path.join(self._get_project_glob(project_id), _PROJECT_FILE_PATTERN),
-        data_store_pb2.Project)
-
-  def write_project(self, project):
-    """Writes a project proto to storage.
-
-    Args:
-      project: The Project proto to write.
-    """
-    self._check_type(project, data_store_pb2.Project)
-    self._write_proto(
-        os.path.join(
-            self._get_project_glob(project.project_id), _PROJECT_FILE_PATTERN),
-        project)
-
-  def read_brain(self, project_id, brain_id):
-    """Retrieves a brain proto from storage.
-
-    Args:
-      project_id: The project id string for the object to retrieve.
-      brain_id: The brain id string for the object to retrieve.
-    Returns:
-      A Brain proto.
-    """
-    return self._read_proto(
-        os.path.join(self._get_brain_glob(project_id, brain_id),
-                     _BRAIN_FILE_PATTERN), data_store_pb2.Brain)
-
-  def write_brain(self, brain):
-    """Writes a brain proto to storage.
-
-    Args:
-      brain: The Brain proto to write.
-    """
-    self._check_type(brain, data_store_pb2.Brain)
-    self._write_proto(
-        os.path.join(
-            self._get_brain_glob(brain.project_id, brain.brain_id),
-            _BRAIN_FILE_PATTERN),
-        brain)
-
-  def read_snapshot(self, project_id, brain_id, snapshot_id):
-    """Retrieves a snapshot proto from storage.
-
-    Args:
-      project_id: The project id string for the object to retrieve.
-      brain_id: The brain id string for the object to retrieve.
-      snapshot_id: The snapshot id string for the object to retrieve.
-    Returns:
-      A Snapshot proto.
-    """
-    return self._read_proto(
-        os.path.join(
-            self._get_snapshot_glob(project_id, brain_id, snapshot_id),
-            _SNAPSHOT_FILE_PATTERN),
-        data_store_pb2.Snapshot)
-
-  def write_snapshot(self, snapshot):
-    """Writes a snapshot proto to storage.
-
-    Args:
-      snapshot: The Snapshot proto to write.
-    """
-    self._check_type(snapshot, data_store_pb2.Snapshot)
-    self._write_proto(
-        os.path.join(
-            self._get_snapshot_glob(snapshot.project_id, snapshot.brain_id,
-                                    snapshot.snapshot_id),
-            _SNAPSHOT_FILE_PATTERN),
-        snapshot)
-
-  def read_session(self, project_id, brain_id, session_id):
-    """Retrieves a session proto from storage.
-
-    Args:
-      project_id: The project id string for the object to retrieve.
-      brain_id: The brain id string for the object to retrieve.
-      session_id: The session id string for the object to retrieve.
-    Returns:
-      A Session proto.
-    """
-    return self._read_proto(
-        os.path.join(
-            self._get_session_glob(project_id, brain_id, session_id),
-            _SESSION_FILE_PATTERN),
-        data_store_pb2.Session)
-
-  def write_session(self, session):
-    """Writes a session proto to storage.
-
-    Args:
-      session: The Session proto to write.
-    """
-    self._check_type(session, data_store_pb2.Session)
-    self._write_proto(
-        os.path.join(
-            self._get_session_glob(session.project_id, session.brain_id,
-                                   session.session_id), _SESSION_FILE_PATTERN),
-        session)
-
-  def read_episode_chunk(self, project_id, brain_id, session_id, episode_id,
-                         chunk_id):
-    """Retrieves an episode chunk proto from storage.
-
-    Args:
-      project_id: The project id string for the object to retrieve.
-      brain_id: The brain id string for the object to retrieve.
-      session_id: The session id string for the object to retrieve.
-      episode_id: The episode id string for the object to retrieve.
-      chunk_id: The int describing the chunk id for the object to retrieve.
-    Returns:
-      An EpisodeChunk proto.
-    """
-    return self._read_proto(
-        os.path.join(
-            self._get_chunk_glob(project_id, brain_id, session_id, episode_id,
-                                 chunk_id),
-            _CHUNK_FILE_PATTERN),
-        data_store_pb2.EpisodeChunk)
-
-  def write_episode_chunk(self, chunk):
-    """Writes an episode chunk proto to storage.
-
-    Args:
-      chunk: The EpisodeChunk proto to write.
-    """
-    self._check_type(chunk, data_store_pb2.EpisodeChunk)
-    self._write_proto(
-        os.path.join(
-            self._get_chunk_glob(chunk.project_id, chunk.brain_id,
-                                 chunk.session_id, chunk.episode_id,
-                                 chunk.chunk_id),
-            _CHUNK_FILE_PATTERN),
-        chunk)
-
-  def read_online_evaluation(
-      self, project_id, brain_id, session_id, episode_id):
-    """Retrieves an online evaluation proto from storage.
-
-    Args:
-      project_id: The project id string for the object to retrieve.
-      brain_id: The brain id string for the object to retrieve.
-      session_id: The session id string for the object to retrieve.
-      episode_id: The episode id string for the object to retrieve.
-    Returns:
-      An OnlineEvaluation proto.
-    """
-    return self._read_proto(
-        os.path.join(
-            self._get_episode_glob(project_id, brain_id, session_id,
-                                   episode_id),
-            _ONLINE_EVALUATION_FILE_PATTERN),
-        data_store_pb2.OnlineEvaluation)
-
-  def write_online_evaluation(self, online_evaluation):
-    """Writes an online evaluation proto to storage.
-
-    Args:
-      online_evaluation: The OnlineEvaluation proto to write.
-    """
-    self._check_type(online_evaluation, data_store_pb2.OnlineEvaluation)
-    self._write_proto(
-        os.path.join(
-            self._get_episode_glob(
-                online_evaluation.project_id, online_evaluation.brain_id,
-                online_evaluation.session_id, online_evaluation.episode_id),
-            _ONLINE_EVALUATION_FILE_PATTERN),
-        online_evaluation)
-
-  def read_assignment(self, project_id, brain_id, session_id, assignment_id):
-    """Retrieves an assignment proto from storage.
-
-    Args:
-      project_id: The project id string for the object to retrieve.
-      brain_id: The brain id string for the object to retrieve.
-      session_id: The session id string for the object to retrieve.
-      assignment_id: The assignment id string for the object to retrieve.
-    Returns:
-      An Assignment proto.
-    """
-    return self._read_proto(
-        os.path.join(
-            self._get_assignment_glob(
-                project_id, brain_id, session_id, assignment_id),
-            _ASSIGNMENT_FILE_PATTERN),
-        data_store_pb2.Assignment)
-
-  def write_assignment(self, assignment):
-    """Writes an assignment proto to storage.
-
-    Args:
-      assignment: The Assignment proto to write.
-    """
-    self._check_type(assignment, data_store_pb2.Assignment)
-    self._write_proto(
-        os.path.join(
-            self._get_assignment_glob(assignment.project_id,
-                                      assignment.brain_id,
-                                      assignment.session_id,
-                                      assignment.assignment_id),
-            _ASSIGNMENT_FILE_PATTERN), assignment)
-
-  def read_model(self, project_id, brain_id, session_id, model_id):
-    """Retrieves a model proto from storage.
-
-    Args:
-      project_id: The project id string for the object to retrieve.
-      brain_id: The brain id string for the object to retrieve.
-      session_id: The session id string for the object to retrieve.
-      model_id: The model id string for the object to retrieve.
-    Returns:
-      A Model proto.
-    """
-    return self._read_proto(
-        os.path.join(
-            self._get_model_glob(project_id, brain_id, session_id, model_id),
-            _MODEL_FILE_PATTERN), data_store_pb2.Model)
-
-  def write_model(self, model):
-    """Writes a model proto to storage.
-
-    Args:
-      model: The Model proto to write.
-    """
-    self._check_type(model, data_store_pb2.Model)
-    self._write_proto(
-        os.path.join(
-            self._get_model_glob(model.project_id, model.brain_id,
-                                 model.session_id, model.model_id),
-            _MODEL_FILE_PATTERN), model)
-
-  def read_serialized_model(self, project_id, brain_id, session_id, model_id):
-    """Retrieves a serialized model proto from storage.
-
-    Args:
-      project_id: The project id string for the object to retrieve.
-      brain_id: The brain id string for the object to retrieve.
-      session_id: The session id string for the object to retrieve.
-      model_id: The model id string for the object to retrieve.
-    Returns:
-      An SerializedModel proto.
-    """
-    return self._read_proto(
-        os.path.join(
-            self._get_model_glob(project_id, brain_id, session_id, model_id),
-            _SERIALIZED_MODEL_FILE_PATTERN),
-        data_store_pb2.SerializedModel)
-
-  def write_serialized_model(self, serialized_model):
-    """Writes a serialized model proto to storage.
-
-    Args:
-      serialized_model: The SerializedModel proto to write.
-    """
-    self._check_type(serialized_model, data_store_pb2.SerializedModel)
-    self._write_proto(
-        os.path.join(
-            self._get_model_glob(
-                serialized_model.project_id, serialized_model.brain_id,
-                serialized_model.session_id, serialized_model.model_id),
-            _SERIALIZED_MODEL_FILE_PATTERN),
-        serialized_model)
-
-  def read_offline_evaluation(
-      self, project_id, brain_id, session_id, model_id, evaluation_set_id):
-    """Retrieves an offline evaluation proto from storage.
-
-    Args:
-      project_id: The project id string for the object to retrieve.
-      brain_id: The brain id string for the object to retrieve.
-      session_id: The session id string for the object to retrieve.
-      model_id: The model id string for the object to retrieve.
-      evaluation_set_id: The int describing the evaluation set id for the object
-        to retrieve.
-    Returns:
-      An OfflineEvaluation proto.
-    """
-    return self._read_proto(
-        os.path.join(
-            self._get_offline_evaluation_glob(project_id, brain_id, session_id,
-                                              model_id, str(evaluation_set_id)),
-            _OFFLINE_EVALUATION_FILE_PATTERN), data_store_pb2.OfflineEvaluation)
-
-  def write_offline_evaluation(self, offline_evaluation):
-    """Writes an offline evaluation proto to storage.
-
-    Args:
-      offline_evaluation: The OfflineEvaluation proto to write.
-    """
-    self._check_type(offline_evaluation, data_store_pb2.OfflineEvaluation)
-    self._write_proto(
-        os.path.join(
-            self._get_offline_evaluation_glob(
-                offline_evaluation.project_id, offline_evaluation.brain_id,
-                offline_evaluation.session_id, offline_evaluation.model_id,
-                str(offline_evaluation.evaluation_set_id)),
-            _OFFLINE_EVALUATION_FILE_PATTERN),
-        offline_evaluation)
-
-  def _check_type(self, data, expected_type):
-    """Verifies data has type expected_type.
-
-    Args:
-      data: Data to check the type for.
-      expected_type: Expected type for data.
-    Raises:
-      ValueError: if data doesn't have the expected type.
-    """
-    if not isinstance(data, expected_type):
-      raise ValueError(
-          f'Value has type {type(data)}, but it should have type '
+          f'Resource has type {type(resource)}, but it should have type '
           f'{expected_type}.')
 
-  def _read_proto(self, pattern, data_type):
-    """Finds matching file path, and reads its binary proto data.
+    return resource.SerializeToString()
+
+  def decode_resource(self,
+                      res_id: resource_id.ResourceId,
+                      data: Union[str, bytes]) -> DatastoreProto:
+    """Decode a resource from bytes to proto based on its resource ID.
 
     Args:
-      pattern: The path pattern of the file where the proto is stored, including
-        a single * to allow for unknown parts of the name to be filled in.
-        No more than one file is allowed to match with the pattern path.
-      data_type: The class of the proto to read.
+      res_id: The resource id of the resource.
+      data: A bytes-like object representing the resource data
     Returns:
-      The proto that was read from storage.
-    Raises:
-      NotFoundError: If the requested file does not exist.
+      A proto representation of the resource.
     """
-    assert pattern.count('*') == 1
-    paths = self._fs.glob(pattern)
-    if not paths:
-      raise NotFoundError(f'File with pattern "{pattern}" does not exist.')
-    if len(paths) > 1:
-      raise ValueError(
-          f'More than one file was found matching pattern "{pattern}".')
+    proto_type = self._get_proto_type(res_id)
+    return proto_type.FromString(data)
 
-    return data_type.FromString(self._fs.read_file(paths[0]))
 
-  def _write_proto(self, pattern, data):
-    """Writes proto data into the given file, with a timestamp in its name.
+class FalkenResourceHandler:
+  """Handles and parses the underlying resource type for ResourceID usage."""
+
+  # Map resource type to key_field_name -> collection name mapping
+  _KEY_FIELD_MAP = {
+      data_store_pb2.Project: {
+          'project_id': 'project',
+      },
+      data_store_pb2.Brain: {
+          'project_id': 'project',
+          'brain_id': 'brain',
+      },
+      data_store_pb2.Snapshot: {
+          'project_id': 'project',
+          'brain_id': 'brain',
+          'snapshot_id': 'snapshot',
+      },
+      data_store_pb2.Session: {
+          'project_id': 'project',
+          'brain_id': 'brain',
+          'session_id': 'session',
+      },
+      data_store_pb2.EpisodeChunk: {
+          'project_id': 'project',
+          'brain_id': 'brain',
+          'session_id': 'session',
+          'episode_id': 'episode',
+          'chunk_id': 'chunk',
+      },
+      data_store_pb2.OnlineEvaluation: {
+          'project_id': 'project',
+          'brain_id': 'brain',
+          'session_id': 'session',
+          'episode_id': 'online_evaluation',
+      },
+      data_store_pb2.Assignment: {
+          'project_id': 'project',
+          'brain_id': 'brain',
+          'session_id': 'session',
+          'assignment_id': 'assignment',
+      },
+      data_store_pb2.Model: {
+          'project_id': 'project',
+          'brain_id': 'brain',
+          'session_id': 'session',
+          'model_id': 'model',
+      },
+      data_store_pb2.SerializedModel: {
+          'project_id': 'project',
+          'brain_id': 'brain',
+          'session_id': 'session',
+          'model_id': 'serialized_model',
+      },
+      data_store_pb2.OfflineEvaluation: {
+          'project_id': 'project',
+          'brain_id': 'brain',
+          'session_id': 'session',
+          'model_id': 'model',
+          'evaluation_set_id': 'offline_evaluation',
+      },
+  }
+
+  def get_timestamp_micros(self, resource: DatastoreProto) -> int:
+    """Determine timestamp in microseconds from resource object."""
+    return resource.created_micros or None  # return 0s as Nones
+
+  def set_timestamp_micros(self,
+                           resource: DatastoreProto,
+                           timestamp_micros: int):
+    """Set timestamp to given value in resource object (not in storage)."""
+    resource.created_micros = timestamp_micros
+
+  @classmethod
+  def to_resource_id(cls, resource: DatastoreProto) -> resource_id.ResourceId:
+    """Determine resource id from the resource data object."""
+    try:
+      field_map = cls._KEY_FIELD_MAP[type(resource)]
+    except KeyError:
+      raise ValueError(f'Not a valid resource type: {type(resource)}')
+    accessor_map = {}
+    for field_name, accessor_name in field_map.items():
+      value = getattr(resource, field_name)
+      if field_name == 'assignment_id':
+        # We hash assignment_ids since they can get pretty long.
+        value = hashlib.sha256(value.encode('utf-8')).hexdigest()
+      accessor_map[accessor_name] = value
+    return resource_id.FalkenResourceId(**accessor_map)
+
+
+class ResourceStore:
+  """Stores resources with ResourceIDs in a filesystem."""
+
+  def __init__(self, fs: file_system.FileSystem,
+               resource_encoder: _FalkenResourceEncoder,
+               resource_resolver: FalkenResourceHandler,
+               resource_id_type: Type[resource_id.ResourceId]):
+    self._fs = fs
+    self._encoder = resource_encoder
+    self._resolver = resource_resolver
+    self._resource_id_type = resource_id_type
+
+  def _get_filename(self, timestamp_micros: int) -> str:
+    """Returns file name from microsecond timestamp."""
+    # 16 leading zeros should have us covered until year 3.16e8.
+    return f'{timestamp_micros:016d}'
+
+  def _get_path(self, res_id: resource_id.ResourceId,
+                timestamp_micros: int) -> str:
+    """Returns path from a resource ID and a microsecond timestamp."""
+    return os.path.join(str(res_id), self._get_filename(timestamp_micros))
+
+  def write(self, resource) -> resource_id.ResourceId:
+    """Writes the resource to an appropriately chosen path."""
+    res_id = self._resolver.to_resource_id(resource)
+    timestamp_micros = self._resolver.get_timestamp_micros(resource)
+    try:
+      # Try to read the timestamp from the filesystem.
+      read_timestamp = self.read_timestamp_micros(res_id)
+    except NotFoundError:
+      # If the resource does not exist, set the read_timestamp to None.
+      read_timestamp = None
+
+    if not timestamp_micros:
+      # Caller did not provide an explicit timestamp.
+      if read_timestamp:
+        # If this is an existing object in the filesystem, use its timestamp.
+        timestamp_micros = read_timestamp
+      else:
+        # Create a new timestamp
+        timestamp_micros = int(time.time() * 1e6)
+      self._resolver.set_timestamp_micros(resource, timestamp_micros)
+    else:
+      # If the user-provided timestamp and timestamp read from the file system
+      # disagree, raise an error.
+      if read_timestamp and read_timestamp != timestamp_micros:
+        raise ValueError(
+            'Resource already exists with a different timestamp: \n'
+            f'resource: {resource}\nexisting timestamp: {read_timestamp}')
+
+    data = self._encoder.encode_resource(res_id, resource)
+    self._fs.write_file(self._get_path(res_id, timestamp_micros), data)
+    return res_id
+
+  def read_timestamp_micros(self, res_id: resource_id.ResourceId) -> int:
+    """Read the timestamp of a resource from the filesystem."""
+    files = self._fs.glob(os.path.join(str(res_id), '*'))
+    if not files:
+      raise NotFoundError(f'Could not find resource "{res_id}"')
+    if len(files) > 1:
+      raise InternalError(
+          f'Found more than one file for resource id "{res_id}"')
+    (file,) = files
+    try:
+      return int(os.path.basename(file))
+    except ValueError:
+      raise InternalError(
+          f'Could not translate filename to microsecond timestamp: "{file}"')
+
+  def read(self, res_id: resource_id.ResourceId) -> DatastoreProto:
+    """Reads a resource by resource id and returns it.
 
     Args:
-      pattern: The path of the file where the proto is stored, with a * that
-        will be replaced by the timestamp.
-      data: A proto to store in that location. If data.created_micros is set,
-        it will use its value as timestamp and update an existing file,
-        otherwise it will use the current time.
+      res_id: The id of the resource to read.
+    Returns:
+      A datastore proto representing the resource.
     Raises:
-      NotFoundError: If the requested file does not exist.
+      NotFoundError: If the resource does not exist.
     """
-    assert pattern.count('*') == 1
-
-    if data.created_micros:
-      # When create_micros is set, reflect it in the file path timestamp.
-      path = pattern.replace('*', str(data.created_micros))
-      if not self._fs.exists(path):
-        raise NotFoundError(
-            f'Could not update file {path} as it doesn\'t exist.')
-    else:
-      existing_files = self._fs.glob(pattern)
-      if existing_files:
-        raise ValueError(
-            'There was an attempt to create a file from a new timestamp at '
-            f'\'{pattern}\', but the following list of files with timestamps '
-            f'was found: {existing_files}.')
-
-      data.created_micros = int(time.time() * 1_000_000)
-      path = pattern.replace('*', str(data.created_micros))
-
-    self._fs.write_file(path, data.SerializeToString())
+    timestamp_micros = self.read_timestamp_micros(res_id)
+    try:
+      data = self._fs.read_file(self._get_path(res_id, timestamp_micros))
+    except FileNotFoundError:
+      raise NotFoundError(f'Could not find resource "{res_id}"')
+    return self._encoder.decode_resource(res_id, data)
 
   def _decode_token(self, token):
     """Decodes a pagination token.
 
     Args:
       token: A string with the form "timestamp:resource_id", or None.
+
     Returns:
       A pair (timestamp, resource_id), where timestamp is an integer, and
       resource_id a string.
@@ -509,426 +307,116 @@ class DataStore(object):
       raise ValueError(f'Invalid token {token}.')
     return int(pair[0]), pair[1]
 
-  def _encode_token(self, timestamp, resource_id):
+  def _encode_token(self, timestamp_micros: int,
+                    res_id: resource_id.ResourceId) -> str:
     """Encodes a pagination token.
 
     Args:
-      timestamp: An integer with a number of milliseconds since epoch.
-      resource_id: A string containing a resource id.
+      timestamp_micros: The microsecond timestamp of the most recently read
+          token for the page.
+      res_id: The resource id of the last token on the page.
+
     Returns:
       The encoded string with the form "timestamp:resource_id".
     """
-    return f'{timestamp}:{resource_id}'
+    return f'{timestamp_micros}:{res_id}'
 
-  def list_brains(self, project_id, page_size, list_options=None):
-    """Lists brains for a given project.
-
-    Args:
-      project_id: The project id string to use for finding the brains.
-      page_size: An int describing the max amount of brains to return, or
-        None to return all of them.
-      list_options: A ListOptions object specifying what to list, or None.
-    Returns:
-      A pair (brain_ids, next_token), where brain_ids is a list of
-      brain id strings, and next_token is the token for the next page,
-      or None if there is no next page.
-    """
-    return self._list_resources(
-        self._get_resource_list_glob('brain', [project_id]),
-        page_size, list_options)
-
-  def list_sessions(self, project_id, brain_id, page_size, list_options=None):
-    """Lists sessions for a given brain.
+  def list(self,
+           res_id_glob: resource_id.ResourceId,
+           min_timestamp_micros: int = 0,
+           page_token: Optional[str] = None,
+           page_size: Optional[int] = None) -> Tuple[List[str], str]:
+    """Lists all resource_ids that match the provided pattern.
 
     Args:
-      project_id: The project id string to use for finding the sessions.
-      brain_id: The brain id string to use for finding the sessions.
-      page_size: An int describing the max amount of sessions to return, or
-        None to return all of them.
-      list_options: A ListOptions object specifying what to list, or None.
+      res_id_glob: A resource ID glob, containing '*' and brace components of
+        the form '{a,b,c}' that are resolved in a shell-style fashion.
+      min_timestamp_micros: Only return res_ids at least as recent as this
+        timestamp.
+      page_token: The token for the previous page if any.
+      page_size: The size of the page or None to return all IDs.
+
     Returns:
-      A pair (session_ids, next_token), where session_ids is a list of
-      session id strings, and next_token is the token for the next page,
-      or None if there is no next page.
+      A tuple of a list of resource ID strings and pagination token.
     """
-    return self._list_resources(
-        self._get_resource_list_glob('session', [project_id, brain_id]),
-        page_size, list_options)
-
-  def list_episode_chunks(
-      self, project_id, brain_id, session_id, episode_id, page_size,
-      list_options=None):
-    """Lists chunks for a given episode.
-
-    Args:
-      project_id: The project id string to use for finding the chunks.
-      brain_id: The brain id string to use for finding the chunks.
-      session_id: The session id string to use for finding the chunks.
-      episode_id: The episode id string to use for finding the chunks.
-      page_size: An int describing the max amount of brains to return, or
-        None to return all of them.
-      list_options: A ListOptions object specifying what to list, or None.
-    Returns:
-      A pair (chunk_ids, next_token), where chunk_ids is a list of
-      episode chunk id ints, and next_token is the token for the next page,
-      or None if there is no next page.
-    """
-    chunk_ids, next_token = self._list_resources(
-        self._get_resource_list_glob(
-            'episode_chunk', [project_id, brain_id, session_id, episode_id]),
-        page_size, list_options)
-    chunk_ids = [int(s) for s in chunk_ids]
-    return chunk_ids, next_token
-
-  def list_online_evaluations(
-      self, project_id, brain_id, session_id, page_size, list_options=None):
-    """Lists online evaluations for a given session.
-
-    Args:
-      project_id: The project id string to use for finding
-        the online evaluations.
-      brain_id: The brain id string to use for finding the online evaluations.
-      session_id: The session id string to use for finding
-        the online evaluations.
-      page_size: An int describing the max amount of evaluations to return, or
-        None to return all of them.
-      list_options: A ListOptions object specifying what to list, or None.
-    Returns:
-      A pair (eval_ids, next_token), where eval_ids is a list of
-      online evaluation id strings, and next_token is the token for the next
-      page, or None if there is no next page.
-    """
-    return self._list_resources(
-        self._get_resource_list_glob(
-            'online_evaluation', [project_id, brain_id, session_id]),
-        page_size, list_options)
-
-  def get_most_recent_model(self, project_id, brain_id, session_id):
-    """Gives the most recent model.
-
-    Args:
-      project_id: The project id string to use for finding the model.
-      brain_id: The brain id string to use for finding the model.
-      session_id: The session id string for finding the model.
-    Returns:
-      The string for the most recent model id, or None if no model is found.
-    """
-    resource_ids, _ = self._list_resources(self._get_resource_list_glob(
-        'model', [project_id, brain_id, session_id]), page_size=None)
-    return resource_ids[-1] if resource_ids else None
-
-  def get_most_recent_snapshot(self, project_id, brain_id):
-    """Gives the most recent snapshot.
-
-    Args:
-      project_id: The project id string to use for finding the snapshot.
-      brain_id: The brain id string to use for finding the snapshot.
-    Returns:
-      The string for the most recent model id, or None if no snapshot is found.
-    """
-    resource_ids, _ = self._list_resources(self._get_resource_list_glob(
-        'snapshot', [project_id, brain_id]), page_size=None)
-    return resource_ids[-1] if resource_ids else None
-
-  def _get_resource_list_glob(self, resource_type, resource_ids):
-    """Gives the glob pattern to use for listing resources of a given type.
-
-    Args:
-      resource_type: Type of resource to build the path for.
-      resource_ids: List of arguments to use to call self._get_*_path.
-    Returns:
-      A string with the path to use for listing.
-    """
-    path_callable_by_resource_type = {
-        'brain': self._get_project_glob,
-        'session': self._get_brain_glob,
-        'episode_chunk': self._get_episode_glob,
-        'online_evaluation': self._get_session_glob,
-        'model': self._get_session_glob,
-        'snapshot': self._get_brain_glob
-    }
-    return os.path.join(
-        path_callable_by_resource_type[resource_type](*resource_ids),
-        _DIRECTORY_BY_RESOURCE_TYPE[resource_type], '*',
-        _FILE_PATTERN_BY_RESOURCE_TYPE[resource_type])
-
-  def _list_resources(
-      self, glob_path, page_size, list_options=None):
-    """Lists resources for a given glob, from oldest to newest.
-
-    Args:
-      glob_path: Path to use for glob. Last two components of the path must be:
-       * for glob (which matches the resource id), and a file name pattern.
-      page_size: An int describing the max amount of resources to return, or
-        None to return all of them.
-      list_options: A ListOptions object specifying what to list, or None.
-    Returns:
-      A pair (resource_ids, next_token), where resource_ids is a list of
-      resource id strings, and next_token is the token for the next page,
-      or None if there is no next page.
-    """
-    page_token = list_options.page_token if list_options else None
-    minimum_timestamp = list_options.minimum_timestamp if list_options else None
-
-    if page_size == 0:
-      return [], None
-
-    # decoded_token is (starting timestamp, starting resource id)
-    if minimum_timestamp is not None:
-      decoded_token = (minimum_timestamp, '')
-    else:
-      decoded_token = self._decode_token(page_token)
-
+    glob_path = os.path.join(str(res_id_glob), '*')
     files = self._fs.glob(glob_path)
-    id_to_token = {
-        self._get_resource_id(f):
-        (DataStore._get_timestamp(f), self._get_resource_id(f))
-        for f in files
-    }
-    resource_ids = sorted(
-        [r for r in id_to_token.keys() if id_to_token[r] >= decoded_token],
-        key=lambda r: id_to_token[r])
+    paths = [os.path.dirname(f) for f in files]
+    timestamps = [int(os.path.basename(f)) for f in files]
+    by_timestamp = sorted(zip(timestamps, paths))
 
-    # If page_size is None, this gives the full list.
-    next_page = resource_ids[:page_size]
-    # If resource_ids has the same size as next_page, there are no more pages.
-    next_token = (self._encode_token(*id_to_token[resource_ids[page_size]])
-                  if len(resource_ids) > len(next_page) else None)
+    combined_min_timestamp = min_timestamp_micros
+    if page_token:
+      page_token_timestamp, page_token_res_id = self._decode_token(page_token)
+      combined_min_timestamp = max(page_token_timestamp, combined_min_timestamp)
+    else:
+      page_token_res_id = None
 
-    return next_page, next_token
+    page = []
+    last_timestamp_micros = 0
+    last_read_index = -1
+    for last_read_index, (timestamp_micros, res_id_string) in enumerate(
+        by_timestamp):
+      if timestamp_micros < combined_min_timestamp:
+        continue
+      if (timestamp_micros == combined_min_timestamp and
+          page_token_res_id and
+          res_id_string <= page_token_res_id):
+        continue
 
-  def _get_resource_id(self, path):
-    """Returns the resource id for a file.
+      page.append(res_id_string)
+      last_timestamp_micros = timestamp_micros
+      if page_size and len(page) == page_size:
+        break
 
-    Args:
-      path: Path of the file to get the resource id for. The last component
-        of the path must be a filename, and the previous to last must be the
-        resource id.
-    Returns:
-      The id for the resource in the given path.
-    """
-    return os.path.basename(os.path.dirname(path))
+    if last_read_index == len(by_timestamp) - 1:
+      return page, ''
+    else:
+      token = self._encode_token(last_timestamp_micros, page[-1])
+    return page, token
 
-  @staticmethod
-  def _get_timestamp(path):
-    """Returns the timestamp for a file.
 
-    Args:
-      path: Path of the file to get the timestamp for. The file component of
-        the path must have the timestamp after an underscore and before the
-        extension (for example, in brain_1234.pb).
-    Returns:
-      An int with the amount of milliseconds since epoch.
-    """
-    match = re.match(DataStore._FILENAME_METADATA_RE, os.path.basename(path))
-    if not match:
-      raise ValueError(f'Path {path} does not contain a timestamp.')
-    return int(match.group('timestamp'))
+class DataStore(ResourceStore):
+  """Reads and writes data from storage."""
 
-  @staticmethod
-  def _as_glob_string(argument):
-    """Interprets an argument to a path function as a glob string.
+  def __init__(self, fs):
+    """Initializes the data store with a given root path.
 
     Args:
-      argument: An argument that is type string, None, int or list of string.
-    Returns:
-      A glob pattern representing the argument, including '*' and curly brace
-      expressions.
+      fs: A FileSystem or MockFileSystem object.
     """
-    if argument is None:
-      return '*'
-    if isinstance(argument, str):
-      return argument
-    if isinstance(argument, int):
-      return str(argument)
-    try:
-      return '{' + ','.join(str(a) for a in argument) + '}'
-    except TypeError:
-      raise ValueError(
-          f'Could not interpret argument "{argument}" as a path component. ' +
-          'Arguments are expected to be None, type str/int or an iterable of '
-          'strings/ints.')
+    super().__init__(
+        fs,
+        _FalkenResourceEncoder(),
+        FalkenResourceHandler(),
+        resource_id.FalkenResourceId)
+    self._callbacks = {}
 
-  def _get_project_glob(self, project_id):
-    """Gives the glob pattern for a project.
+  def __del__(self):
+    self.remove_all_assignment_callbacks()
 
-    Arguments may be None (indicating any), lists or int/string literals.
+  def _get_most_recent(self, res_id_glob: Union[str, resource_id.ResourceId]):
+    """Returns the most recent ID matching the glob or None if not found."""
+    resource_ids, _ = self.list(res_id_glob, page_size=None)
+    return resource_ids[-1] if resource_ids else None
 
-    Args:
-      project_id: The project id string to use for building the path.
-    Returns:
-      A string describing the project directory path.
-    """
-    return os.path.join(_DIRECTORY_BY_RESOURCE_TYPE['project'],
-                        self._as_glob_string(project_id))
-
-  def _get_brain_glob(self, project_id, brain_id):
-    """Gives the glob pattern for a brain.
-
-    Arguments may be None (indicating any), lists or int/string literals.
-
-    Args:
-      project_id: The project id string to use for building the path.
-      brain_id: The brain id string to use for building the path.
-    Returns:
-      A string describing the brain directory path.
-    """
-    return os.path.join(self._get_project_glob(project_id),
-                        _DIRECTORY_BY_RESOURCE_TYPE['brain'],
-                        self._as_glob_string(brain_id))
-
-  def _get_snapshot_glob(self, project_id, brain_id, snapshot_id):
-    """Gives the glob pattern for a snapshot.
-
-    Arguments may be None (indicating any), lists or int/string literals.
-
-    Args:
-      project_id: The project id string to use for building the path.
-      brain_id: The brain id string to use for building the path.
-      snapshot_id: The snapshot id string for building the path.
-    Returns:
-      A string describing the snapshot directory path.
-    """
-    return os.path.join(
-        self._get_brain_glob(project_id, brain_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['snapshot'],
-        self._as_glob_string(snapshot_id))
-
-  def _get_session_glob(self, project_id, brain_id, session_id):
-    """Gives the glob pattern for a session.
-
-    Arguments may be None (indicating any), lists or int/string literals.
-
-    Args:
-      project_id: The project id string to use for building the path.
-      brain_id: The brain id string to use for building the path.
-      session_id: The session id string for building the path.
-    Returns:
-      A string describing the session directory path.
-    """
-    return os.path.join(
-        self._get_brain_glob(project_id, brain_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['session'],
-        self._as_glob_string(session_id))
-
-  def _get_episode_glob(self, project_id, brain_id, session_id, episode_id):
-    """Gives the glob pattern for an episode.
-
-    Arguments may be None (indicating any), lists or int/string literals.
-
-    Args:
-      project_id: The project id string to use for building the path.
-      brain_id: The brain id string to use for building the path.
-      session_id: The session id string for building the path.
-      episode_id: The episode id string for building the path.
-    Returns:
-      A string describing the episode directory path.
-    """
-    return os.path.join(
-        self._get_session_glob(project_id, brain_id, session_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['episode'],
-        self._as_glob_string(episode_id))
-
-  def _get_chunk_glob(
-      self, project_id, brain_id, session_id, episode_id, chunk_id):
-    """Gives the glob pattern for an episode chunk.
-
-    Arguments may be None (indicating any), lists or int/string literals.
-
-    Args:
-      project_id: The project id string to use for building the path.
-      brain_id: The brain id string to use for building the path.
-      session_id: The session id string for building the path.
-      episode_id: The episode id string for building the path.
-      chunk_id: An int describing the episode chunk id for building the path.
-    Returns:
-      A string describing the episode chunk directory path.
-    """
-    return os.path.join(
-        self._get_episode_glob(project_id, brain_id, session_id, episode_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['episode_chunk'],
-        self._as_glob_string(chunk_id))
-
-  def _get_assignment_glob(
-      self, project_id, brain_id, session_id, assignment_id):
-    """Gives the glob pattern for an assignment.
-
-    Arguments may be None (indicating any), lists or int/string literals.
-
-    Args:
-      project_id: The project id string to use for building the path.
-      brain_id: The brain id string to use for building the path.
-      session_id: The session id string for building the path.
-      assignment_id: The assignment id string for building the path.
-    Returns:
-      A string describing the assignment directory path.
-    """
-    def _encode(id_string):
-      """Encode an assignment ID into a file path."""
-      return hashlib.sha256(id_string.encode('utf-8')).hexdigest()
-
-    if isinstance(assignment_id, str):
-      assignment_id = _encode(assignment_id)
-    elif assignment_id is not None:
-      try:
-        assignment_id = [_encode(id_string) for id_string in assignment_id]
-      except TypeError:
-        raise ValueError(
-            f'assignment_id has unexpected type {type(assignment_id)}, '
-            'must be str, iterable of strings or None')
-
-    return os.path.join(
-        self._get_session_glob(project_id, brain_id, session_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['assignment'],
-        self._as_glob_string(assignment_id))
-
-  def _get_model_glob(
-      self, project_id, brain_id, session_id, model_id):
-    """Gives the glob pattern for a model.
-
-    Arguments may be None (indicating any), lists or int/string literals.
-
-    Args:
-      project_id: The project id string to use for building the path.
-      brain_id: The brain id string to use for building the path.
-      session_id: The session id string for building the path.
-      model_id: The model id string for building the path.
-    Returns:
-      A string describing the model directory path.
-    """
-    return os.path.join(
-        self._get_session_glob(project_id, brain_id, session_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['model'],
-        self._as_glob_string(model_id))
-
-  def _get_offline_evaluation_glob(
-      self, project_id, brain_id, session_id, model_id, evaluation_set_id):
-    """Gives the glob pattern for an offline evaluation.
-
-    Arguments may be None (indicating any), lists or int/string literals.
-
-    Args:
-      project_id: The project id string to use for building the path.
-      brain_id: The brain id string to use for building the path.
-      session_id: The session id string for building the path.
-      model_id: The model id string for building the path.
-      evaluation_set_id: The int describing the evaluation set id, used
-        for building the path.
-    Returns:
-      A string describing the offline evaluation directory path.
-    """
-    return os.path.join(
-        self._get_model_glob(project_id, brain_id, session_id, model_id),
-        _DIRECTORY_BY_RESOURCE_TYPE['offline_evaluation'],
-        self._as_glob_string(evaluation_set_id))
+  def get_most_recent_snapshot(
+      self,
+      project_id: str,
+      brain_id: str) -> data_store_pb2.Snapshot:
+    """Returns the most recent snapshot for the specified project/brain."""
+    return self._get_most_recent(
+        resource_id.FalkenResourceId(
+            project=project_id, brain=brain_id, snapshot='*'))
 
   def add_assignment_callback(self, callback):
     """Adds a callback function for newly created assignments.
 
     Args:
-      callback: A function that will be called with a single argument,
-        an assignment id.
+      callback: A function that will be called with a single argument, an
+        assignment id.
     """
+
     def file_callback(file_name):
       # TODO(b/185940506): check file matches assignment, read file,
       # and return the parsed id.

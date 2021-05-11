@@ -28,12 +28,14 @@ message Assignment {
   string brain_id = 2;
   string session_id = 3;
   string assignment_id = 4;
+
   google.rpc.Status status = 5;
   uint64 created_micros = 6;
 }
 
 message Project {
   string project_id = 1;
+
   string name = 2;
   string api_key = 3;
   uint64 created_micros = 4;
@@ -145,8 +147,8 @@ message SerializedModel {
   string brain_id = 2;
   string session_id = 3;
   string model_id = 4;
-  uint64 created_micros = 6;
 
+  uint64 created_micros = 6;
   falken.proto.SerializedModel serialized_model = 5;
 }
 

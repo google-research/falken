@@ -17,9 +17,10 @@
 
 from absl import logging
 from api import proto_conversion
+from data_store import resource_id
 
-import common.generate_protos  # pylint: disable=unused-import
-from data_store import data_store as ds
+# pylint: disable=unused-import,g-bad-import-order
+import common.generate_protos
 import data_store_pb2
 import episode_pb2
 import falken_service_pb2
@@ -34,19 +35,34 @@ class ListHandler:
   """
 
   def __init__(self, request, context, data_store, request_args,
-               request_optional_args, list_method, read_method,
-               response_proto_type, response_proto_repeated_field_name):
+               glob_pattern, response_proto_type,
+               response_proto_repeated_field_name):
     self._request = request
     self._context = context
     self._request_type = type(request)
     self._data_store = data_store
+    self._glob_pattern = glob_pattern
     self._request_args = request_args
-    self._request_optional_args = request_optional_args
-    self._list_method = list_method
-    self._read_method = read_method
     self._response_proto_type = response_proto_type
     self._response_proto_repeated_field_name = (
         response_proto_repeated_field_name)
+
+  def read(self, res_id):
+    """Read a resource based on its resource ID.
+
+    Args:
+      res_id: The resource ID represented as a string.
+    Returns:
+      The resource represented as a proto.
+    """
+    return self._data_store.read(
+        resource_id.FalkenResourceId(res_id))
+
+  def _get_list_glob(self, *args):
+    for arg in args:
+      if '/' in arg:
+        raise ValueError('ID strings may not contain "/".')
+    return self._glob_pattern.format(*args)
 
   def list(self):
     """Retrieves instances of the requested proto in data store.
@@ -70,44 +86,38 @@ class ListHandler:
             f'Could not find {arg} in {self._request_type}.')
       args.append(getattr(self._request, arg))
 
-    for optional_arg in self._request_optional_args:
-      value = getattr(self._request, optional_arg)
-      if value:
-        args.append(value)
-
     response = self._response_proto_type()
 
-    list_options = ds.ListOptions(
+    list_ids, next_token = self._data_store.list(
+        resource_id.FalkenResourceId(self._get_list_glob(*args)),
+        page_size=self._request.page_size or None,
         page_token=self._request.page_token or None)
-    list_ids, next_token = self._list_method(
-        *args, self._request.page_size or None,
-        list_options)
+
     response.next_page_token = next_token or ''
 
-    self._fill_response(response, list_ids, *args)
+    self._fill_response(response, list_ids)
 
     return response
 
-  def _fill_response(self, response, list_ids, *args):
+  def _fill_response(self, response, res_ids):
     """Reads proto from datastore from ids and fills up the response.
 
     Args:
       response: falken_service_pb2.List*Response instance getting populated.
-      list_ids: IDs of the proto instances to fill the response with.
-      *args: Args to query the data_store read method with.
+      res_ids: Resource id string of the protos to fill the response with.
     """
-    for list_id in list_ids:
+    for res_id in res_ids:
       getattr(response, self._response_proto_repeated_field_name).append(
           proto_conversion.ProtoConverter.convert_proto(
-              self._read_method(*args, list_id)))
+              self.read(res_id)))
 
 
 class ListBrainsHandler(ListHandler):
   """Handles listing brains for a project ID."""
 
   def __init__(self, request, context, data_store):
-    super().__init__(request, context, data_store, ['project_id'], [],
-                     data_store.list_brains, data_store.read_brain,
+    super().__init__(request, context, data_store, ['project_id'],
+                     'projects/{0}/brains/*',
                      falken_service_pb2.ListBrainsResponse, 'brains')
 
 
@@ -116,7 +126,7 @@ class ListSessionsHandler(ListHandler):
 
   def __init__(self, request, context, data_store):
     super().__init__(request, context, data_store, ['project_id', 'brain_id'],
-                     [], data_store.list_sessions, data_store.read_session,
+                     'projects/{0}/brains/{1}/sessions/*',
                      falken_service_pb2.ListSessionsResponse, 'sessions')
 
 
@@ -128,24 +138,34 @@ class ListEpisodeChunksHandler(ListHandler):
   """
 
   def __init__(self, request, context, data_store):
-    super().__init__(request, context, data_store,
-                     ['project_id', 'brain_id', 'session_id'],
-                     [], data_store.list_episode_chunks,
-                     data_store.read_episode_chunk,
-                     falken_service_pb2.ListEpisodeChunksResponse,
-                     'episode_chunks')
     if (request.filter ==
         falken_service_pb2.ListEpisodeChunksRequest.SPECIFIED_EPISODE):
-      self._request_optional_args = ['episode_id']
-    if (request.filter ==
-        falken_service_pb2.ListEpisodeChunksRequest.EPISODE_IDS):
-      self._read_method = self._create_episode_chunk_with_id_only
+      res_id_glob = (
+          'projects/{0}/brains/{1}/sessions/{2}/episodes/{3}/chunks/*')
+      args = ['project_id', 'brain_id', 'session_id', 'episode_id']
+    else:
+      res_id_glob = 'projects/{0}/brains/{1}/sessions/{2}/episodes/*/chunks/*'
+      args = ['project_id', 'brain_id', 'session_id']
 
-  def _create_episode_chunk_with_id_only(
-      self, project_id, brain_id, session_id, episode_id, chunk_id):
-    """Creates an EpisodeChunk proto instance with the IDs only."""
+    super().__init__(request, context, data_store,
+                     args, res_id_glob,
+                     falken_service_pb2.ListEpisodeChunksResponse,
+                     'episode_chunks')
+
+  def read(self, res_id: str):
+    """Override parent 'read' to provide ID-only read functionality."""
+    if (self._request.filter !=
+        falken_service_pb2.ListEpisodeChunksRequest.EPISODE_IDS):
+      return super().read(res_id)
+
+    # Translate string to ResourceId object.
+    res_id = resource_id.FalkenResourceId(res_id)
+
     return data_store_pb2.EpisodeChunk(
-        project_id=project_id, brain_id=brain_id, session_id=session_id,
-        episode_id=episode_id, chunk_id=chunk_id,
+        project_id=res_id.project,
+        brain_id=res_id.brain,
+        session_id=res_id.session,
+        episode_id=res_id.episode,
+        chunk_id=int(res_id.chunk),
         data=episode_pb2.EpisodeChunk(
-            episode_id=episode_id, chunk_id=chunk_id))
+            episode_id=res_id.episode, chunk_id=int(res_id.chunk)))

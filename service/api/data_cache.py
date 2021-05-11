@@ -17,7 +17,9 @@
 
 import functools
 
-_MAXCACHE = 512
+from data_store import resource_id
+
+_MAX_CACHE = 512
 
 
 def get_brain_spec(data_store, project_id, brain_id):
@@ -34,7 +36,7 @@ def get_brain_spec(data_store, project_id, brain_id):
   return get_brain(data_store, project_id, brain_id).brain_spec
 
 
-@functools.lru_cache(maxsize=_MAXCACHE)
+@functools.lru_cache(maxsize=_MAX_CACHE)
 def get_brain(data_store, project_id, brain_id):
   """Get cached brain or read brain from data_store.
 
@@ -46,4 +48,5 @@ def get_brain(data_store, project_id, brain_id):
   Returns:
     data_store_pb2.Brain instance.
   """
-  return data_store.read_brain(project_id, brain_id)
+  return data_store.read(
+      resource_id.FalkenResourceId(f'projects/{project_id}/brains/{brain_id}'))

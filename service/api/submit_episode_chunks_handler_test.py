@@ -97,8 +97,9 @@ class SubmitEpisodeChunksHandler(parameterized.TestCase):
         episode_state=episode_pb2.FAILURE, model_id='m0')]
     mock_brain_spec_node = mock.Mock()
     brain_spec_proto_node.return_value = mock_brain_spec_node
-    getattr(mock_brain_spec_node, field).data_to_proto_nest.side_effect = (
-        specs.TypingError('data_to_proto_nest failed.'))
+    getattr(mock_brain_spec_node,
+            field).proto_node.data_to_proto_nest.side_effect = (
+                specs.TypingError('data_to_proto_nest failed.'))
 
     with self.assertRaisesWithLiteralMatch(
         specs.TypingError,
@@ -108,11 +109,11 @@ class SubmitEpisodeChunksHandler(parameterized.TestCase):
           mock_ds, 'p0', 'b0', chunks)
 
     get_brain_spec.assert_called_once_with(mock_ds, 'p0', 'b0')
-    mock_brain_spec_node.action_spec.data_to_proto_nest.assert_called_once_with(
-        step_0.action)
+    mock_brain_spec_node.action_spec.proto_node.data_to_proto_nest.assert_called_once_with(
+        chunks[0].steps[0].action)
     if field == 'observation_spec':
-      (mock_brain_spec_node.observation_spec.data_to_proto_nest.
-       assert_called_once_with(step_0.observation))
+      (mock_brain_spec_node.observation_spec.proto_node.data_to_proto_nest
+       .assert_called_once_with(chunks[0].steps[0].observation))
     brain_spec_proto_node.assert_called_once_with(get_brain_spec.return_value)
 
 if __name__ == '__main__':

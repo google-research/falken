@@ -105,9 +105,10 @@ def _check_episode_data_with_brain_spec(
       step = chunk.steps[step_nr]
       try:
         # Check action data against action spec.
-        _ = brain_spec.action_spec.data_to_proto_nest(step.action)
+        _ = brain_spec.action_spec.proto_node.data_to_proto_nest(step.action)
         # Check observation data against observation spec.
-        _ = brain_spec.observation_spec.data_to_proto_nest(step.observation)
+        _ = brain_spec.observation_spec.proto_node.data_to_proto_nest(
+            step.observation)
       except specs.TypingError as e:
         raise specs.TypingError(
             f'Brainspec check failed in chunk {chunk_nr}, step {step_nr}: {e}')

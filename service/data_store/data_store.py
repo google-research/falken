@@ -172,7 +172,7 @@ class FalkenResourceHandler:
           'brain_id': 'brain',
           'session_id': 'session',
           'model_id': 'model',
-          'evaluation_set_id': 'offline_evaluation',
+          'offline_evaluation_id': 'offline_evaluation',
       },
   }
 

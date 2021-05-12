@@ -139,14 +139,14 @@ class DataStoreTest(parameterized.TestCase):
             brain_id='b1',
             session_id='s1',
             model_id='m1',
-            evaluation_set_id=2))
+            offline_evaluation_id=2))
     self.assertEqual(
         self._data_store.read(resource_id.FalkenResourceId(
             project='p1',
             brain='b1',
             session='s1',
             model='m1',
-            offline_evaluation=2)).evaluation_set_id,
+            offline_evaluation=2)).offline_evaluation_id,
         2)
 
   @mock.patch.object(time, 'time', autospec=True)

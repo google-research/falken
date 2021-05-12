@@ -38,7 +38,7 @@ class ListHandlerTest(absltest.TestCase):
     mock_context = mock.Mock()
     mock_ds = mock.Mock()
     list_handler.ListBrainsHandler(mock_request, mock_context, mock_ds)
-    list_handler_base.assert_called_with(
+    list_handler_base.assert_called_once_with(
         mock_request, mock_context, mock_ds, ['project_id'],
         'projects/{0}/brains/*',
         falken_service_pb2.ListBrainsResponse,
@@ -50,7 +50,7 @@ class ListHandlerTest(absltest.TestCase):
     mock_context = mock.Mock()
     mock_ds = mock.Mock()
     list_handler.ListSessionsHandler(mock_request, mock_context, mock_ds)
-    list_handler_base.assert_called_with(
+    list_handler_base.assert_called_once_with(
         mock_request, mock_context, mock_ds, ['project_id', 'brain_id'],
         'projects/{0}/brains/{1}/sessions/*',
         falken_service_pb2.ListSessionsResponse,
@@ -62,7 +62,7 @@ class ListHandlerTest(absltest.TestCase):
     mock_context = mock.Mock()
     mock_ds = mock.Mock()
     list_handler.ListEpisodeChunksHandler(mock_request, mock_context, mock_ds)
-    list_handler_base.assert_called_with(
+    list_handler_base.assert_called_once_with(
         mock_request, mock_context, mock_ds,
         ['project_id', 'brain_id', 'session_id'],
         'projects/{0}/brains/{1}/sessions/{2}/episodes/*/chunks/*',
@@ -76,7 +76,7 @@ class ListHandlerTest(absltest.TestCase):
     mock_ds = mock.Mock()
     handler = list_handler.ListEpisodeChunksHandler(
         request, mock_context, mock_ds)
-    list_handler_base.assert_called_with(
+    list_handler_base.assert_called_once_with(
         request, mock_context, mock_ds,
         ['project_id', 'brain_id', 'session_id'],
         'projects/{0}/brains/{1}/sessions/{2}/episodes/*/chunks/*',
@@ -104,13 +104,13 @@ class ListHandlerTest(absltest.TestCase):
     mock_ds = mock.Mock()
     list_handler.ListEpisodeChunksHandler(
         request, mock_context, mock_ds)
-    list_handler_base.assert_called_with(
+    list_handler_base.assert_called_once_with(
         request, mock_context, mock_ds,
         ['project_id', 'brain_id', 'session_id', 'episode_id'],
         'projects/{0}/brains/{1}/sessions/{2}/episodes/{3}/chunks/*',
         falken_service_pb2.ListEpisodeChunksResponse, 'episode_chunks')
 
-  def test_list_missing_ids(self):
+  def test_list_missing_request_args(self):
     mock_context = mock.Mock()
     mock_context.abort.side_effect = Exception()
     request = falken_service_pb2.ListBrainsRequest()

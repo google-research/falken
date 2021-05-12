@@ -37,6 +37,23 @@ class ListHandler:
   def __init__(self, request, context, data_store, request_args,
                glob_pattern, response_proto_type,
                response_proto_repeated_field_name):
+    """Initialize ListHandler.
+
+    Args:
+      request: falken_service_pb2.List*Request containing fields that are used
+        to query the Falken instances.
+      context: grpc.ServicerContext containing context about the RPC.
+      data_store: Falken data_store.DataStore object to read the Falken object
+        from.
+      request_args: list of field names of the request, ordered in
+        FALKEN_RESOURCE_SPEC in data_store/resource_id.py
+      glob_pattern: String used in combination with request_args to generate the
+        resource_id.FalkenResourceId to query the data_store.
+      response_proto_type: falken_service_pb2.List*Response type corresponding
+        to the request.
+      response_proto_repeated_field_name: String field name e.g. 'brains' to
+        fill the response with the protos read from data_store.
+    """
     self._request = request
     self._context = context
     self._request_type = type(request)
@@ -52,17 +69,12 @@ class ListHandler:
 
     Args:
       res_id: The resource ID represented as a string.
+
     Returns:
       The resource represented as a proto.
     """
     return self._data_store.read(
         resource_id.FalkenResourceId(res_id))
-
-  def _get_list_glob(self, *args):
-    for arg in args:
-      if '/' in arg:
-        raise ValueError('ID strings may not contain "/".')
-    return self._glob_pattern.format(*args)
 
   def list(self):
     """Retrieves instances of the requested proto in data store.
@@ -89,7 +101,7 @@ class ListHandler:
     response = self._response_proto_type()
 
     list_ids, next_token = self._data_store.list(
-        resource_id.FalkenResourceId(self._get_list_glob(*args)),
+        resource_id.FalkenResourceId(self._glob_pattern.format(*args)),
         page_size=self._request.page_size or None,
         page_token=self._request.page_token or None)
 

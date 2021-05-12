@@ -22,7 +22,7 @@ from absl import flags
 from absl import logging
 from api import create_brain_handler
 from api import create_session_handler
-from api import get_session_handler
+from api import get_handler
 from api import list_handler
 from api import resource_id
 from api import submit_episode_chunks_handler
@@ -109,7 +109,8 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def GetBrain(self, request, context):
     """Retrieves an existing Brain."""
     self._validate_project_and_api_key(request, context)
-    raise NotImplementedError('Method not implemented!')
+    return create_session_handler.GetBrainHandler(
+        request, context, self.data_store).get()
 
   def ListBrains(self, request, context):
     """Returns a list of Brains in the project."""
@@ -131,13 +132,14 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def GetSession(self, request, context):
     """Retrieves a Session by ID."""
     self._validate_project_and_api_key(request, context)
-    return get_session_handler.get_session(request, context, self.data_store)
+    return get_handler.GetSessionHandler(
+        request, context, self.data_store).get()
 
   def GetSessionByIndex(self, request, context):
     """Retrieves a Session by index."""
     self._validate_project_and_api_key(request, context)
-    return get_session_handler.get_session_by_index(
-        request, context, self.data_store)
+    return create_session_handler.GetSessionByIndexHandler(
+        request, context, self.data_store).get()
 
   def ListSessions(self, request, context):
     """Returns a list of Sessions for a given Brain."""
@@ -165,7 +167,8 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def GetModel(self, request, context):
     """Returns a serialized model."""
     self._validate_project_and_api_key(request, context)
-    raise NotImplementedError('Method not implemented!')
+    return get_handler.GetModelHandler(
+        request, context, self.data_store).get()
 
 
 def read_server_credentials():

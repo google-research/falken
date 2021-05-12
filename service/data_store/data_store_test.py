@@ -311,6 +311,16 @@ class DataStoreTest(parameterized.TestCase):
     self._data_store.remove_assignment_callback(assignment_callback)
     self._data_store._fs.remove_file_callback.assert_called_with(file_callback)
 
+  def test_datastore_to_resource_id(self):
+    proto = data_store_pb2.Session(
+        project_id='p0',
+        brain_id='b0',
+        session_id='s0')
+    res_id = self._data_store.to_resource_id(proto)
+    self.assertEqual(
+        res_id,
+        'projects/p0/brains/b0/sessions/s0')
+
 
 if __name__ == '__main__':
   absltest.main()

@@ -399,6 +399,9 @@ class DataStore(ResourceStore):
   def __del__(self):
     self.remove_all_assignment_callbacks()
 
+  def to_resource_id(self, resource: DatastoreProto) -> resource_id.ResourceId:
+    return self._resolver.to_resource_id(resource)
+
   def _get_most_recent(self, res_id_glob: Union[str, resource_id.ResourceId]):
     """Returns the most recent ID matching the glob or None if not found."""
     resource_ids, _ = self.list(res_id_glob, page_size=None)

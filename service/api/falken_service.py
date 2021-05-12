@@ -23,6 +23,7 @@ from absl import logging
 from api import create_brain_handler
 from api import create_session_handler
 from api import get_handler
+from api import get_session_count_handler
 from api import list_handler
 from api import request_metadata
 from api import submit_episode_chunks_handler
@@ -129,7 +130,8 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def GetSessionCount(self, request, context):
     """Retrieves session count for a given brain."""
     self._validate_project_and_api_key(request, context)
-    raise NotImplementedError('Method not implemented!')
+    return get_session_count_handler.get_session_count(
+        request, context, self.data_store)
 
   def GetSession(self, request, context):
     """Retrieves a Session by ID."""

@@ -24,7 +24,7 @@ import traceback
 from absl import logging
 from api import data_cache
 from api import proto_conversion
-from api import resource_id
+from api import unique_id
 from learner.brains import specs
 from google.protobuf import any_pb2
 from google.protobuf import timestamp_pb2
@@ -66,7 +66,7 @@ def create_brain(request, context, data_store):
 
   write_data_store_brain = data_store_pb2.Brain(
       project_id=request.project_id,
-      brain_id=resource_id.generate_resource_id(),
+      brain_id=unique_id.generate_unique_id(),
       name=request.display_name,
       brain_spec=request.brain_spec)
   data_store.write(write_data_store_brain)

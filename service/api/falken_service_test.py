@@ -23,14 +23,14 @@ from unittest import mock
 from absl import flags
 from absl.testing import absltest
 from api import falken_service
-from api import resource_id
 from api import test_constants
+from api import unique_id
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
 import brain_pb2
 from data_store import data_store
-from data_store import resource_id as data_resource_id
+from data_store import resource_id
 import data_store_pb2
 import falken_service_pb2
 import falken_service_pb2_grpc
@@ -118,7 +118,7 @@ class FalkenServiceTest(absltest.TestCase):
             grpc.ssl_server_credentials(
                 ((test_private_key, test_certificate_chain),))))
 
-  @mock.patch.object(resource_id, 'generate_base64_id')
+  @mock.patch.object(unique_id, 'generate_base64_id')
   @mock.patch.object(data_store, 'DataStore')
   def test_create_api_keys(self, datastore, generate_base64_id):
     """Test creation of API keys for project_ids specified in FLAGS."""
@@ -162,7 +162,7 @@ class FalkenServiceTest(absltest.TestCase):
     falken_service.FalkenService()._validate_project_and_api_key(
         request, context)
     ds.read.called_once_with(
-        data_resource_id.FalkenResourceId('projects/test_project_id'))
+        resource_id.FalkenResourceId('projects/test_project_id'))
     context.abort.assert_not_called()
 
   @mock.patch.object(falken_service.FalkenService, '_create_api_keys')
@@ -223,7 +223,7 @@ class FalkenServiceTest(absltest.TestCase):
         code_pb2.UNAUTHENTICATED,
         'Project ID test_project_id and API key test_api_key does not match.')
     ds.read.called_once_with(
-        data_resource_id.FalkenResourceId('projects/test_project_id'))
+        resource_id.FalkenResourceId('projects/test_project_id'))
 
 
 if __name__ == '__main__':

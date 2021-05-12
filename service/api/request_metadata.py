@@ -13,18 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Handles resource ids for the project."""
-
-import base64
-import uuid
-
-
-def generate_resource_id():
-  return str(uuid.uuid4())
-
-
-def generate_base64_id():
-  return base64.b64encode(uuid.uuid4().bytes).decode('utf-8')
+"""Handles metadata from RPC contexts."""
 
 
 def extract_metadata_value(context, key):

@@ -17,10 +17,11 @@
 
 from absl import logging
 from api import proto_conversion
-from api import resource_id
+from api import request_metadata
+from api import unique_id
 
 import common.generate_protos  # pylint: disable=unused-import
-from data_store import resource_id as data_resource_id
+from data_store import resource_id
 import data_store_pb2
 from google.rpc import code_pb2
 import session_pb2
@@ -53,7 +54,7 @@ def create_session(request, context, data_store):
   previous_session = None
   if previous_session_id:
     previous_session = data_store.read(
-        data_resource_id.FalkenResourceId(
+        resource_id.FalkenResourceId(
             f'projects/{request.spec.project_id}/brains/'
             f'{request.spec.brain_id}/sessions/{previous_session_id}'))
 
@@ -62,16 +63,16 @@ def create_session(request, context, data_store):
   write_data_store_session = data_store_pb2.Session(
       project_id=request.spec.project_id,
       brain_id=request.spec.brain_id,
-      session_id=resource_id.generate_resource_id(),
+      session_id=unique_id.generate_unique_id(),
       session_type=request.spec.session_type,
-      user_agent=resource_id.extract_metadata_value(context, 'user-agent'))
+      user_agent=request_metadata.extract_metadata_value(context, 'user-agent'))
   if starting_snapshot_id:
     write_data_store_session.starting_snapshot_ids.append(starting_snapshot_id)
 
   data_store.write(write_data_store_session)
   return proto_conversion.ProtoConverter.convert_proto(
       data_store.read(
-          data_resource_id.FalkenResourceId(
+          resource_id.FalkenResourceId(
               f'projects/{write_data_store_session.project_id}/brains/'
               f'{write_data_store_session.brain_id}/sessions/'
               f'{write_data_store_session.session_id}')))
@@ -128,7 +129,7 @@ def _get_snapshot_id_and_previous_session_id(session_spec, data_store):
   """
   if session_spec.snapshot_id:
     snapshot = data_store.read(
-        data_resource_id.FalkenResourceId(
+        resource_id.FalkenResourceId(
             f'projects/{session_spec.project_id}/brains/{session_spec.brain_id}'
             f'/snapshots/{session_spec.snapshot_id}'))
   else:

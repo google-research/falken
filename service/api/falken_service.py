@@ -24,13 +24,14 @@ from api import create_brain_handler
 from api import create_session_handler
 from api import get_handler
 from api import list_handler
-from api import resource_id
+from api import request_metadata
 from api import submit_episode_chunks_handler
+from api import unique_id
 
 import common.generate_protos  # pylint: disable=unused-import
 from data_store import data_store
 from data_store import file_system
-from data_store import resource_id as data_resource_id
+from data_store import resource_id
 import data_store_pb2
 import falken_service_pb2_grpc
 from google.rpc import code_pb2
@@ -71,7 +72,7 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
         only when used in combination with their respective project IDs.
     """
     for project_id in project_ids:
-      api_key = resource_id.generate_base64_id()
+      api_key = unique_id.generate_base64_id()
       project = data_store_pb2.Project(
           project_id=project_id, name=project_id, api_key=api_key)
       self.data_store.write(project)
@@ -89,13 +90,14 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
     if not request.project_id:
       context.abort(code_pb2.UNAUTHENTICATED,
                     'No project ID set in the request.')
-    api_key = resource_id.extract_metadata_value(context, _API_METADATA_KEY)
+    api_key = request_metadata.extract_metadata_value(
+        context, _API_METADATA_KEY)
     if not api_key:
       context.abort(code_pb2.UNAUTHENTICATED,
                     'No API key found in the metadata.')
     project_id = request.project_id
     api_key_for_project = self.data_store.read(
-        data_resource_id.FalkenResourceId(f'projects/{project_id}')).api_key
+        resource_id.FalkenResourceId(f'projects/{project_id}')).api_key
     if api_key_for_project != api_key:
       context.abort(
           code_pb2.UNAUTHENTICATED,

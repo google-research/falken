@@ -21,8 +21,8 @@ from unittest import mock
 from absl.testing import absltest
 from api import create_brain_handler
 from api import proto_conversion
-from api import resource_id
 from api import test_constants
+from api import unique_id
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
@@ -49,9 +49,9 @@ class CreateBrainHandlerTest(absltest.TestCase):
 
   @mock.patch.object(proto_conversion.ProtoConverter,
                      'convert_proto')
-  @mock.patch.object(resource_id, 'generate_resource_id')
-  def test_valid_request(self, generate_resource_id, convert_proto):
-    generate_resource_id.return_value = 'test_brain_uuid'
+  @mock.patch.object(unique_id, 'generate_unique_id')
+  def test_valid_request(self, generate_unique_id, convert_proto):
+    generate_unique_id.return_value = 'test_brain_uuid'
     request = falken_service_pb2.CreateBrainRequest(
         display_name='test_brain',
         brain_spec=text_format.Parse(test_constants.TEST_BRAIN_SPEC,
@@ -80,7 +80,7 @@ class CreateBrainHandlerTest(absltest.TestCase):
         create_brain_handler.create_brain(request, context, self._ds),
         expected_brain)
 
-    generate_resource_id.assert_called_once_with()
+    generate_unique_id.assert_called_once_with()
     self._ds.write.assert_called_once_with(write_brain)
     self.assertEqual(
         str(self._ds.read.call_args[0][0]),

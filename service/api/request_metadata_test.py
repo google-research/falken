@@ -13,42 +13,22 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for resource_id."""
+"""Tests for request_metadata."""
 
-import base64
 from unittest import mock
-import uuid
 
 from absl.testing import absltest
-from api import resource_id
+from api import request_metadata
 
 
-class ResourceIdTest(absltest.TestCase):
-
-  @mock.patch.object(uuid, 'uuid4')
-  def test_generate_resource_id(self, uuid4):
-    uuid4.return_value = '4adccb90-b03b-4397-b192-ee1941fd130b'
-    self.assertEqual(resource_id.generate_resource_id(),
-                     '4adccb90-b03b-4397-b192-ee1941fd130b')
-
-  @mock.patch.object(uuid, 'uuid4')
-  @mock.patch.object(base64, 'b64encode')
-  def test_generate_base64_id(self, b64encode, uuid4):
-    mock_uuid4 = mock.Mock()
-    mock_uuid4.bytes = b'\xbb\xc40\x19%*HP\xb5\x1b\xab\\\xae\xef\x91\x16'
-    uuid4.return_value = mock_uuid4
-    b64encode.return_value = b'u8QwGSUqSFC1G6tcru+RFg=='
-    self.assertEqual(resource_id.generate_base64_id(),
-                     b64encode.return_value.decode('utf-8'))
-    uuid4.called_once_with()
-    b64encode.called_once_with(mock_uuid4.bytes)
+class RequestMetadataTest(absltest.TestCase):
 
   def test_extract_metadata_value(self):
     mock_context = mock.Mock()
     mock_context.invocation_metadata.return_value = [
         ('user-agent', 'grpc-c/16.0.0 (linux; chttp2)')
     ]
-    self.assertEqual(resource_id.extract_metadata_value(
+    self.assertEqual(request_metadata.extract_metadata_value(
         mock_context, 'user-agent'),
                      'grpc-c/16.0.0 (linux; chttp2)')
 

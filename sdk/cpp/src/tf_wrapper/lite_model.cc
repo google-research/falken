@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tf_wrapper/custom_ops.h"
 #ifdef FALKEN_ENABLE_TFLITE
 #include "src/tf_wrapper/lite_model.h"  // NOLINT
 
@@ -301,9 +300,9 @@ absl::Status LiteModel::Load(const std::string& model_path) {
   resolver.AddCustom("Multinomial",
                      tflite::ops::custom::Register_MULTINOMIAL());
   resolver.AddCustom("Atan2",
-                     Register_ATAN2());
+                     tflite::ops::custom::Register_ATAN2());
   resolver.AddCustom("Sign",
-                     Register_SIGN());
+                     tflite::ops::custom::Register_SIGN());
   tflite::InterpreterBuilder builder(*model_, resolver);
   builder(&interpreter_);
   if (interpreter_ == nullptr) {

@@ -1,17 +1,3 @@
-# Copyright 2021 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 cmake_minimum_required(VERSION 3.17)
 
 project(falken_tf_wrapper_internal)
@@ -31,13 +17,11 @@ get_filename_component(FALKEN_CPP_SDK_SRC_ROOT_DIR
 set(TF_WRAPPER_SRCS
   "lite_model.cc"
   "tf_wrapper.cc"
-  "custom_ops.cc"
 )
 
 set(TF_WRAPPER_HDRS
   "lite_model.h"
   "tf_wrapper.h"
-  "custom_ops.h"
 )
 
 add_library(falken_tf_wrapper ${TF_WRAPPER_SRCS} ${TF_WRAPPER_HDRS})
@@ -125,8 +109,6 @@ if(FALKEN_ENABLE_CPP_UNIT_TESTS)
     )
   endmacro()
 
-  # TODO(b/186531546): Upstream custom_ops module to TensorFlow
-  # tf_wrapper_build_test(custom_ops_test "custom_ops_test.cc")
   tf_wrapper_build_test(lite_model_test "lite_model_test.cc")
   # TODO(b/186531078): Enable model_comparison_test test (requires TensorFlow)
   # tf_wrapper_build_test(model_comparison_test "model_comparison_test.cc")

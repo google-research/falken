@@ -64,7 +64,7 @@ import time
 from data_store import file_system
 
 
-class _Metronome(object):
+class _Metronome:
   """Yields values with a maximum frequency."""
 
   def __init__(self, frequency):
@@ -90,7 +90,7 @@ class _Metronome(object):
     self._stop = True
 
 
-class _FakeMetronome(object):
+class _FakeMetronome:
   """Simulates Metronome ticks when it is requested to do so."""
   _STOP_STRING = 'stop'
 
@@ -124,7 +124,7 @@ class _FakeMetronome(object):
     self._ticks.join()
 
 
-class AssignmentMonitor(threading.Thread):
+class AssignmentMonitor:
   """Monitors creation of assignments."""
 
   def __init__(self, fs, notification_dir, assignment_callback, chunk_callback,
@@ -159,7 +159,12 @@ class AssignmentMonitor(threading.Thread):
 
     # Information about the currently acquired assignment.
     self._acquired_assignment_id = None
-    self._acquired_assignment_lock = None
+    # Lock file used to make assignment acquisition exclusive across processes.
+    self._acquired_assignment_lock_file = None
+    # threading.Lock object to protect access to _acquired_assignment_id and
+    # _acquired_assignment_lock_file variables across threads of the same
+    # process.
+    self._acquired_assignment_in_process_lock = threading.Lock()
 
     # Set callbacks.
     self._assignment_callback = assignment_callback
@@ -183,30 +188,33 @@ class AssignmentMonitor(threading.Thread):
     Returns:
       A boolean telling whether the assignment was correctly acquired or not.
     """
-    if self._acquired_assignment_id:
-      raise ValueError(
-          f'Cannot acquire assignment {assignment_id} as assignment '
-          f'{self._acquired_assignment_id} is already acquired.')
+    with self._acquired_assignment_in_process_lock:
+      if self._acquired_assignment_id:
+        raise ValueError(
+            f'Cannot acquire assignment {assignment_id} as assignment '
+            f'{self._acquired_assignment_id} is already acquired.')
 
-    lock_path = os.path.join(self._notification_dir, str(assignment_id))
-    try:
-      self._acquired_assignment_lock = self._fs.lock_file(lock_path)
-    except file_system.UnableToLockFileError:
-      self._acquired_assignment_lock = None
-      return False
+      lock_path = self._get_assignment_directory(assignment_id)
+      try:
+        self._acquired_assignment_lock_file = self._fs.lock_file(lock_path)
+      except file_system.UnableToLockFileError:
+        self._acquired_assignment_lock_file = None
+        return False
 
-    self._acquired_assignment_id = assignment_id
-    return True
+      self._acquired_assignment_id = assignment_id
+      return True
 
   def release_assignment(self):
     """Releases the currently acquired assignment."""
-    if not self._acquired_assignment_lock:
-      raise ValueError(
-          'Attempted to release an assignment, but none has been acquired yet.')
+    with self._acquired_assignment_in_process_lock:
+      if not self._acquired_assignment_lock_file:
+        raise ValueError(
+            'Attempted to release an assignment, but none has been acquired '
+            'yet.')
 
-    self._fs.unlock_file(self._acquired_assignment_lock)
-    self._acquired_assignment_id = None
-    self._acquired_assignment_lock = None
+      self._fs.unlock_file(self._acquired_assignment_lock_file)
+      self._acquired_assignment_id = None
+      self._acquired_assignment_lock_file = None
 
   def trigger_assignment_notification(self, assignment_id, episode_chunk_id):
     """Triggers a notification for a given assignment.
@@ -223,20 +231,30 @@ class AssignmentMonitor(threading.Thread):
     chunk_hash = hashlib.sha256(
         episode_chunk_id.episode_chunk.encode('utf-8')).hexdigest()
     path = os.path.join(
-        self._notification_dir, str(assignment_id),
+        self._get_assignment_directory(assignment_id),
         f'chunk_{time.time()}_{chunk_hash}')
     self._fs.write_file(
         path, f'{str(assignment_id)}\n{str(episode_chunk_id)}')
 
+  def _get_assignment_directory(self, assignment_id):
+    """Gives the directory given the resource id of an assignment."""
+    return os.path.join(self._notification_dir, str(assignment_id))
+
   def _poll_assignments_and_episode_chunks(self):
     """Polls the notification dir using the metronome to dictate frequency."""
-    # TODO(b/185940506): Use threading.Lock() for using object variables that
-    # can be modified by main thread.
+    callback = None
+
     for _ in self._metronome.wait_for_tick():
-      if self._acquired_assignment_id:
-        # TODO(b/185940506): List new chunks for self._acquired_assignment_id.
-        self._chunk_callback(self._acquired_assignment_id, ['test'])
-      else:
-        # TODO(b/185940506): List chunks for all assignments that aren't
-        # acquired by any other processes.
-        self._assignment_callback('test')
+      with self._acquired_assignment_in_process_lock:
+        if self._acquired_assignment_id:
+          # TODO(b/185940506): List new chunks belonging to
+          # self._acquired_assignment_id.
+          callback = lambda: self._chunk_callback(  # pylint: disable=g-long-lambda
+              self._acquired_assignment_id, ['test'])
+        else:
+          # TODO(b/185940506): List chunks for all assignments that aren't
+          # acquired by any other processes.
+          callback = lambda: self._assignment_callback('test')
+
+      if callback:
+        callback()

@@ -16,10 +16,11 @@ if(SWIG_VERSION STREQUAL "" OR NOT DEFINED SWIG_VERSION)
   set(SWIG_VERSION "4.0.2")
 endif()
 
-set(SWIG_DOWNLOAD_LINK "")
-set(SWIG_DIR_INTERNAL ${SWIG_DIRECTORY})
+set(SWIG_DIR_INTERNAL "${SWIG_INSTALL_DIRECTORY}")
 
-if(SWIG_DIRECTORY STREQUAL "")
+# SWIG_EXECUTABLE is set by FindSWIG.cmake if SWIG has already been found.
+if(SWIG_DIR_INTERNAL STREQUAL "" AND SWIG_EXECUTABLE STREQUAL "")
+  set(SWIG_DOWNLOAD_LINK "")
   if(CMAKE_HOST_SYSTEM_NAME MATCHES "Windows")
     set(SWIG_DOWNLOAD_LINK
       "https://sourceforge.net/projects/swig/files/swigwin/swigwin-${SWIG_VERSION}/swigwin-${SWIG_VERSION}.zip/download")
@@ -63,32 +64,40 @@ if(SWIG_DIRECTORY STREQUAL "")
       "${swig_SOURCE_DIR}/${OUTPUT_DIR}"
     )
   endforeach()
-
 endif()
 
-if(CMAKE_HOST_SYSTEM_NAME MATCHES "Windows")
-  set(SWIG_EXECUTABLE "${SWIG_DIR_INTERNAL}/swig.exe" PARENT_SCOPE)
-else()
-  set(SWIG_SCRIPT_PATH ${CMAKE_CURRENT_LIST_DIR}/swig/install_swig.sh)
-  set(SWIG_INSTALLATION_PATH ${SWIG_DIR_INTERNAL}/installation_swig)
-  if(CMAKE_CROSSCOMPILING)
-    # Do not use the cross compiler to build SWIG.
-    set(ORIGINAL_CC $ENV{CC})
-    set(ORIGINAL_CXX $ENV{CXX})
-    unset(ENV{CC})
-    unset(ENV{CXX})
-  endif()
-  execute_process(
-    COMMAND
+# If SWIG is installed in SWIG_DIR_INTERAL but SWIG_EXECUTABLE isn't set,
+# set SWIG_EXECUTABLE to the path of the SWIG executable and configure
+# the SWIG CMake module to configure variables for SWIG build commands.
+if(NOT "${SWIG_DIR_INTERNAL}" STREQUAL "" AND SWIG_EXECUTABLE STREQUAL "")
+  if(CMAKE_HOST_SYSTEM_NAME MATCHES "Windows")
+    set(SWIG_EXECUTABLE "${SWIG_DIR_INTERNAL}/swig.exe" CACHE STRING "" FORCE)
+  else()
+    set(SWIG_SCRIPT_PATH ${CMAKE_CURRENT_LIST_DIR}/swig/install_swig.sh)
+    set(SWIG_INSTALLATION_PATH ${SWIG_DIR_INTERNAL}/installation_swig)
+    if(CMAKE_CROSSCOMPILING)
+      # Do not use the cross compiler to build SWIG.
+      set(ORIGINAL_CC $ENV{CC})
+      set(ORIGINAL_CXX $ENV{CXX})
+      unset(ENV{CC})
+      unset(ENV{CXX})
+    endif()
+    execute_process(
+      COMMAND
       ${SWIG_SCRIPT_PATH} ${SWIG_DIR_INTERNAL} ${SWIG_INSTALLATION_PATH}
-    RESULT_VARIABLE SWIG_INSTALL_RESULT)
-  if (NOT ${SWIG_INSTALL_RESULT} EQUAL 0)
-    message(FATAL_ERROR
+      RESULT_VARIABLE SWIG_INSTALL_RESULT)
+    if (NOT ${SWIG_INSTALL_RESULT} EQUAL 0)
+      message(FATAL_ERROR
         "SWIG could not be installed. Ensure that you have installed pcre")
+    endif()
+    set(SWIG_EXECUTABLE "${SWIG_INSTALLATION_PATH}/bin/swig" CACHE STRING ""
+      FORCE
+    )
+    if(CMAKE_CROSSCOMPILING)
+      set(ENV{CC} "${ORIGINAL_CC}")
+      set(ENV{CXX} "${ORIGINAL_CXX}")
+    endif()
   endif()
-  set(SWIG_EXECUTABLE "${SWIG_INSTALLATION_PATH}/bin/swig" PARENT_SCOPE)
-  if(CMAKE_CROSSCOMPILING)
-    set(ENV{CC} "${ORIGINAL_CC}")
-    set(ENV{CXX} "${ORIGINAL_CXX}")
-  endif()
+  # Initialize the SWIG module from SWIG_EXECUTABLE.
+  find_package(SWIG REQUIRED)
 endif()

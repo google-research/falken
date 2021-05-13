@@ -61,8 +61,7 @@ else()
   set(FALKEN_UNITY_SDK_VERSION "${FALKEN_SDK_VERSION}")
 endif()
 
-set(BUILD_SWIG ON CACHE BOOL "Disable SWIG code gen." FORCE)
-set(BUILD_SWIG_TESTS OFF CACHE BOOL "Disable SWIG tests." FORCE)
+set(FALKEN_CPP_SDK_CSHARP ON CACHE BOOL "Generate C++ SDK C# bindings." FORCE)
 
 if(FALKEN_RUN_CSHARP_TESTS)
   enable_testing()

@@ -16,7 +16,9 @@ cmake_minimum_required(VERSION 3.17.2)
 
 project(falken_cpp_sdk)
 
-set(SWIG_DIRECTORY "" CACHE PATH "Path to SWIG Directory.")
+set(SWIG_INSTALL_DIRECTORY "" CACHE PATH
+  "Path to override SWIG's installation directory."
+)
 
 set(FALKEN_CPP_SDK_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH
   "Path to C++ SDK source."
@@ -40,24 +42,17 @@ if("${FALKEN_PROJECT_ROOT_DIR}" STREQUAL "")
   )
 endif()
 
-# C++ Build options.
-set(DEFAULT_BUILD_FALKEN_CPP_SDK_AS_SHARED ON)
-option(BUILD_FALKEN_CPP_SDK_AS_SHARED "Build falken libs as shared."
-  ${DEFAULT_BUILD_FALKEN_CPP_SDK_AS_SHARED}
-)
-
 # Disable test app build on Android systems.
 if(CMAKE_SYSTEM_NAME MATCHES "Android")
-  set(DEFAULT_BUILD_TEST_APP OFF)
+  set(DEFAULT_BUILD_TESTAPP OFF)
 else()
-  set(DEFAULT_BUILD_TEST_APP ON)
+  set(DEFAULT_BUILD_TESTAPP ON)
 endif()
-option(BUILD_TEST_APP "Whether to build the test application."
-  ${DEFAULT_BUILD_TEST_APP}
+option(FALKEN_CPP_SDK_BUILD_TESTAPP "Whether to build the test application."
+  ${DEFAULT_BUILD_TESTAPP}
 )
-# SWIG/C# code generation options.
-option(BUILD_SWIG "Build SWIG." OFF)
-option(BUILD_SWIG_TESTS "Build SWIG C# Tests." OFF)
+# SWIG/code generation options.
+option(FALKEN_CPP_SDK_CSHARP OFF "Generate C# bindings.")
 set(SWIG_VERSION "4.0.2" CACHE STRING "SWIG Version")
 set(SWIG_EXECUTABLE "")
 # Tools
@@ -97,30 +92,22 @@ set(FALKEN_CPP_SDK_SRC_DIR "${FALKEN_CPP_SDK_SRC_DIR}" CACHE STRING "" FORCE)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# If we're building a dynamic / shared library, build everything with position
-# independent code.
-if(BUILD_FALKEN_CPP_SDK_AS_SHARED OR BUILD_SWIG)
-  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-endif()
-
+# Since we're building a dynamic / shared library, build everything with
+# position independent code.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Ensure that every static library hide their symbols and just
 # export any symbol that falken_sdk_cpp explicitly exported.
-if(BUILD_FALKEN_CPP_SDK_AS_SHARED)
-  set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-  set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
-  # See https://cmake.org/cmake/help/v3.3/policy/CMP0063.html.
-  # Needed so external dependencies (protobuf and flatbuffers)
-  # hide symbols properly.
-  set(CMAKE_POLICY_DEFAULT_CMP0063 NEW)
-endif(BUILD_FALKEN_CPP_SDK_AS_SHARED)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+# See https://cmake.org/cmake/help/v3.3/policy/CMP0063.html.
+# Needed so external dependencies (protobuf and flatbuffers)
+# hide symbols properly.
+set(CMAKE_POLICY_DEFAULT_CMP0063 NEW)
 
 # Set output directories.
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build/lib")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build/bin")
-
-# Remote source directory.
-set(FALKEN_SWIG_TEST_FILES_DIR "${CMAKE_CURRENT_LIST_DIR}/external/swig_tests")
 
 # Add the external cmake subdirectory to the list of directories to search for
 # packages to include when using find_package() for both
@@ -143,8 +130,10 @@ set(OVERRIDABLE_FETCH_CONTENT_eigen_REPLACE
   "https://storage.googleapis.com/mirror.tensorflow.org/\\1"
 )
 
-# Include external dependencies.
-add_subdirectory(external)
+# If we're generating bindings configure SWIG.
+if(FALKEN_CPP_SDK_CSHARP)
+  include(swig)
+endif()
 
 # Get the commit of the git client.
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../.git")
@@ -179,7 +168,9 @@ add_subdirectory("${FALKEN_CPP_SDK_SRC_DIR}/src/core" "${BINARY_DIR}/core")
 add_subdirectory("${FALKEN_CPP_SDK_SRC_DIR}/src/tf_wrapper"
   "${BINARY_DIR}/tf_wrapper"
 )
-add_subdirectory("${FALKEN_CPP_SDK_SRC_DIR}/testapp" "${BINARY_DIR}/testapp")
+if(FALKEN_CPP_SDK_BUILD_TESTAPP)
+  add_subdirectory("${FALKEN_CPP_SDK_SRC_DIR}/testapp" "${BINARY_DIR}/testapp")
+endif()
 
 # If the C++ SDK project generates C# files export the list to the parent scope.
 if(FALKEN_CSHARP_SOURCES)

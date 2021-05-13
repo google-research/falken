@@ -150,6 +150,12 @@ class _FalkenResourceResolver:
   }
 
   @staticmethod
+  def resolve_attribute_name(
+      attribute_type: Type[DatastoreProto]) -> Optional[str]:
+    """Returns the attribute name of the proto type if any or returns None."""
+    return _FalkenResourceResolver._ATTRIBUTE_MAP.get(attribute_type)
+
+  @staticmethod
   def encode_proto_assignment(
       field_name: str, value: str) -> Tuple[str, str]:
     """Encodes a proto field assignment into a resource accessor and element id.
@@ -401,21 +407,30 @@ class DataStore(ResourceStore):
         resource_id.FalkenResourceId)
     self._callbacks = {}
 
-  def read_by_proto_ids(self, **kwargs) -> DatastoreProto:
+  def read_by_proto_ids(
+      self,
+      attribute_type: Optional[Type[DatastoreProto]] = None,
+      **kwargs) -> DatastoreProto:
     """Read a resource using its proto ID fields.
 
     Args:
+      attribute_type: By default, this function will return a resource ID for
+          the primary resource associated with key. If an attribute of the
+          primary resource is required, then the type of the attribute can be
+          specified here.
       **kwargs: A string-valued dictionary that maps proto ID fields to
           proto field values, e.g.:
               ds.read_by_proto_ids(project_id='p0', brain_id='b0')
     Returns:
       The resource proto corresponding to the provided key fields.
     """
-    res_id = self.resource_id_from_proto_ids(**kwargs)
+    res_id = self.resource_id_from_proto_ids(
+        attribute_type=attribute_type, **kwargs)
     return self.read(res_id)
 
   def list_by_proto_ids(
       self,
+      attribute_type: Optional[Type[DatastoreProto]] = None,
       min_timestamp_micros: int = 0,
       page_token: Optional[str] = None,
       page_size: Optional[int] = None,
@@ -423,6 +438,10 @@ class DataStore(ResourceStore):
     """List resource ids their ID fields.
 
     Args:
+      attribute_type: By default, this function will return resource IDs for the
+          primary resource associated with key. If an attribute of the primary
+          resource is required, then the type of the attribute can be specified
+          here.
       min_timestamp_micros: Only return res_ids at least as recent as this
         timestamp.
       page_token: The token for the previous page if any.
@@ -436,28 +455,44 @@ class DataStore(ResourceStore):
     Returns:
       A tuple of a list of resource ID strings and pagination token.
     """
-    res_id = self.resource_id_from_proto_ids(**kwargs)
+    res_id = self.resource_id_from_proto_ids(
+        attribute_type=attribute_type, **kwargs)
     return self.list(
         res_id,
         min_timestamp_micros=min_timestamp_micros,
         page_token=page_token,
         page_size=page_size)
 
-  def resource_id_from_proto_ids(self, **kwargs) -> resource_id.ResourceId:
+  def resource_id_from_proto_ids(
+      self,
+      attribute_type: Optional[Type[DatastoreProto]] = None,
+      **kwargs) -> resource_id.ResourceId:
     """Construct a resource id from proto ID fields.
 
     Args:
+      attribute_type: By default, this function will return a resource ID for
+          the primary resource associated with key. If an attribute of the
+          primary resource is required, then the type of the attribute can be
+          specified here.
       **kwargs: A string-valued dictionary that maps proto ID fields to
           proto field values, e.g.:
               ds.read_by_proto_ids(project_id='p0', brain_id='b0')
     Returns:
       A resource ID that encodes the proto key fields.
     """
+    if attribute_type:
+      attribute_name = self._resolver.resolve_attribute_name(attribute_type)
+    else:
+      attribute_name = None
     accessor_map = {}
     for proto_field, field_value in kwargs.items():
       accessor_id, elem_id = self._resolver.encode_proto_assignment(
           proto_field, field_value)
       accessor_map[accessor_id] = elem_id
+
+    assert resource_id.ATTRIBUTE not in accessor_map
+    if attribute_name:
+      accessor_map[resource_id.ATTRIBUTE] = attribute_name
     return resource_id.FalkenResourceId(**accessor_map)
 
   def __del__(self):

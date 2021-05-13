@@ -191,6 +191,37 @@ class DataStoreTest(parameterized.TestCase):
 
     self.assertCountEqual(list_result, res_ids)
 
+  def test_get_attribute_by_resource_id(self):
+    id_dict = dict(project_id='p1', brain_id='b1',
+                   session_id='s1', episode_id='e1')
+
+    self.assertEqual(
+        self._data_store.resource_id_from_proto_ids(**id_dict),
+        'projects/p1/brains/b1/sessions/s1/episodes/e1')
+
+    self.assertEqual(
+        self._data_store.resource_id_from_proto_ids(
+            attribute_type=data_store_pb2.OnlineEvaluation,
+            **id_dict),
+        'projects/p1/brains/b1/sessions/s1/episodes/e1/online_evaluation')
+
+    online_eval = data_store_pb2.OnlineEvaluation(**id_dict)
+    self._data_store.write(online_eval)
+
+    read_eval = self._data_store.read_by_proto_ids(
+        attribute_type=data_store_pb2.OnlineEvaluation,
+        **id_dict)
+
+    self.assertEqual(online_eval, read_eval)
+
+    list_eval, _ = self._data_store.list_by_proto_ids(
+        attribute_type=data_store_pb2.OnlineEvaluation,
+        **id_dict)
+
+    self.assertEqual(
+        ['projects/p1/brains/b1/sessions/s1/episodes/e1/online_evaluation'],
+        list_eval)
+
   @mock.patch.object(time, 'time', autospec=True)
   def test_timestamp_logic(self, mock_time):
     """Test read, writing, updating a proto."""

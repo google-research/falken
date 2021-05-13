@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: b5c39a59756fe475fbe2efbd8a3260bd
+labels:
+- gvh
+- gvh_version-0.0.7
+- gvh_version-0.0.8
+- gvhp_exportpath-Falken/Scripts/Brain.cs
+timeCreated: 1480838400
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon:
+    instanceID: 0
+  userData:
+  assetBundleName:
+  assetBundleVariant:

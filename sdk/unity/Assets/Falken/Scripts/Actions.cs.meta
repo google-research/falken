@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 90afdd458cd3d426a8c269d52d9f3eaa
+labels:
+- gvh
+- gvh_version-0.0.7
+- gvh_version-0.0.8
+- gvhp_exportpath-Falken/Scripts/Actions.cs
+timeCreated: 1480838400
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon:
+    instanceID: 0
+  userData:
+  assetBundleName:
+  assetBundleVariant:

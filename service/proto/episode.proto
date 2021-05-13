@@ -1,0 +1,82 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package falken.proto;
+
+import "action.proto";
+import "observation.proto";
+
+// Reward is wrapped in a message to make the presence / absence of a reward
+// explicit and to allow future extensibility.
+message Reward {
+  // Float value of a reward.
+  float reward_value = 1;
+}
+
+// Represents a single timestep in an episode.
+message Step {
+  // Unix epoch timestamp in milliseconds. Absolute time may not be accurate
+  // since it is provided by the SDK, but successive steps must have accurate
+  // relative time.
+  int64 timestamp_millis = 1;
+  // The observation the agent made.
+  ObservationData observation = 2;
+  // The action the agent performed in response to the observation.
+  ActionData action = 3;
+  // The wrapper for the reward for the step in response to the last action.
+  Reward reward = 4;
+}
+
+// State of the episode.
+enum EpisodeState {
+  // Episode is in an unknown state.
+  UNSPECIFIED = 0;
+  // Episode is in progress and more chunks are expected.
+  IN_PROGRESS = 1;
+  // Episode finished with success.
+  SUCCESS = 2;
+  // Episode finished with failure.
+  FAILURE = 3;
+  // Incomplete episode. Aborted by user or application error.
+  ABORTED = 4;
+  // Incomplete episode. Aborted by Falken.
+  GAVE_UP = 5;
+}
+
+// A contiguous sequence of steps from a single episode.
+message EpisodeChunk {
+  // The ID of the episode associated with this batch of steps.
+  string episode_id = 1;
+  // The 0-based index of this EpisodeChunk object within the list of
+  // EpisodeChunk objects that compose the full episode.
+  int64 chunk_id = 2;
+  // The data payload consisting of observations, actions and rewards.
+  repeated Step steps = 3;
+  // The state of the episode immediately after the last step in steps.
+  EpisodeState episode_state = 4;
+  // The ID of the model used to generate brain inferences in this chunk.
+  string model_id = 5;
+}
+
+message Episode {
+  // The ID of the episode.
+  string episode_id = 1;
+  // The state of the episode after the last step in steps.
+  EpisodeState final_state = 2;
+  // Sequence of observations, actions and rewards.
+  repeated Step steps = 3;
+}
+

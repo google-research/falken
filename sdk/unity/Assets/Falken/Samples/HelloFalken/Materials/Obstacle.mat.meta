@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: d30fd2b5ef3644409b0607a49999cc75
+labels:
+- gvh
+- gvh_version-0.0.1
+- gvh_version-0.0.7
+- gvh_version-0.0.8
+- gvhp_exportpath-Falken/Samples/HelloFalken/Materials/Obstacle.mat
+- gvhp_exportpath-Falken/Samples/HelloFalken/Materials/Player.mat
+timeCreated: 1480838400
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData:
+  assetBundleName:
+  assetBundleVariant:

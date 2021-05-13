@@ -1,0 +1,29 @@
+actions {{
+  category {{
+    value: {switch_weapon}
+  }}
+}}
+actions {{
+  number {{
+    value: {throttle}
+  }}
+}}
+actions {{
+  joystick {{
+    x_axis: {joy1_x_axis}
+    y_axis: {joy1_y_axis}
+  }}
+}}
+actions {{
+  joystick {{
+    x_axis: {joy2_x_axis}
+    y_axis: {joy2_y_axis}
+  }}
+}}
+actions {{
+  joystick {{
+    x_axis: {joy3_x_axis}
+    y_axis: {joy3_y_axis}
+  }}
+}}
+source: HUMAN_DEMONSTRATION

@@ -1,0 +1,110 @@
+# proto-file: research/kernel/falken/common/proto/observation.proto
+# proto-message: ObservationData
+player {{
+  position {{
+    x: {position0}
+    y: {position1}
+    z: {position2}
+  }}
+  rotation {{
+    x: 0
+    y: 0
+    z: 0
+    w: 1
+  }}
+  entity_fields {{
+    number {{
+      value: {health}
+    }}
+  }}
+  entity_fields {{
+    feeler {{
+      measurements: {{
+        distance {{
+          value: 1.0
+        }}
+        experimental_data: {{
+          value: 1.1
+        }}
+      }}
+      measurements: {{
+        distance {{
+          value: 2.0
+        }}
+        experimental_data: {{
+          value: 2.1
+        }}
+      }}
+      measurements: {{
+        distance {{
+          value: 3.0
+        }}
+        experimental_data: {{
+          value: 3.1
+        }}
+      }}
+    }}
+  }}
+}}
+camera {{
+  position {{
+    x: 0
+    y: 0
+    z: -10
+  }}
+  rotation {{
+    x: 0
+    y: 0
+    z: 0
+    w: 1
+  }}
+}}
+global_entities {{
+  position {{
+    x: 0
+    y: 0
+    z: 1
+  }}
+  rotation {{
+    x: 0
+    y: 0
+    z: 0
+    w: 1
+  }}
+}}
+global_entities {{
+  position {{
+    x: 0
+    y: -1
+    z: 0
+  }}
+  rotation {{
+    x: 0
+    y: 0
+    z: 0
+    w: 1
+  }}
+}}
+global_entities {{
+  position {{
+    x: 2
+    y: 0
+    z: 0
+  }}
+  rotation {{
+    x: 0
+    y: 0
+    z: 0
+    w: 1
+  }}
+  entity_fields {{
+    number {{
+      value: 66.0
+    }}
+  }}
+  entity_fields {{
+    category {{
+      value: 2
+    }}
+  }}
+}}

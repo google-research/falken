@@ -1,0 +1,39 @@
+actions {
+  name: "switch_weapon"
+  category {
+    enum_values: "NO_SWITCH"
+    enum_values: "KNIFE"
+    enum_values: "PISTOL"
+    enum_values: "SHOTGUN"
+  }
+}
+actions {
+  name: "throttle"
+  number {
+    minimum: -1.0
+    maximum: 1.0
+  }
+}
+actions {
+  name: "joy_pitch_yaw"
+  joystick {
+    axes_mode: DELTA_PITCH_YAW
+    controlled_entity: "player"
+  }
+}
+actions {
+  name: "joy_xz"
+  joystick {
+    axes_mode: DIRECTION_XZ
+    controlled_entity: "player"
+    control_frame: "camera"
+  }
+}
+actions {
+  name: "joy_xz_world"
+  joystick {
+    axes_mode: DIRECTION_XZ
+    controlled_entity: "camera"
+    control_frame: ""
+  }
+}

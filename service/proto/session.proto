@@ -1,0 +1,101 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package falken.proto;
+
+import "google/protobuf/timestamp.proto";
+
+// The type of a session (specified during session creation).
+enum SessionType {
+  // Not set
+  SESSION_TYPE_UNSPECIFIED = 0;
+  // An interactive training session
+  INTERACTIVE_TRAINING = 1;
+  // A session that performs no training.
+  INFERENCE = 2;
+  // A session that evaluates models trained in a previous session.
+  EVALUATION = 3;
+}
+
+// Declares the session spec for a session.
+message SessionSpec {
+  // Project ID for the game that is integrating with Falken.
+  // For every session for the game, they should specify the same project_id.
+  string project_id = 1;
+
+  // System generated resource ID for the Brain.
+  string brain_id = 2;
+
+  // The session type.
+  SessionType session_type = 3;
+
+  // ID of the snapshot used to initialize the brain. If this is not specified,
+  // the most recent snapshot will be selected as the initial brain state for
+  // the session. Must be provided if session_type is INFERENCE.
+  string snapshot_id = 5;
+
+  // Defines the max steps for an episode so that it can be sent in chunks
+  // to the API layer via SubmitEpisodeChunks.
+  int32 max_steps_per_episode = 4;
+}
+
+// Session containing the actual values defined for a session.
+message Session {
+  // System generated resource ID for the Session.
+  string name = 1;
+
+  // Project ID for the game that is integrating with Falken.
+  // For every session for the game, they should specify the same project_id.
+  string project_id = 2;
+
+  // System generated resource ID for the Brain.
+  string brain_id = 3;
+
+  // Snapshots used to start this session.
+  repeated string starting_snapshot_ids = 4;
+
+  // The type of the session.
+  SessionType session_type = 5;
+
+  // Returns the time at which the Session was created.
+  // Should not be set by clients.
+  google.protobuf.Timestamp create_time = 6;
+}
+
+// Information about the session in its current state.
+message SessionInfo {
+  // State of training for the session.
+  enum TrainingState {
+    // Unspecified training state.
+    TRAINING_STATE_UNSPECIFIED = 0;
+    // At this time, there is still training done on data from this session.
+    TRAINING = 1;
+    // At this time, there is no more work being done for this session.
+    COMPLETED = 2;
+    // At this time, we are deploying models for online evaluation.
+    EVALUATING = 3;
+  }
+
+  // Current state of session training.
+  TrainingState state = 1;
+  // Empty if no model available, otherwise the ID of the model the SDK
+  // should use for inference.
+  string model_id = 2;
+
+  // Approximate fraction of training time completed (0-1).
+  // See go/falken-progress-bar for details.
+  float training_progress = 3;
+}

@@ -1,0 +1,287 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package falken.proto;
+
+import "brain.proto";
+import "episode.proto";
+import "serialized_model.proto";
+import "session.proto";
+
+// This API provides Falken clients access to the Falken service.
+service FalkenService {
+  // Creates a new brain from a BrainSpec.
+  rpc CreateBrain(CreateBrainRequest) returns (falken.proto.Brain) {}
+
+  // Retrieves an existing Brain.
+  rpc GetBrain(GetBrainRequest) returns (falken.proto.Brain) {}
+
+  // Returns a list of Brains in the project.
+  rpc ListBrains(ListBrainsRequest) returns (ListBrainsResponse) {}
+
+  // Creates a Session to begin training using the given Brain.
+  rpc CreateSession(CreateSessionRequest) returns (falken.proto.Session) {}
+
+  // Retrieves session count for a given brain.
+  rpc GetSessionCount(GetSessionCountRequest)
+      returns (GetSessionCountResponse) {}
+
+  // Retrieves a Session by ID.
+  rpc GetSession(GetSessionRequest) returns (falken.proto.Session) {}
+
+  // Retrieves a Session by index.
+  rpc GetSessionByIndex(GetSessionByIndexRequest)
+      returns (falken.proto.Session) {}
+
+  // Returns a list of Sessions for a given Brain.
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {}
+
+  // Stops an active Session.
+  rpc StopSession(StopSessionRequest) returns (StopSessionResponse) {}
+
+  // Returns all Steps in all Episodes for the Session
+  rpc ListEpisodeChunks(ListEpisodeChunksRequest)
+      returns (ListEpisodeChunksResponse) {}
+
+  // Submits the training data (flat tensors of observations and actions)
+  // for a list of partial episodes to the active session, and returns a model
+  // version if there is any.
+  rpc SubmitEpisodeChunks(SubmitEpisodeChunksRequest)
+      returns (SubmitEpisodeChunksResponse) {}
+
+  // Returns a serialized model.
+  rpc GetModel(GetModelRequest) returns (Model) {}
+}
+
+// Request to get an existing brain.
+message GetBrainRequest {
+  // Project ID of the game.
+  string project_id = 1;
+
+  // System generated resource ID for the Brain.
+  string brain_id = 2;
+}
+
+// Request to get the Brains for a Project.
+message ListBrainsRequest {
+  // The id of the Project to query.
+  string project_id = 1;
+
+  // Optional maximum number of Brains to return
+  // Unset or zero means "return all Brains".
+  int32 page_size = 2;
+
+  // Optional token for use in paginated requests.
+  string page_token = 3;
+}
+
+// Response to ListBrains.
+message ListBrainsResponse {
+  // List of Brains in this Project.
+  repeated falken.proto.Brain brains = 1;
+
+  // Token to fetch the next page.
+  string next_page_token = 2;
+}
+
+// Request message for creating a Brain. Note that this method is the first
+// function in the API to be called by users.
+message CreateBrainRequest {
+  // User-specified name to identify the Brain, i.e. "RunAwayAndHideFPSBrain".
+  string display_name = 1;
+
+  // Specs to define the brain.
+  falken.proto.BrainSpec brain_spec = 2;
+
+  // ID of the project to create the brain in.
+  string project_id = 3;
+}
+
+// Request to create a session.
+message CreateSessionRequest {
+  // The Project to create the session in.
+  string project_id = 1;
+  // Specs to define the session.
+  falken.proto.SessionSpec spec = 2;
+}
+
+// Request to get the session count for a given brain.
+message GetSessionCountRequest {
+  // Project ID of the game.
+  string project_id = 1;
+  // System generated resource ID for the Brain.
+  string brain_id = 2;
+}
+
+// Response for GetSessionCount.
+message GetSessionCountResponse {
+  // Number of sessions in a given brain.
+  int32 session_count = 1;
+}
+
+// Request to get a session by ID.
+message GetSessionRequest {
+  // Project ID of the game.
+  string project_id = 1;
+  // System generated resource ID for the Brain.
+  string brain_id = 2;
+  // System generated resource ID for the Session.
+  string session_id = 3;
+}
+
+// Request to get a session by index.
+message GetSessionByIndexRequest {
+  // Project ID of the game.
+  string project_id = 1;
+  // System generated resource ID for the Brain.
+  string brain_id = 2;
+  // The index of the session to be queried from the brain.
+  int32 session_index = 3;
+}
+
+// Request to get the Sessions for a Brain.
+message ListSessionsRequest {
+  // The id of the Project to query.
+  string project_id = 1;
+
+  // The id of the Brain to be query.
+  string brain_id = 2;
+
+  // Optional maximum number of Sessions to return
+  // Unset or zero means "return all Sessions".
+  int32 page_size = 3;
+
+  // Optional token for use in paginated requests.
+  string page_token = 4;
+}
+
+// Response to ListSessions.
+message ListSessionsResponse {
+  // List of Sessions in this project.
+  repeated falken.proto.Session sessions = 1;
+
+  // Token to fetch the next page.
+  string next_page_token = 2;
+}
+
+// Request to stop a session.
+message StopSessionRequest {
+  // The Project that holds the session to be stopped.
+  string project_id = 1;
+  // Session returned from CreateSession can be used to stop the session.
+  falken.proto.Session session = 2;
+}
+
+// Response to StopSession.
+message StopSessionResponse {
+  // New snapshot of the brain trained on additional episode data reported by
+  // the developer during the session or the snapshot used to initialize brain
+  // state if no episode data was reported.
+  string snapshot_id = 1;
+}
+
+// Request to get the data for a session.
+message ListEpisodeChunksRequest {
+  // The Project that holds the session to be queried.
+  string project_id = 1;
+
+  // The ID of the Brain that generated this session.
+  string brain_id = 2;
+
+  // System generated resource ID for the Session.
+  string session_id = 3;
+
+  // Optional maximum number of chunks to return
+  // Unset or zero means "return all chunks".
+  int32 page_size = 4;
+
+  // Optional token for use in paginated requests.
+  string page_token = 5;
+
+  // Types of chunk-level filtering.
+  enum Filter {
+    // Filter is in an unknown state.
+    UNSPECIFIED_FILTER = 0;
+    // Only retrieve episode IDs.
+    EPISODE_IDS = 1;
+    // Only retrieve chunks for the specific episode.
+    SPECIFIED_EPISODE = 2;
+  }
+  // Optional parameter to return a subset of chunk data.
+  Filter filter = 6;
+
+  // When filter is SPECIFIED_EPISODE, only return chunks from this episode.
+  string episode_id = 7;
+}
+
+// Response for ListEpisodeChunks.
+message ListEpisodeChunksResponse {
+  // List of episodes in this session.
+  repeated falken.proto.EpisodeChunk episode_chunks = 1;
+
+  // Token to fetch the next page
+  string next_page_token = 2;
+}
+
+// Request to submit episode chunks.
+message SubmitEpisodeChunksRequest {
+  // Project ID for the game that is integrating with Falken.
+  string project_id = 1;
+
+  // System generated resource ID for the Brain.
+  string brain_id = 2;
+
+  // System generated resource ID for the Session.
+  string session_id = 3;
+
+  // Episode chunks that contains information used for training for this
+  // episode.
+  repeated falken.proto.EpisodeChunk chunks = 4;
+}
+
+// Response for SubmitEpisodeChunks.
+message SubmitEpisodeChunksResponse {
+  // Information about the session in its current state.
+  falken.proto.SessionInfo session_info = 1;
+}
+
+// Request to get a model.
+message GetModelRequest {
+  reserved 3;
+
+  // Project ID for the game that is integrating with Falken.
+  string project_id = 1;
+
+  // System generated resource ID for the Brain.
+  string brain_id = 2;
+
+  // Model ID of the model requested. Usually matches the model_id provided
+  // from the SubmitEpisodeChunksResponse.
+  // If this is set, snapshot_id should be empty.
+  string model_id = 4;
+
+  // ID of the snapshot which references the model to retrieve.
+  // If this is set, model_id should be empty.
+  string snapshot_id = 5;
+}
+
+// Wrapper for the Model returned by Falken.
+message Model {
+  // Serialized model that can be unserialized by the client to use.
+  falken.proto.SerializedModel serialized_model = 1;
+  // ID of the serialized model.
+  string model_id = 2;
+}

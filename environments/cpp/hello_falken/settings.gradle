@@ -1,0 +1,23 @@
+rootProject.name = "HelloFalken"
+
+def falken_cpp_sdk_dir = System.getProperty('falken_cpp_sdk.dir')
+if (falken_cpp_sdk_dir == null || falken_cpp_sdk_dir.isEmpty()) {
+    falken_cpp_sdk_dir = System.getenv('FALKEN_CPP_SDK_DIR')
+    if (falken_cpp_sdk_dir == null || falken_cpp_sdk_dir.isEmpty()) {
+        if ((new File('falken_cpp_sdk')).exists()) {
+            falken_cpp_sdk_dir = 'falken_cpp_sdk'
+        } else {
+            throw new StopActionException(
+                    'falken_cpp_sdk.dir property or the FALKEN_CPP_SDK_DIR ' +
+                            'environment variable must be set to reference the Falken C++ ' +
+                            'SDK install directory.  This is used to configure static library ' +
+                            'and C/C++ include paths for the SDK.')
+        }
+    }
+}
+if (!(new File(falken_cpp_sdk_dir)).exists()) {
+    throw new StopActionException(
+            sprintf('Falken C++ SDK directory %s does not exist',
+                    falken_cpp_sdk_dir))
+}
+gradle.ext.falken_cpp_sdk_dir = "$falken_cpp_sdk_dir"

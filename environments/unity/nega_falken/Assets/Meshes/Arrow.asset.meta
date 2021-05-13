@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: fb6e8ae70e5364056ac2e18e5830416e
+labels:
+- gvh
+- gvh_version-0.0.1
+- gvh_version-0.0.7
+- gvh_version-0.0.8
+- gvhp_exportpath-Falken/Samples/HelloFalken/Meshes/Arrow.asset
+timeCreated: 1480838400
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 4300000
+  userData:
+  assetBundleName:
+  assetBundleVariant:

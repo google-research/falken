@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<!--
+ Copyright 2021 Google LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Falken Debug Dashboard</title>
+    <script src="./falken_grpc-bundle.js"></script>
+    <script src="./falken.js"></script>
+    <link rel="icon" type="image/png" href="favicon.png"/>
+    <link rel="stylesheet" href="style.css">
+  </head>
+
+  <body>
+    <!-- Dashboard Layout
+    The Dashboard is a Header followed by three panels (Charts, Scene, Timeline)
+    all of which are divs laid out in a master grid view. The actual grid is
+    somewhat more complex to accommodate a Title row w/ options for each panel.
+     |      HEADER    |
+     | CHARTS | SCENE |
+     |     TIMELINE   |
+    -->
+    <div class="grid-container">
+      <!-- Header section includes a logo, drop downs for selecting brains,
+      sessions, and episodes, some filter controls, and a progress indicator.-->
+      <div class="grid-header">
+        <div class="logo-column">
+          <img src="falken_icon.png" alt="Falken icon" class="logo">
+        </div>
+        <div class="header-column">
+          <label for="brains_input" class="header-label">Brain</label>
+          <datalist id="brains_list"></datalist>
+          <input id="brains_input" autoComplete="off" list="brains_list" class="header-input"/>
+
+          <label for="sessions_input" class="header-label">Session</label>
+          <datalist id="sessions_list"></datalist>
+          <input id="sessions_input" autoComplete="off" list="sessions_list" class="header-input"/>
+
+          <label for="episodes_input" class="header-label">Episode</label>
+          <datalist id="episodes_list"></datalist>
+          <input id="episodes_input" autoComplete="off" list="episodes_list" class="header-input"/>
+
+          <label for="meeting_time" class="header-label">Start</label>
+          <input type="datetime-local" id="time_filter_start" readonly="readonly" class="header-datetime">
+          <label for="meeting_time" class="header-label">End</label>
+          <input type="datetime-local" id="time_filter_end" readonly="readonly" class="header-datetime">
+
+          <div id="loader" class="header-loader"></div>
+        </div>
+      </div>
+      <!-- Charts panel presents the user with a "small multiples" representation
+      of all Actions and Observations in the current brain. Individual graphs
+      are dynamically created under the grid-charts div at runtime.-->
+      <div class="grid-title grid-charts-title" id="attribute_header">
+          <div class="grid-title-label">
+            Attributes
+          </div>
+          <div class="grid-title-options">
+          </div>
+      </div>
+      <div class="grid-charts" id="attribute_curves">
+        <div class="graphs-container" id="graphs_grid"></div>
+      </div>
+      <!-- Scene panel presents the user an interactive, 3D view of the current
+      episode. All Scene rendering is performed by a three.js viewport.-->
+      <div class="grid-title grid-scene-title" id="sceneview_header">
+        <div class="grid-title-label">
+          Scene View
+        </div>
+        <div class="grid-title-options">
+          <label for="up_axis">Up Axis</label>
+          <select id="up_axis" class="title-dropdown">
+            <option id="y_up">+Y</option>
+            <option id="z_up">+Z</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-scene" id="scene_view_3d"></div>
+      <!-- Timeline panel allows users to visualize data from multiple actions
+      and/or observations and scrub through the Episode by time.-->
+      <div class="grid-title grid-timeline-title" id="timeline_header">
+        <div class="grid-title-label">
+          Timeline
+        </div>
+        <div class="grid-title-options">
+          <button class="title-button" id="reset_zoom">Reset Zoom</button>
+        </div>
+      </div>
+      <div class="grid-timeline" id="timeline"></div>
+    </div>
+
+    <script>
+      const falken = new FalkenLib.Falken();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,51 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package falken.proto;
+
+import "google/protobuf/timestamp.proto";
+import "action.proto";
+import "observation.proto";
+
+// Represent an AI that can learn how to play a game.
+// Creating a Brain is similar to showing a human how to play a specific game or
+// teaching them how to find a specific kind of bug.
+message Brain {
+  // Project that owns this Brain.
+  string project_id = 1;
+
+  // System generated resource ID for the Brain.
+  string brain_id = 2;
+
+  // User-specified name to identify the Brain, i.e. "RunAwayAndHideFPSBrain".
+  string display_name = 3;
+
+  // The spec of the brain, defining observation and action space.
+  BrainSpec brain_spec = 4;
+
+  // Returns the time at which the Brain was created.
+  // Should not be set by clients.
+  google.protobuf.Timestamp create_time = 5;
+}
+
+// The spec that declares what observations and actions a Brain takes.
+message BrainSpec {
+  // Specifies the observation space for the brain.
+  ObservationSpec observation_spec = 1;
+
+  // Specifies the action space for the brain.
+  ActionSpec action_spec = 2;
+}

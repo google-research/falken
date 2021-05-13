@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: c0e17579120de432a9854ea7ab6b2dbf
+labels:
+- gvh
+- gvh_version-0.0.7
+- gvh_version-0.0.8
+- gvhp_exportpath-Falken/Tests/AttributeContainerTest.cs
+timeCreated: 1480838400
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon:
+    instanceID: 0
+  userData:
+  assetBundleName:
+  assetBundleVariant:

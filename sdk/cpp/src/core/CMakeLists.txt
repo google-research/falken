@@ -1,10 +1,25 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 cmake_minimum_required(VERSION 3.17)
 
 project(falken_core_internal)
 
-set(FALKEN_CPP_SDK_GENERATE_API_REFERENCE ON CACHE BOOL
+option(FALKEN_CPP_SDK_GENERATE_API_REFERENCE ON
   "Generate API reference if Doxygen is available."
 )
+option(FALKEN_CPP_SDK_CSHARP OFF "Generate C# bindings.")
 
 # Whether to enable tests.
 if(CMAKE_SYSTEM_NAME MATCHES "Android")
@@ -228,16 +243,14 @@ target_include_directories(falken_grpc_roots_pem
   PUBLIC
     "${CERTS_OUTPUT_DIR}"
 )
-# Defines set when compiling the C# target.
-set(FALKEN_CSHARP_SDK_DEFINES "-DFALKEN_CSHARP")
 
-if(BUILD_SWIG)
+if(FALKEN_CPP_SDK_CSHARP)
   # When building for a garbage collected language like C# we serialize the
   # destruction of all objects to prevent C++ destructors that access shared
   # resources from executing on garbage collection threads in parallel.
   list(APPEND FALKEN_CPP_SDK_PRIVATE_DEFINES "-DFALKEN_SYNC_DESTRUCTION=1")
   # Enable C# specific logic.
-  list(APPEND FALKEN_CPP_SDK_PRIVATE_DEFINES ${FALKEN_CSHARP_SDK_DEFINES})
+  list(APPEND FALKEN_CPP_SDK_PRIVATE_DEFINES "-DFALKEN_CSHARP")
 endif()
 
 # List of .cc files that should be compiled as Obj-C++ on macOS.
@@ -648,7 +661,7 @@ foreach(CONFIG ${BUILD_CONFIGS})
   endif()
 endforeach()
 
-if(BUILD_SWIG)
+if(FALKEN_CPP_SDK_CSHARP)
   message(STATUS "Creating C# SWIG library")
   find_package(SWIG REQUIRED)
   include(UseSWIG)

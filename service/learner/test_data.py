@@ -62,8 +62,7 @@ def assignment():
             project_id=PROJECT_ID,
             brain_id=BRAIN_ID,
             session_id=SESSION_ID,
-            assignment_id=ASSIGNMENT_ID,
-            subtask_id=SUBTASK_ID)
+            assignment_id=ASSIGNMENT_ID)
 
 
 def episode_chunks(chunk_sizes, episode_id):
@@ -161,6 +160,14 @@ def brain_spec():
   return brain_pb2.BrainSpec(
       observation_spec=observation_spec(),
       action_spec=action_spec())
+
+
+def brain():
+  return brain_pb2.Brain(
+      project_id=PROJECT_ID,
+      brain_id=BRAIN_ID,
+      name='test_brain',
+      brain_spec=brain_spec())
 
 
 def trajectory(health=100, position=(0, 0, 0), switch_weapon=0, throttle=1.0,

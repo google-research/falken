@@ -353,7 +353,8 @@ class ResourceId:
           parts.append(key)
           parts.append(collection_map[key])
           if not parts[-1]:
-            raise InvalidResourceError('Element IDs may not be empty.')
+            raise InvalidResourceError(
+                f'Element ID for "{key}" is empty: {collection_map}')
           collection_ids_to_process.remove(key)
           try:
             current_spec_node = current_spec_node[key]

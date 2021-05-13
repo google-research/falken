@@ -23,9 +23,11 @@ import urllib.request
 
 _PROTO_GEN_DIR = 'proto_gen_module'
 
-_EXTERNAL_PROTOS = [(
-    'https://raw.githubusercontent.com/googleapis/googleapis/common-protos-1_3_1/',
-    'google/rpc/status.proto')]
+_EXTERNAL_PROTOS = [
+    ('https://raw.githubusercontent.com/googleapis/googleapis/common-protos-1_3_1/',
+     'google/rpc/status.proto'),
+    ('https://raw.githubusercontent.com/googleapis/googleapis/common-protos-1_3_1/',
+     'google/rpc/code.proto')]
 
 
 def get_generated_protos_dir():
@@ -65,7 +67,7 @@ def download_external_protos():
   if not os.path.exists(downloaded_proto_dir):
     for proto_url, proto_path in _EXTERNAL_PROTOS:
       file_name = os.path.join(downloaded_proto_dir, proto_path)
-      os.makedirs(os.path.dirname(file_name))
+      os.makedirs(os.path.dirname(file_name), exist_ok=True)
       urllib.request.urlretrieve(os.path.join(proto_url, proto_path), file_name)
   return downloaded_proto_dir
 

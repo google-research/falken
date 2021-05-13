@@ -151,6 +151,46 @@ class DataStoreTest(parameterized.TestCase):
             offline_evaluation=2)).offline_evaluation_id,
         2)
 
+  def test_resource_id_from_proto_id(self):
+    rid = self._data_store.resource_id_from_proto_ids(
+        project_id='p0',
+        brain_id='b0',
+        session_id='s0',
+        assignment_id='a0')
+    self.assertStartsWith(str(rid),
+                          'projects/p0/brains/b0/sessions/s0/assignments')
+
+    self.assertNotEmpty(rid.assignment)  # Check assignment_id encoding.
+    self.assertNotEqual(rid.assignment, 'a0')
+
+  def test_read_by_proto_id(self):
+    keys = dict(
+        project_id='p0', brain_id='b0', session_id='s0', assignment_id='a0')
+
+    assignment = data_store_pb2.Assignment(**keys)
+    self._data_store.write(assignment)
+    self.assertEqual(
+        self._data_store.read_by_proto_ids(**keys),
+        assignment)
+
+  def test_list_by_proto_ids(self):
+    id_dict = dict(project_id='p1', brain_id='b1',
+                   session_id='s1')
+
+    res_ids = []
+    for i in range(10):
+      id_dict['assignment_id'] = f'a{i}'
+      proto = data_store_pb2.Assignment(**id_dict)
+      res_id = self._data_store.write(proto)
+      list_result, _ = self._data_store.list_by_proto_ids(**id_dict)
+      self.assertEqual(list_result, [res_id])
+      res_ids.append(res_id)
+
+    id_dict['assignment_id'] = '*'
+    list_result, _ = self._data_store.list_by_proto_ids(**id_dict)
+
+    self.assertCountEqual(list_result, res_ids)
+
   @mock.patch.object(time, 'time', autospec=True)
   def test_timestamp_logic(self, mock_time):
     """Test read, writing, updating a proto."""
@@ -327,6 +367,18 @@ class DataStoreTest(parameterized.TestCase):
     self.assertEqual(
         res_id,
         'projects/p0/brains/b0/sessions/s0')
+
+  @parameterized.parameters(
+      ({'project_id': 'p0'}, 'projects/p0'),
+      ({'project_id': 'p0', 'brain_id': 'b0',
+        'session_id': 's0', 'assignment_id': 'a0'},
+       'projects/p0/brains/b0/sessions/s0/assignments/.+'),
+      ({'project_id': 'p0', 'brain_id': 'b0',
+        'session_id': 's0', 'assignment_id': '*'},
+       r'projects/p0/brains/b0/sessions/s0/assignments/\*'))
+  def test_resource_id_from_proto_ids(self, key_dict, want_regex):
+    res_id = self._data_store.resource_id_from_proto_ids(**key_dict)
+    self.assertRegex(str(res_id), want_regex)
 
 
 if __name__ == '__main__':

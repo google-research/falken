@@ -86,6 +86,7 @@ _DEFAULT_TEST_MODULES = [
     'learner.file_system_test',
     'learner.model_manager_test',
     'learner.stats_collector_test',
+    'learner.storage_test',
     'log.falken_logging_test',
 ]
 

@@ -127,7 +127,7 @@ class _FalkenResourceEncoder:
     return proto_type.FromString(data)
 
 
-class FalkenResourceHandler:
+class _FalkenResourceResolver:
   """Handles and parses the underlying resource type for ResourceID usage."""
 
   # Map key_field_name -> collection name mapping
@@ -190,6 +190,26 @@ class FalkenResourceHandler:
       data_store_pb2.SerializedModel: 'serialized_model',
   }
 
+  @staticmethod
+  def encode_proto_assignment(
+      field_name: str, value: str) -> Tuple[str, str]:
+    """Encodes a proto field assignment into a resource accessor and element id.
+
+    Args:
+      field_name: The name of the proto field, e.g., 'project_id'.
+      value: The value of the proto field.
+    Returns:
+      A pair (accessor_id, element_id) for a FalkenResourceId that corresponds
+      to the input proto field assignment.
+    """
+    if field_name == 'assignment_id':
+      if value != '*':  # Assignments only support '*' globs.
+        # We hash assignment_ids since they can get pretty long.
+        value = hashlib.sha256(value.encode('utf-8')).hexdigest()
+    if not field_name.endswith('_id'):
+      raise ValueError(f'Unsupported proto field: {field_name}')
+    return field_name[:-len('_id')], value
+
   def get_timestamp_micros(self, resource: DatastoreProto) -> int:
     """Determine timestamp in microseconds from resource object."""
     return resource.created_micros or None  # return 0s as Nones
@@ -200,29 +220,27 @@ class FalkenResourceHandler:
     """Set timestamp to given value in resource object (not in storage)."""
     resource.created_micros = timestamp_micros
 
-  @classmethod
-  def to_resource_id(cls, resource: DatastoreProto) -> resource_id.ResourceId:
+  @staticmethod
+  def to_resource_id(resource: DatastoreProto) -> resource_id.ResourceId:
     """Determine resource id from the resource data object."""
     accessor_map = {}
     try:
-      keys = cls._KEY_FIELD_MAP[type(resource)]
+      keys = _FalkenResourceResolver._KEY_FIELD_MAP[type(resource)]
     except KeyError:
       raise ValueError(f'Unsupported type: {type(resource)}')
 
     for key in keys:
-      value = getattr(resource, key)
-      if key == 'assignment_id':
-        # We hash assignment_ids since they can get pretty long.
-        value = hashlib.sha256(value.encode('utf-8')).hexdigest()
-      assert key.endswith('_id')
-      accessor_name = key[:-len('_id')]  # Chop off '_id' suffix
-      accessor_map[accessor_name] = value
+      proto_value = getattr(resource, key)
+      accessor_name, element_id = (
+          _FalkenResourceResolver.encode_proto_assignment(
+              key, proto_value))
+      accessor_map[accessor_name] = element_id
 
     # Check if the proto represents an attribute.
-    attribute_name = cls._ATTRIBUTE_MAP.get(type(resource))
+    attribute_name = _FalkenResourceResolver._ATTRIBUTE_MAP.get(
+        type(resource))
     if attribute_name:
       accessor_map[resource_id.ATTRIBUTE] = attribute_name
-
     return resource_id.FalkenResourceId(**accessor_map)
 
 
@@ -233,7 +251,7 @@ class ResourceStore:
 
   def __init__(self, fs: file_system.FileSystem,
                resource_encoder: _FalkenResourceEncoder,
-               resource_resolver: FalkenResourceHandler,
+               resource_resolver: _FalkenResourceResolver,
                resource_id_type: Type[resource_id.ResourceId]):
     self._fs = fs
     self._encoder = resource_encoder
@@ -406,7 +424,7 @@ class ResourceStore:
 class DataStore(ResourceStore):
   """Reads and writes data from storage."""
 
-  def __init__(self, fs):
+  def __init__(self, fs: file_system.FileSystem):
     """Initializes the data store with a given root path.
 
     Args:
@@ -415,9 +433,68 @@ class DataStore(ResourceStore):
     super().__init__(
         fs,
         _FalkenResourceEncoder(),
-        FalkenResourceHandler(),
+        _FalkenResourceResolver(),
         resource_id.FalkenResourceId)
     self._callbacks = {}
+
+  def read_by_proto_ids(self, **kwargs) -> DatastoreProto:
+    """Read a resource using its proto ID fields.
+
+    Args:
+      **kwargs: A string-valued dictionary that maps proto ID fields to
+          proto field values, e.g.:
+              ds.read_by_proto_ids(project_id='p0', brain_id='b0')
+    Returns:
+      The resource proto corresponding to the provided key fields.
+    """
+    res_id = self.resource_id_from_proto_ids(**kwargs)
+    return self.read(res_id)
+
+  def list_by_proto_ids(
+      self,
+      min_timestamp_micros: int = 0,
+      page_token: Optional[str] = None,
+      page_size: Optional[int] = None,
+      **kwargs) -> Tuple[List[str], str]:
+    """List resource ids their ID fields.
+
+    Args:
+      min_timestamp_micros: Only return res_ids at least as recent as this
+        timestamp.
+      page_token: The token for the previous page if any.
+      page_size: The size of the page or None to return all IDs.
+      **kwargs: A string-valued dictionary that maps proto ID fields to
+          proto field values, e.g.:
+              ds.read_by_proto_ids(project_id='p0', brain_id='b0')
+          Glob and brace expansion expressions can be used, but note that
+          when globbing the 'assignment_id' field, only '*' is supported and
+          every other string is interpreted as plain text.
+    Returns:
+      A tuple of a list of resource ID strings and pagination token.
+    """
+    res_id = self.resource_id_from_proto_ids(**kwargs)
+    return self.list(
+        res_id,
+        min_timestamp_micros=min_timestamp_micros,
+        page_token=page_token,
+        page_size=page_size)
+
+  def resource_id_from_proto_ids(self, **kwargs) -> resource_id.ResourceId:
+    """Construct a resource id from proto ID fields.
+
+    Args:
+      **kwargs: A string-valued dictionary that maps proto ID fields to
+          proto field values, e.g.:
+              ds.read_by_proto_ids(project_id='p0', brain_id='b0')
+    Returns:
+      A resource ID that encodes the proto key fields.
+    """
+    accessor_map = {}
+    for proto_field, field_value in kwargs.items():
+      accessor_id, elem_id = self._resolver.encode_proto_assignment(
+          proto_field, field_value)
+      accessor_map[accessor_id] = elem_id
+    return resource_id.FalkenResourceId(**accessor_map)
 
   def __del__(self):
     self.remove_all_assignment_callbacks()

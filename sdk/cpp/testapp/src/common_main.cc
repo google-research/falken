@@ -541,8 +541,7 @@ int TestInteractiveTraining(falken::Service& service) {
   }
 
   // Load session count.
-  std::vector<std::shared_ptr<falken::Session>> sessions =
-      loaded_brain->ListSessions();
+  auto sessions = loaded_brain->ListSessions();
   if (sessions.empty()) {
     LogError("Loaded brain's session count equal to zero.");
     return 1;

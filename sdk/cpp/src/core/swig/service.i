@@ -7,6 +7,7 @@
 %}
 
 %include "std_shared_ptr.i"
+%include "std_vector.i"
 
 // Import Falken interfaces.
 %include "src/core/swig/allocator.i"
@@ -22,4 +23,5 @@
 
 %template(BrainPtr) std::shared_ptr<falken::BrainBase>;
 %template(BrainVector) std::vector<std::shared_ptr<falken::BrainBase>>;
+%template() falken::Vector<std::shared_ptr<falken::BrainBase>>;
 %template(ServicePtr) std::shared_ptr<falken::Service>;

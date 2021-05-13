@@ -13,6 +13,7 @@
 %include "stdint.i"
 %include "std_shared_ptr.i"
 %include "std_string.i"
+%include "std_vector.i"
 // Import Falken interfaces.
 %include "src/core/swig/allocator.i"
 %include "src/core/swig/brain_spec.i"
@@ -30,3 +31,4 @@
 
 %template(SessionPtr) std::shared_ptr<falken::Session>;
 %template(SessionVector) std::vector<std::shared_ptr<falken::Session>>;
+%template() falken::Vector<std::shared_ptr<falken::Session>>;

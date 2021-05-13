@@ -143,8 +143,8 @@ std::shared_ptr<BrainBase> Service::CreateBrain(
   return brain_ptr;
 }
 
-std::vector<std::shared_ptr<BrainBase>> Service::ListBrains() {
-  std::vector<std::shared_ptr<BrainBase>> brains;
+Vector<std::shared_ptr<BrainBase>> Service::ListBrains() {
+  Vector<std::shared_ptr<BrainBase>> brains;
   falken::common::StatusOr<std::vector<proto::Brain>> brain_protos_or =
       core::FalkenCore::Get().ListBrains();
   if (brain_protos_or.ok()) {

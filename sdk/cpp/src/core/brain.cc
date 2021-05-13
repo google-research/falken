@@ -331,8 +331,8 @@ std::shared_ptr<Session> BrainBase::GetSession(const char* session_id) {
   return session;
 }
 
-std::vector<std::shared_ptr<Session>> BrainBase::ListSessions() {
-  std::vector<std::shared_ptr<Session>> sessions;
+Vector<std::shared_ptr<Session>> BrainBase::ListSessions() {
+  Vector<std::shared_ptr<Session>> sessions;
   falken::common::StatusOr<std::vector<proto::Session>> sessions_or =
       core::FalkenCore::Get().ListSessions(brain_data_->id.c_str());
   if (sessions_or.ok()) {

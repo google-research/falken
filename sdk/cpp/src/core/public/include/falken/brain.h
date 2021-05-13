@@ -109,7 +109,7 @@ class FALKEN_EXPORT BrainBase {
   /// Get a list of Sessions created by this Brain.
   ///
   /// @return A list of Sessions.
-  std::vector<std::shared_ptr<Session>> ListSessions();
+  Vector<std::shared_ptr<Session>> ListSessions();
   /// Verify the specification of this brain matches the given brain spec.
   /// @param brain_spec BrainSpec to compare with.
   /// @return True if all attributes and entities match, false otherwise.

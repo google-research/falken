@@ -88,7 +88,7 @@ class FALKEN_EXPORT Service {
   /// Gets all of the Brains in the current Project.
   ///
   /// @return A vector of Brains in the current Project.
-  std::vector<std::shared_ptr<BrainBase>> ListBrains();
+  Vector<std::shared_ptr<BrainBase>> ListBrains();
 
   /// Connect to a Falken project.
   ///

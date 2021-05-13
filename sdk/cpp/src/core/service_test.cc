@@ -1313,8 +1313,7 @@ TEST_F(ServiceTest, DISABLED_ListBrainsTest) {
         service->CreateBrain<TestExtendedObservationsBrainSpec>(""));
   }
 
-  std::vector<std::shared_ptr<falken::BrainBase>> resp_brains =
-      service->ListBrains();
+  auto resp_brains = service->ListBrains();
 
   int brains_found = 0;
   for (const auto& new_brain : new_brains) {

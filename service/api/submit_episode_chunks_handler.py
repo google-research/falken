@@ -258,8 +258,8 @@ def _record_online_evaluation(data_store, chunk, episode_resource_id):
           project_id=episode_resource_id.project,
           brain_id=episode_resource_id.brain,
           session_id=episode_resource_id.session,
-          model_id=model_id,
           episode_id=episode_resource_id.episode,
+          model=model_id,
           score=episode_score))
   return
 

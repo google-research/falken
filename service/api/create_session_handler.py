@@ -67,7 +67,7 @@ def create_session(request, context, data_store):
       session_type=request.spec.session_type,
       user_agent=request_metadata.extract_metadata_value(context, 'user-agent'))
   if starting_snapshot_id:
-    write_data_store_session.starting_snapshot_ids.append(starting_snapshot_id)
+    write_data_store_session.starting_snapshots.append(starting_snapshot_id)
 
   data_store.write(write_data_store_session)
   return proto_conversion.ProtoConverter.convert_proto(
@@ -136,5 +136,5 @@ def _get_snapshot_id_and_previous_session_id(session_spec, data_store):
     snapshot = data_store.get_most_recent_snapshot(
         session_spec.project_id, session_spec.brain_id)
   if snapshot:
-    return snapshot.snapshot_id, snapshot.session_id
+    return snapshot.snapshot_id, snapshot.session
   return '', ''

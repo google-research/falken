@@ -15,6 +15,12 @@
 // Contains proto definitions used primarily for storage purposes.
 syntax = "proto3";
 
+/* The protos in this file map into a resource hierarchy, e.g., a Brain proto
+ * is implicitly nested in a Project proto. Fields ending in the suffix '_id'
+ * represent keys in that hierarchy, and this naming convention is used by
+ * other components. When adding new fields, make sure to avoid use of the
+ * '_id' suffix, unless adding a new key field.
+ */
 package falken.proto.data_store;
 
 import "google/rpc/status.proto";
@@ -22,6 +28,7 @@ import "brain.proto";
 import "episode.proto";
 import "serialized_model.proto";
 import "session.proto";
+
 
 message Assignment {
   string project_id = 1;
@@ -61,9 +68,9 @@ message Session {
   google.rpc.Status status = 7;
 
   // Snapshot used to start the session.
-  repeated string starting_snapshot_ids = 8;
+  repeated string starting_snapshots = 8;
   // Populated when the session is complete.
-  string snapshot_id = 9;
+  string snapshot = 9;
 
   falken.proto.SessionType session_type = 10;
 
@@ -121,12 +128,12 @@ message Model {
 
   // Set by the learner service to indicate the assignment that trained this
   // model.
-  string assignment_id = 7;
+  string assignment = 7;
 
   // Set by the learner service to associate this model with data utilized
   // to train it.
-  string episode_id = 8;
-  int64 episode_chunk_id = 9;
+  string episode = 8;
+  int64 episode_chunk = 9;
   // Time for the most recent human demonstration used to train this model
   // (the most recent chunk that doesn't contain human data).
   uint64 most_recent_demo_time_micros = 14;
@@ -176,9 +183,9 @@ message EpisodeChunk {
 
 message SnapshotParents {
   // ID of the snapshot with one or more parents.
-  string snapshot_id = 1;
+  string snapshot = 1;
   // IDs of parents of the snapshot referenced by snapshot_id.
-  repeated string parent_snapshot_ids = 2;
+  repeated string parent_snapshots = 2;
 }
 
 message Snapshot {
@@ -189,7 +196,7 @@ message Snapshot {
 
   // IDs of all brain state snapshots that this snapshot is derived from.
   // In the form child:parent.
-  repeated SnapshotParents ancestor_snapshot_ids = 4;
+  repeated SnapshotParents ancestor_snapshots = 4;
 
   // When this snapshot was created in microseconds since the Unix epoch.
   uint64 created_micros = 5;
@@ -198,14 +205,12 @@ message Snapshot {
   // Display name of the snapshot.
   string display_name = 6;
 
-  // ID of the session in the Sessions table that was used to train this brain
-  // state.
-  string session_id = 7;
-  // The best model in the Models table and associated evaluation in the
-  // Evaluations table selected after the training session.
-  string model_id = 8;
+  // ID of the session.
+  string session = 7;
+  // The model IO associated with this snapshot.
+  string model = 8;
   // Path of the serialized brain state. This is a copy of the model_path field
-  // of the falken.storage.Model proto to reduce the number of queries to load
+  // of the Model proto to reduce the number of queries to load
   // a model from a snapshot.
   string model_path = 9;
   // Complete size of all data associated with this snapshot in bytes. This is
@@ -213,9 +218,9 @@ message Snapshot {
   // overall snapshot size. This is the sum of all checkpoints, episode
   // observations and actions.
   uint64 snapshot_size = 10;
-  // IDs of models in the Models table from the most recent set of training
-  // assignments in the session referenced by this snapshot.
-  repeated string model_ids = 11;
+  // IDs of models from the most recent set of training assignments in the
+  // session referenced by this snapshot.
+  repeated string models = 11;
 }
 
 message EvalLatencyStats {
@@ -249,15 +254,15 @@ message OnlineEvaluation {
   string project_id = 1;
   string brain_id = 2;
   string session_id = 3;
-  string model_id = 4;
-  string episode_id = 5;
+  string episode_id = 4;
 
   // Column data
+  string model = 5;
   float score = 6;
   int64 commit_timestamp_micros = 7;
-  uint64 created_micros = 9;
+  uint64 created_micros = 8;
 
   // Latency stats for evaluating and recording the evaluation.
-  EvalLatencyStats latency_stats = 8;
+  EvalLatencyStats latency_stats = 9;
 }
 

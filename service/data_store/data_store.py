@@ -131,58 +131,17 @@ class _FalkenResourceResolver:
   """Handles and parses the underlying resource type for ResourceID usage."""
 
   # Map key_field_name -> collection name mapping
-  _KEY_FIELD_MAP = {
-      data_store_pb2.Project: [
-          'project_id'
-      ],
-      data_store_pb2.Brain: [
-          'project_id', 'brain_id'
-      ],
-      data_store_pb2.Snapshot: [
-          'project_id', 'brain_id', 'snapshot_id'
-      ],
-      data_store_pb2.Session: [
-          'project_id', 'brain_id', 'session_id'
-      ],
-      data_store_pb2.EpisodeChunk: [
-          'project_id',
-          'brain_id',
-          'session_id',
-          'episode_id',
-          'chunk_id',
-      ],
-      data_store_pb2.OnlineEvaluation: [
-          'project_id',
-          'brain_id',
-          'session_id',
-          'episode_id',
-      ],
-      data_store_pb2.Assignment: [
-          'project_id',
-          'brain_id',
-          'session_id',
-          'assignment_id',
-      ],
-      data_store_pb2.Model: [
-          'project_id',
-          'brain_id',
-          'session_id',
-          'model_id',
-      ],
-      data_store_pb2.SerializedModel: [
-          'project_id',
-          'brain_id',
-          'session_id',
-          'model_id',
-      ],
-      data_store_pb2.OfflineEvaluation: [
-          'project_id',
-          'brain_id',
-          'session_id',
-          'model_id',
-          'offline_evaluation_id',
-      ],
-  }
+  _KEY_FIELDS = [
+      'assignment_id',
+      'brain_id',
+      'chunk_id',
+      'episode_id',
+      'model_id',
+      'offline_evaluation_id',
+      'project_id',
+      'session_id',
+      'snapshot_id',
+  ]
 
   # Maps proto types to their attributes.
   _ATTRIBUTE_MAP = {
@@ -224,13 +183,18 @@ class _FalkenResourceResolver:
   def to_resource_id(resource: DatastoreProto) -> resource_id.ResourceId:
     """Determine resource id from the resource data object."""
     accessor_map = {}
-    try:
-      keys = _FalkenResourceResolver._KEY_FIELD_MAP[type(resource)]
-    except KeyError:
-      raise ValueError(f'Unsupported type: {type(resource)}')
 
-    for key in keys:
-      proto_value = getattr(resource, key)
+    for key in _FalkenResourceResolver._KEY_FIELDS:
+      try:
+        proto_value = getattr(resource, key)
+      except AttributeError:
+        # Key is not present in this proto.
+        continue
+      if proto_value is None:
+        raise ValueError(
+            f'Object: \n===\n{resource}\n===\n' +
+            f'of type {type(resource)} does not set ' +
+            f'the required key field "{key}".')
       accessor_name, element_id = (
           _FalkenResourceResolver.encode_proto_assignment(
               key, proto_value))

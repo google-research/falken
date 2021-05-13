@@ -178,9 +178,9 @@ class Storage:
         model_id=model_id,
         model_path=model_path,
         compressed_model_path=compressed_model_path,
-        assignment_id=assignment.assignment_id,
-        episode_id=episode_id,
-        episode_chunk_id=episode_chunk_id,
+        assignment=assignment.assignment_id,
+        episode=episode_id,
+        episode_chunk=episode_chunk_id,
         latency_stats=model_latency_proto,
         training_examples_completed=training_examples_completed,
         max_training_examples=max_training_examples,
@@ -280,16 +280,16 @@ class Storage:
         project_id=project_id,
         brain_id=brain_id,
         session_id=session_id)
-    ancestor_snapshot_ids = set(session.starting_snapshot_ids)
-    for snapshot_id in session.starting_snapshot_ids:
+    ancestor_snapshot_ids = set(session.starting_snapshots)
+    for snapshot_id in session.starting_snapshots:
       snapshot = self._data_store.read_by_proto_ids(
           project_id=project_id,
           brain_id=brain_id,
           snapshot_id=snapshot_id)
 
-      for snapshot_parents in snapshot.ancestor_snapshot_ids:
-        ancestor_snapshot_ids.add(snapshot_parents.snapshot_id)
-        ancestor_snapshot_ids.update(snapshot_parents.parent_snapshot_ids)
+      for snapshot_parents in snapshot.ancestor_snapshots:
+        ancestor_snapshot_ids.add(snapshot_parents.snapshot)
+        ancestor_snapshot_ids.update(snapshot_parents.parent_snapshots)
 
     ancestor_session_ids = []
     for snapshot_id in ancestor_snapshot_ids:
@@ -297,7 +297,7 @@ class Storage:
           project_id=project_id,
           brain_id=brain_id,
           snapshot_id=snapshot_id)
-      ancestor_session_ids.append(snapshot.session_id)
+      ancestor_session_ids.append(snapshot.session)
 
     return set(ancestor_session_ids)
 

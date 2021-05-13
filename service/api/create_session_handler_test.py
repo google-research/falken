@@ -70,7 +70,7 @@ class CreateSessionHandlerTest(parameterized.TestCase):
         project_id=request.project_id,
         brain_id=request.spec.brain_id,
         session_id=generate_unique_id.return_value,
-        starting_snapshot_ids=['test_snapshot_id'],
+        starting_snapshots=['test_snapshot_id'],
         session_type=request.spec.session_type,
         user_agent='grpc-c/16.0.0 (linux; chttp2)'
     )
@@ -92,7 +92,7 @@ class CreateSessionHandlerTest(parameterized.TestCase):
         project_id=request.spec.snapshot_id,
         brain_id=request.spec.brain_id,
         snapshot_id='test_snapshot_id',
-        session_id=previous_session.session_id)
+        session=previous_session.session_id)
     if snapshot_id:
       self._ds.read.side_effect = [
           snapshot, previous_session, data_store_session
@@ -104,7 +104,7 @@ class CreateSessionHandlerTest(parameterized.TestCase):
         project_id=request.spec.snapshot_id,
         brain_id=request.spec.brain_id,
         snapshot_id='test_snapshot_id',
-        session_id=previous_session.session_id)
+        session=previous_session.session_id)
 
     self.assertEqual(
         create_session_handler.create_session(request, context, self._ds),
@@ -143,7 +143,7 @@ class CreateSessionHandlerTest(parameterized.TestCase):
     mock_data_store = mock.Mock()
     mock_data_store.read.return_value = data_store_pb2.Snapshot(
         project_id='test_project_id', brain_id='test_brain_id',
-        snapshot_id='test_snapshot_id', session_id='test_prev_session_id')
+        snapshot_id='test_snapshot_id', session='test_prev_session_id')
     mock_session_spec = mock.Mock(
         project_id='test_project_id', brain_id='test_brain_id',
         snapshot_id='test_snapshot_id')
@@ -167,7 +167,7 @@ class CreateSessionHandlerTest(parameterized.TestCase):
             project_id='test_project_id',
             brain_id='test_brain_id',
             snapshot_id='test_snapshot_id',
-            session_id='test_prev_session_id'))
+            session='test_prev_session_id'))
     mock_session_spec = mock.Mock(
         project_id='test_project_id', brain_id='test_brain_id',
         snapshot_id='')

@@ -92,9 +92,9 @@ class StorageTest(parameterized.TestCase):
     self.assertEqual(model.model_id, model_id)
     self.assertEqual(model.model_path, '/path/to/model')
     self.assertEqual(model.compressed_model_path, '/path/to/model.zip')
-    self.assertEqual(model.assignment_id, model.assignment_id)
-    self.assertEqual(model.episode_id, '1020')
-    self.assertEqual(model.episode_chunk_id, 5)
+    self.assertEqual(model.assignment, self.assignment.assignment_id)
+    self.assertEqual(model.episode, '1020')
+    self.assertEqual(model.episode_chunk, 5)
 
   def test_record_assignment_error(self):
     """Test recording assignment error."""
@@ -199,33 +199,33 @@ class StorageTest(parameterized.TestCase):
 
   def test_get_ancestor_session_ids(self):
     self.populate_datastore()
-    self.session.starting_snapshot_ids.extend(['snap0', 'snap1'])
+    self.session.starting_snapshots.extend(['snap0', 'snap1'])
     self.data_store.write(self.session)
     self.data_store.write(
         data_store_pb2.Snapshot(
             project_id=self.session.project_id,
             brain_id=self.session.brain_id,
             snapshot_id='snap0',
-            session_id='as0',
-            ancestor_snapshot_ids=[
+            session='as0',
+            ancestor_snapshots=[
                 data_store_pb2.SnapshotParents(
-                    snapshot_id='snap0',
-                    parent_snapshot_ids=['snap2', 'snap3'],
+                    snapshot='snap0',
+                    parent_snapshots=['snap2', 'snap3'],
                 ),
                 data_store_pb2.SnapshotParents(
-                    snapshot_id='snap2',
-                    parent_snapshot_ids=['snap4']),
+                    snapshot='snap2',
+                    parent_snapshots=['snap4']),
             ]))
     self.data_store.write(
         data_store_pb2.Snapshot(
             project_id=self.session.project_id,
             brain_id=self.session.brain_id,
             snapshot_id='snap1',
-            session_id='as1',
-            ancestor_snapshot_ids=[
+            session='as1',
+            ancestor_snapshots=[
                 data_store_pb2.SnapshotParents(
-                    snapshot_id='snap1',
-                    parent_snapshot_ids=['snap5'],
+                    snapshot='snap1',
+                    parent_snapshots=['snap5'],
                 ),
             ]))
     for snap_num in range(2, 6):
@@ -234,7 +234,7 @@ class StorageTest(parameterized.TestCase):
               project_id=self.session.project_id,
               brain_id=self.session.brain_id,
               snapshot_id=f'snap{snap_num}',
-              session_id=f'as{snap_num}'))
+              session=f'as{snap_num}'))
 
     ancestor_session_ids = self.storage.get_ancestor_session_ids(
         self.session.project_id,

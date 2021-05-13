@@ -62,6 +62,7 @@ _DEFAULT_TEST_MODULES = [
     'api.proto_conversion_test',
     'api.request_metadata_test',
     'api.unique_id_test',
+    'data_store.assignment_monitor_test',
     'data_store.data_store_test',
     'data_store.file_system_test',
     'data_store.resource_id_test',

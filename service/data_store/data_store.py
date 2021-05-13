@@ -34,11 +34,14 @@ _PROTO_BY_COLLECTION_ID = {
     'snapshots': data_store_pb2.Snapshot,
     'sessions': data_store_pb2.Session,
     'chunks': data_store_pb2.EpisodeChunk,
-    'online_evaluations': data_store_pb2.OnlineEvaluation,
     'assignments': data_store_pb2.Assignment,
     'models': data_store_pb2.Model,
-    'serialized_models': data_store_pb2.SerializedModel,
     'offline_evaluations': data_store_pb2.OfflineEvaluation,
+}
+
+_PROTO_BY_ATTRIBUTE_ID = {
+    'serialized_model': data_store_pb2.SerializedModel,
+    'online_evaluation': data_store_pb2.OnlineEvaluation,
 }
 
 DatastoreProto = Union[
@@ -68,15 +71,25 @@ class InternalError(Exception):
 class _FalkenResourceEncoder:
   """Encodes/decodes protos to/from bytes based on resource id."""
 
-  def _get_proto_type(self,
-                      res_id: resource_id.ResourceId) -> Type[DatastoreProto]:
+  def _get_proto_type(
+      self, res_id: resource_id.FalkenResourceId) -> Type[DatastoreProto]:
     """Determines the protobuf type from a resource id."""
     assert len(res_id.parts) >= 2  # Valid resource ids have at least 2 parts.
+    if res_id.attribute:
+      try:
+        return _PROTO_BY_ATTRIBUTE_ID[res_id.attribute]
+      except KeyError:
+        raise ValueError(
+            f'Error determining proto type for "{res_id}". '
+            f'Not a supported attribute: {res_id.attribute}')
+
     collection_id = res_id.parts[-2]
     try:
       return _PROTO_BY_COLLECTION_ID[collection_id]
     except KeyError:
-      raise ValueError(f'Not a supported resource type: {res_id}')
+      raise ValueError(
+          f'Error determining proto type for "{res_id}". '
+          f'Not a supported collection: {collection_id}')
 
   def encode_resource(self,
                       res_id: resource_id.ResourceId,
@@ -117,63 +130,64 @@ class _FalkenResourceEncoder:
 class FalkenResourceHandler:
   """Handles and parses the underlying resource type for ResourceID usage."""
 
-  # Map resource type to key_field_name -> collection name mapping
+  # Map key_field_name -> collection name mapping
   _KEY_FIELD_MAP = {
-      data_store_pb2.Project: {
-          'project_id': 'project',
-      },
-      data_store_pb2.Brain: {
-          'project_id': 'project',
-          'brain_id': 'brain',
-      },
-      data_store_pb2.Snapshot: {
-          'project_id': 'project',
-          'brain_id': 'brain',
-          'snapshot_id': 'snapshot',
-      },
-      data_store_pb2.Session: {
-          'project_id': 'project',
-          'brain_id': 'brain',
-          'session_id': 'session',
-      },
-      data_store_pb2.EpisodeChunk: {
-          'project_id': 'project',
-          'brain_id': 'brain',
-          'session_id': 'session',
-          'episode_id': 'episode',
-          'chunk_id': 'chunk',
-      },
-      data_store_pb2.OnlineEvaluation: {
-          'project_id': 'project',
-          'brain_id': 'brain',
-          'session_id': 'session',
-          'episode_id': 'online_evaluation',
-      },
-      data_store_pb2.Assignment: {
-          'project_id': 'project',
-          'brain_id': 'brain',
-          'session_id': 'session',
-          'assignment_id': 'assignment',
-      },
-      data_store_pb2.Model: {
-          'project_id': 'project',
-          'brain_id': 'brain',
-          'session_id': 'session',
-          'model_id': 'model',
-      },
-      data_store_pb2.SerializedModel: {
-          'project_id': 'project',
-          'brain_id': 'brain',
-          'session_id': 'session',
-          'model_id': 'serialized_model',
-      },
-      data_store_pb2.OfflineEvaluation: {
-          'project_id': 'project',
-          'brain_id': 'brain',
-          'session_id': 'session',
-          'model_id': 'model',
-          'offline_evaluation_id': 'offline_evaluation',
-      },
+      data_store_pb2.Project: [
+          'project_id'
+      ],
+      data_store_pb2.Brain: [
+          'project_id', 'brain_id'
+      ],
+      data_store_pb2.Snapshot: [
+          'project_id', 'brain_id', 'snapshot_id'
+      ],
+      data_store_pb2.Session: [
+          'project_id', 'brain_id', 'session_id'
+      ],
+      data_store_pb2.EpisodeChunk: [
+          'project_id',
+          'brain_id',
+          'session_id',
+          'episode_id',
+          'chunk_id',
+      ],
+      data_store_pb2.OnlineEvaluation: [
+          'project_id',
+          'brain_id',
+          'session_id',
+          'episode_id',
+      ],
+      data_store_pb2.Assignment: [
+          'project_id',
+          'brain_id',
+          'session_id',
+          'assignment_id',
+      ],
+      data_store_pb2.Model: [
+          'project_id',
+          'brain_id',
+          'session_id',
+          'model_id',
+      ],
+      data_store_pb2.SerializedModel: [
+          'project_id',
+          'brain_id',
+          'session_id',
+          'model_id',
+      ],
+      data_store_pb2.OfflineEvaluation: [
+          'project_id',
+          'brain_id',
+          'session_id',
+          'model_id',
+          'offline_evaluation_id',
+      ],
+  }
+
+  # Maps proto types to their attributes.
+  _ATTRIBUTE_MAP = {
+      data_store_pb2.OnlineEvaluation: 'online_evaluation',
+      data_store_pb2.SerializedModel: 'serialized_model',
   }
 
   def get_timestamp_micros(self, resource: DatastoreProto) -> int:
@@ -189,17 +203,26 @@ class FalkenResourceHandler:
   @classmethod
   def to_resource_id(cls, resource: DatastoreProto) -> resource_id.ResourceId:
     """Determine resource id from the resource data object."""
-    try:
-      field_map = cls._KEY_FIELD_MAP[type(resource)]
-    except KeyError:
-      raise ValueError(f'Not a valid resource type: {type(resource)}')
     accessor_map = {}
-    for field_name, accessor_name in field_map.items():
-      value = getattr(resource, field_name)
-      if field_name == 'assignment_id':
+    try:
+      keys = cls._KEY_FIELD_MAP[type(resource)]
+    except KeyError:
+      raise ValueError(f'Unsupported type: {type(resource)}')
+
+    for key in keys:
+      value = getattr(resource, key)
+      if key == 'assignment_id':
         # We hash assignment_ids since they can get pretty long.
         value = hashlib.sha256(value.encode('utf-8')).hexdigest()
+      assert key.endswith('_id')
+      accessor_name = key[:-len('_id')]  # Chop off '_id' suffix
       accessor_map[accessor_name] = value
+
+    # Check if the proto represents an attribute.
+    attribute_name = cls._ATTRIBUTE_MAP.get(type(resource))
+    if attribute_name:
+      accessor_map[resource_id.ATTRIBUTE] = attribute_name
+
     return resource_id.FalkenResourceId(**accessor_map)
 
 

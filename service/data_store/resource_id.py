@@ -400,14 +400,20 @@ class FalkenResourceId(ResourceId):
                       'episodes': {
                           'chunks',
                       },
-                      'online_evaluations': None,
                       'assignments': None,
                       'models': {'offline_evaluations'},
-                      'serialized_models': None,
                   },
                   'snapshots': None,
               }
           }
+      },
+      attribute_map={
+          'episodes': [
+              'online_evaluation',
+          ],
+          'models': [
+              'serialized_model',
+          ]
       },
       accessor_map={
           'projects': 'project',
@@ -415,13 +421,18 @@ class FalkenResourceId(ResourceId):
           'sessions': 'session',
           'episodes': 'episode',
           'chunks': 'chunk',
-          'online_evaluations': 'online_evaluation',
           'assignments': 'assignment',
           'models': 'model',
-          'serialized_models': 'serialized_model',
           'snapshots': 'snapshot',
           'offline_evaluations': 'offline_evaluation',
       })
+
+  @property
+  def attribute(self):
+    if len(self.parts) % 2 == 0:
+      return None
+    else:
+      return self.parts[-1]
 
   def __init__(self, *args, **kwargs):
     super().__init__(

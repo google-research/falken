@@ -100,7 +100,8 @@ class DataStoreTest(parameterized.TestCase):
             project='p1',
             brain='b1',
             session='s1',
-            online_evaluation='e1')).episode_id,
+            episode='e1',
+            attribute='online_evaluation')).episode_id,
         'e1')
 
   def test_read_write_assignment(self):
@@ -129,7 +130,8 @@ class DataStoreTest(parameterized.TestCase):
             project='p1',
             brain='b1',
             session='s1',
-            serialized_model='m1')).model_id,
+            model='m1',
+            attribute='serialized_model')).model_id,
         'm1')
 
   def test_read_write_offline_evaluation(self):
@@ -211,24 +213,29 @@ class DataStoreTest(parameterized.TestCase):
 
   # pylint: disable=g-long-lambda
   @parameterized.named_parameters(
-      ('project', lambda x: data_store_pb2.Project(project_id=str(x))),
+      ('project', lambda x: data_store_pb2.Project(project_id=str(x)),
+       'projects/*'),
       ('brain', lambda x: data_store_pb2.Brain(
-          project_id='p1', brain_id=str(x))),
+          project_id='p1', brain_id=str(x)),
+       'projects/p1/brains/*'),
       ('session', lambda x: data_store_pb2.Session(
-          project_id='p1', brain_id='b1', session_id=str(x))),
+          project_id='p1', brain_id='b1', session_id=str(x)),
+       'projects/p1/brains/b1/sessions/*'),
       ('episode_chunk', lambda x: data_store_pb2.EpisodeChunk(
           project_id='p1', brain_id='b1', session_id='s1',
-          episode_id='e1', chunk_id=x)),
+          episode_id='e1', chunk_id=x),
+       'projects/p1/brains/b1/sessions/s1/episodes/e1/chunks/*'),
       ('online_evaluation', lambda x: data_store_pb2.OnlineEvaluation(
           project_id='p1', brain_id='b1', session_id='s1',
-          episode_id=str(x))))
+          episode_id=str(x)),
+       'projects/p1/brains/b1/sessions/s1/episodes/*/online_evaluation'))
   @mock.patch.object(time, 'time', autospec=True)
-  def test_list(self, creation_fun, mock_time):
+  def test_list(self, creation_fun, rid_glob, mock_time):
+    rid_glob = resource_id.FalkenResourceId(rid_glob)
     rids = []
     for i in range(100):
       mock_time.return_value = i / 1e6
       rids.append(self._data_store.write(creation_fun(i)))
-    rid_glob = resource_id.FalkenResourceId(rids[0].parts[:-1] + ['*'])
 
     rid_strings = [str(rid) for rid in rids]
     result, _ = self._data_store.list(rid_glob)

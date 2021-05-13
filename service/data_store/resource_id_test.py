@@ -211,11 +211,11 @@ class ResourceIdTest(parameterized.TestCase):
   @parameterized.parameters(
       'projects/p0/brains/b0/sessions/s0/episodes/e0/chunks/0',
       'projects/p0/brains/b0/sessions/s0/episodes/e0',
-      'projects/p0/brains/b0/sessions/s0/online_evaluations/e0',
+      'projects/p0/brains/b0/sessions/s0/episodes/e0/online_evaluation',
       'projects/p0/brains/b0/sessions/s0/assignments/a0',
       'projects/p0/brains/b0/sessions/s0/models/m0',
       'projects/p0/brains/b0/sessions/s0/models/m0/offline_evaluations/0',
-      'projects/p0/brains/b0/sessions/s0/serialized_models/m0',
+      'projects/p0/brains/b0/sessions/s0/models/m0/serialized_model',
       'projects/p0/brains/b0/sessions/s0',
       'projects/p0/brains/b0/snapshots/s0',
       'projects/p0')

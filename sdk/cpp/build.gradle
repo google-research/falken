@@ -37,6 +37,7 @@ android {
                 arguments "-DDOWNLOAD_MACHINE=$FALKEN_DOWNLOAD_MACHINE",
                   "-DDOWNLOAD_CITC_CLIENT=$FALKEN_DOWNLOAD_CITC_CLIENT",
                   "-DPYTHON=$FALKEN_PYTHON"
+                targets "falken_cpp_sdk"
             }
         }
         sourceSets {

@@ -33,7 +33,7 @@ class DataCacheTest(absltest.TestCase):
     self.assertEqual(
         data_cache.get_brain(mock_ds, 'test_project_id', 'test_brain_id'),
         mock_ds.read.return_value)
-    # Read brain only called once.
+    # Datastore read only called once.
     mock_ds.read.assert_called_once_with(
         'projects/test_project_id/brains/test_brain_id')
 
@@ -48,6 +48,24 @@ class DataCacheTest(absltest.TestCase):
         get_brain.return_value.brain_spec)
     get_brain.assert_called_once_with(
         mock_ds, 'test_project_id', 'test_brain_id')
+
+  def test_get_session_type(self):
+    mock_ds = mock.Mock()
+    mock_ds.read.return_value = mock.Mock()
+    # Call twice.
+    self.assertEqual(
+        data_cache.get_session_type(mock_ds, 'test_project_id', 'test_brain_id',
+                                    'test_session_id'),
+        mock_ds.read.return_value.session_type)
+    self.assertEqual(
+        data_cache.get_session_type(mock_ds, 'test_project_id', 'test_brain_id',
+                                    'test_session_id'),
+        mock_ds.read.return_value.session_type)
+    # Datastore read only called once.
+    mock_ds.read.assert_called_once_with(
+        'projects/test_project_id/brains/test_brain_id/sessions/'
+        'test_session_id')
+
 
 if __name__ == '__main__':
   absltest.main()

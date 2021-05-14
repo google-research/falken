@@ -20,6 +20,7 @@ from api import data_cache
 from api import model_selector
 
 import common.generate_protos  # pylint: disable=unused-import
+from data_store import data_store as data_store_module
 from data_store import resource_id
 
 # pylint: disable=g-bad-import-order
@@ -28,6 +29,7 @@ import data_store_pb2
 import episode_pb2
 import falken_service_pb2
 from google.rpc import code_pb2
+import session_pb2
 from learner.brains import specs
 
 
@@ -65,11 +67,25 @@ def submit_episode_chunks(request, context, data_store):
 
   episode_resource_id = resource_id.FalkenResourceId(
       project=request.project_id, brain=request.brain_id,
-      sessions=request.session_id, episode=request.chunks[0].episode_id)
+      session=request.session_id, episode=request.chunks[0].episode_id)
 
-  _store_episode_chunks(data_store, request.chunks, episode_resource_id)
+  try:
+    chunks_steps_type = _store_episode_chunks(
+        data_store, request.chunks, episode_resource_id)
+  except (ValueError, data_store_module.InternalError) as e:
+    context.abort(
+        code_pb2.INVALID_ARGUMENT,
+        f'Storing episode chunks failed for {episode_resource_id.episode}.'
+        f' {e}')
 
-  _start_assignment()
+  try:
+    _try_start_assignments(
+        data_store, episode_resource_id, chunks_steps_type)
+  except (FileNotFoundError, data_store_module.InternalError) as e:
+    context.abort(
+        code_pb2.NOT_FOUND,
+        f'Starting assignment failed for episode {episode_resource_id.episode}.'
+        f' {e}')
 
   _get_training_state()
 
@@ -133,10 +149,14 @@ def _store_episode_chunks(data_store, chunks, episode_resource_id):
     episode_resource_id: data_store.resource_id.FalkenResourceID instance
       containing resource IDs for the episode.
 
+  Returns:
+    The merged steps type of the chunks stored.
+
   Raises:
     ValueError if the episodes received has issues such as containing invalid
       data or incomplete episodes.
   """
+  chunks_steps_type = data_store_pb2.UNKNOWN
   write_episode_chunk = data_store_pb2.EpisodeChunk(
       # Set properties common to all chunks.
       project_id=episode_resource_id.project,
@@ -148,6 +168,7 @@ def _store_episode_chunks(data_store, chunks, episode_resource_id):
   for chunk in chunks:
     try:
       steps_type = _get_steps_type(chunk)
+      chunks_steps_type = _merge_steps_types(chunks_steps_type, steps_type)
     except ValueError as e:
       raise ValueError('Encountered error while getting steps type for episode '
                        f'{chunk.episode_id} chunk {chunk.chunk_id}. {e}')
@@ -155,16 +176,18 @@ def _store_episode_chunks(data_store, chunks, episode_resource_id):
     write_episode_chunk.episode_id = chunk.episode_id
     write_episode_chunk.steps_type = steps_type
     write_episode_chunk.data.CopyFrom(chunk)
-    data_store.write_episode_chunk(write_episode_chunk)
+    data_store.write(write_episode_chunk)
 
     # Record online evaluation results.
     try:
-      _record_online_evaluation(data_store, write_episode_chunk,
-                                episode_resource_id)
+      _record_online_evaluation(
+          data_store, write_episode_chunk, episode_resource_id)
     except ValueError as e:
       raise ValueError(
           'Encountered error while recording online evaluation for episode '
           f'{chunk.episode_id} chunk {chunk.chunk_id}. {e}')
+
+  return chunks_steps_type
 
 
 def _get_steps_type(chunk):
@@ -245,7 +268,7 @@ def _record_online_evaluation(data_store, chunk, episode_resource_id):
   if steps_type != data_store_pb2.ONLY_INFERENCES or not model_ids:
     # If there were non-inference action sources or multiple models used to
     # perform inference, then we can't score the episode.
-    logging.info(
+    logging.debug(
         'Skipping online eval for complete episode of type %s and %d inference '
         'models.', str(steps_type), len(model_ids))
     return
@@ -337,17 +360,17 @@ def _get_episode_steps_type(data_store, current_chunk, episode_resource_id):
     return current_chunk.steps_type, model_ids
 
   # Read episode chunks from data_store for the same episode.
-  read_chunk_ids, _ = data_store.list_episode_chunks(
-      episode_resource_id.project, episode_resource_id.brain,
-      episode_resource_id.session, episode_resource_id.episode)
+  read_chunk_ids, _ = data_store.list(episode_resource_id)
 
   count = 0
   steps_type = data_store_pb2.UNKNOWN
   for chunk_id in read_chunk_ids:
-    chunk = data_store.read_episode_chunk(episode_resource_id.project,
-                                          episode_resource_id.brain,
-                                          episode_resource_id.session,
-                                          episode_resource_id.episode, chunk_id)
+    chunk = data_store.read(
+        resource_id.FalkenResourceId(
+            project=episode_resource_id.project,
+            brain=episode_resource_id.brain,
+            session=episode_resource_id.session,
+            episode=episode_resource_id.episode, chunk=chunk_id))
     steps_type = _merge_steps_types(steps_type, chunk.steps_type)
     if (chunk.steps_type != data_store_pb2.ONLY_DEMONSTRATIONS and
         chunk.data.model_id):
@@ -388,8 +411,50 @@ def _merge_steps_types(type_left, type_right):
   return data_store_pb2.MIXED
 
 
-def _start_assignment():
-  raise NotImplementedError('Method not implemented!')
+def _try_start_assignments(
+    data_store, episode_resource_id, chunks_steps_type):
+  """Adds a new assignment to the data_store to start training a new model.
+
+  Args:
+    data_store: data_store.DataStore to read and write the new assignment to.
+    episode_resource_id: data_store.resource_id.FalkenResourceID instance
+      containing resource IDs for the episode.
+    chunks_steps_type: Merged steps type of chunks submitted, to determine if
+      a new assignment should be started or not.
+
+  Raises:
+    FileNotFoundError, data_store.InternalError if reading assignments or
+      writing assignments encounter issues.
+  """
+  if data_cache.get_session_type(
+      data_store, episode_resource_id.project, episode_resource_id.brain,
+      episode_resource_id.session) != session_pb2.INTERACTIVE_TRAINING:
+    logging.debug('Skipping assignment creation on non-training session %s.',
+                  episode_resource_id.session)
+    return
+
+  if chunks_steps_type in [
+      data_store_pb2.UNKNOWN, data_store_pb2.ONLY_DEMONSTRATIONS]:
+    logging.debug(
+        'No HUMAN_DEMONSTRATION steps found for session %s. '
+        'Skipping assignment creation.', episode_resource_id.session)
+    return
+
+  assignment_ids = data_store.list(
+      resource_id.FalkenResourceId(
+          project=episode_resource_id.project, brain=episode_resource_id.brain,
+          session=episode_resource_id.session, assignment='*'))
+
+  failed_assignments_count = 0
+  for assignment_id in assignment_ids:
+    raise NotImplementedError(
+        'Waiting on changes in data_store to implement assignment queue. '
+        f'{assignment_id}')
+
+  logging.debug('Newly created %d assignments (total assignments: %d).)',
+                len(assignment_ids) - failed_assignments_count,
+                len(assignment_ids))
+  return
 
 
 def _get_training_state():

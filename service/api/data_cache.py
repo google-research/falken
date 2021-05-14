@@ -50,3 +50,23 @@ def get_brain(data_store, project_id, brain_id):
   """
   return data_store.read(
       resource_id.FalkenResourceId(f'projects/{project_id}/brains/{brain_id}'))
+
+
+@functools.lru_cache(maxsize=_MAX_CACHE)
+def get_session_type(data_store, project_id, brain_id, session_id):
+  """Get the cached session type (immutable) of a session.
+
+  Args:
+    data_store: data_store.DataStore to read from if the session is not cached.
+    project_id: Project ID associated with the requested session.
+    brain_id: Brain ID associated with the requested session.
+    session_id: Session ID associated with the requested session.
+
+  Returns:
+    session_pb2.SessionType enum.
+  """
+  return data_store.read(
+      resource_id.FalkenResourceId(f'projects/{project_id}/brains/{brain_id}'
+                                   f'/sessions/{session_id}')).session_type
+
+

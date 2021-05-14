@@ -16,16 +16,45 @@
 
 import tempfile
 import threading
+import types
 from unittest import mock
 
 from absl.testing import absltest
+from absl.testing import parameterized
 
 from data_store import assignment_monitor
 from data_store import file_system
 from data_store import resource_id
 
 
-class AssignmentMonitorTest(absltest.TestCase):
+def patch_file_system(fs, time_increment):
+  """Patches self._fs to have control of file modification times.
+
+  This will modify get_modification_time to simulate that every file was
+  written exactly time_increment milliseconds apart from the next.
+
+  Args:
+    fs: A FileSystem object to patch.
+    time_increment: By how much to increment the milliseconds counter every
+      time a file is written.
+  """
+  fs._current_time = 0
+  fs._file_times = {}
+
+  def new_write_file(self, path, data):
+    self._file_times[path] = self._current_time
+    self._current_time += time_increment
+    self._original_write_file(path, data)
+
+  def new_get_modification_time(self, path):
+    return self._file_times[path]
+
+  fs._original_write_file = fs.write_file
+  fs.write_file = types.MethodType(new_write_file, fs)
+  fs.get_modification_time = types.MethodType(new_get_modification_time, fs)
+
+
+class AssignmentMonitorTest(parameterized.TestCase):
 
   def setUp(self):
     """Create a datastore object that uses a temporary directory."""
@@ -57,9 +86,12 @@ class AssignmentMonitorTest(absltest.TestCase):
     self._monitor._metronome.stop()
     self._second_monitor._metronome.stop()
 
+  @parameterized.named_parameters([
+      ('Files written at the same time', 0),
+      ('Files written at different times', 10_000)])
   @mock.patch.object(
       assignment_monitor, '_Metronome', new=assignment_monitor._FakeMetronome)
-  def test_callbacks(self):
+  def test_callbacks(self, time_increment):
     """Tests callbacks."""
     callback_called = threading.Event()
     def side_effect(*unused_args):
@@ -74,6 +106,7 @@ class AssignmentMonitorTest(absltest.TestCase):
       callback_called.clear()
 
     self._monitor._metronome.stop()
+    patch_file_system(self._fs, time_increment)
     self._monitor = assignment_monitor.AssignmentMonitor(
         self._fs, 'notif', assignment_callback, chunk_callback)
     metronome = self._monitor._metronome

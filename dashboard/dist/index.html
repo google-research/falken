@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<!--
+ Copyright 2021 Google LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Falken Debug Dashboard</title>
+    <script src="./falken_grpc-bundle.js"></script>
+    <script src="./falken.js"></script>
+    <link rel="icon" type="image/png" href="favicon.png"/>
+    <link rel="stylesheet" href="style.css">
+  </head>
+
+  <body>
+    <img src="falken_logo.png" alt="Falken logo" class="center">
+    <div class="form">
+      <form action="dashboard.html" method="GET">
+        <label for="projectId">Project Id</label>
+        <input name="projectId" id="projectId" value="">
+        <label for="apiKey">API Key</label>
+        <input name="apiKey" id="apiKey" value="">
+        <button>Go!</button>
+      </form>
+    </div>
+  </body>
+</html>

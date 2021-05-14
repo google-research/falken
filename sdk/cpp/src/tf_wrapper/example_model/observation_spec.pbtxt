@@ -1,0 +1,60 @@
+# proto-file: research/kernel/falken/common/proto/observation.proto
+# proto-message: ObservationSpec
+
+player {
+  position {}
+  rotation {}
+  entity_fields {
+    name: "health"
+    number {
+      minimum: 0.0
+      maximum: 100.0
+    }
+  }
+  entity_fields {
+    name: "feeler"
+    feeler {
+      count: 3
+      distance {
+        minimum: 0.0
+        maximum: 100.0
+      }
+      yaw_angles: [-10.0, 0, 10.0]
+      experimental_data: {
+        minimum: 0.0
+        maximum: 100.0
+      }
+    }
+  }
+}
+camera {
+  position {}
+  rotation {}
+}
+global_entities {
+  position {}
+  rotation {}
+}
+global_entities {
+  position {}
+  rotation {}
+}
+global_entities {
+  position {}
+  rotation {}
+  entity_fields {
+    name: "evilness"
+    number {
+      minimum: 0.0
+      maximum: 100.0
+    }
+  }
+  entity_fields {
+    name: "drink"
+    category {
+      enum_values: "GIN"
+      enum_values: "WHISKEY"
+      enum_values: "VODKA"
+    }
+  }
+}

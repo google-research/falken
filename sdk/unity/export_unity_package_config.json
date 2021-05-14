@@ -1,0 +1,42 @@
+{
+  "packages": [
+    {
+      "name": "falken.unitypackage",
+      "imports": [
+        {
+          "importer": "DefaultImporter",
+          "paths": ["Falken/"]
+        }
+      ],
+
+      "exclude_paths": [".*.DS_Store.*"],
+
+      "manifest_path": "Falken/Editor",
+
+      "common_manifest": {
+        "name": "com.google.falken",
+        "display_name": "Falken Unity SDK",
+        "description": [
+          "Falken provides an API for creating and training agents that can ",
+          "learn how to play video games."
+        ],
+        "keywords": [
+          "Google",
+          "Machine Learning",
+          "vh-name:falken"
+        ],
+        "author": {
+          "name": "Google LLC",
+          "url": "http://TBD"
+        }
+      },
+
+      "export_upm": 1,
+      "upm_package_config": {
+        "manifest": {
+          "unity": "2017.1"
+        }
+      }
+    }
+  ]
+}

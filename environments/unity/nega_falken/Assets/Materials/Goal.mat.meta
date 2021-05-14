@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c5a0954b66dae44fa9d2e26862fea220
+labels:
+- gvh
+- gvh_version-0.0.1
+- gvh_version-0.0.7
+- gvh_version-0.0.8
+- gvhp_exportpath-Falken/Samples/HelloFalken/Materials/Goal.mat
+timeCreated: 1480838400
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData:
+  assetBundleName:
+  assetBundleVariant:

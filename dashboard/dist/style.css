@@ -1,0 +1,258 @@
+/**
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* Global */
+
+html, body {
+  width: 100%;
+  height: 100%;
+  padding: 0px;
+  border: 0px;
+  margin: 0px;
+  font: 10px sans-serif;
+}
+
+/* Styling for the Landing Page */
+
+div.form
+{
+  text-align: center;
+  font: 14px sans-serif;
+}
+
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}
+
+/* Dashboard Layout and Styling
+ ------------------
+ |      HEADER    |
+ | CHARTS | SCENE |
+ |     TIMELINE   |
+ ------------------
+*/
+
+/* Top level layout for the Dashboard window */
+.grid-container {
+  display: grid;
+  grid-gap: 0px;
+  padding: 0px;
+  height: 100%;
+  width: 100%;
+  grid-template-rows: 5% auto 73% auto 18%;
+  grid-template-columns: 50% 50%;
+}
+
+/* Layout for the top row w/ logo and dropdowns */
+.grid-header {
+  grid-row: 1;
+  grid-column: 1 / span 2;
+  display: flex;
+}
+
+/* Layout and styling for the labels and options UI at the top of each panel */
+.grid-title {
+  border-top: 1px solid LightGrey;
+  border-right: 1px solid LightGrey;
+  padding: 2px 2px 0px 2px;
+  font: 12px sans-serif;
+  display: flex;
+}
+
+.grid-title-label {
+  width: 20%;
+}
+
+.grid-title-options {
+  width: 80%;
+  text-align: right;
+}
+
+.title-filter {
+  font: 10px sans-serif;
+  height: 1em;
+  border-width: 0px 0px 1px 0px;
+}
+
+.title-dropdown {
+  font: 10px sans-serif;
+  border: 0;
+  outline: 0;
+}
+
+.title-button {
+  font: 10px sans-serif;
+  padding: 1px 1px;
+  border-width: 1px;
+  outline: 0px;
+}
+
+/* Layout for the Charts panel */
+.grid-charts-title {
+  grid-row: 2;
+}
+
+.grid-charts {
+  grid-row: 3;
+  border-right: 1px solid LightGrey;
+}
+
+/* Layout for the Scene panel */
+.grid-scene-title {
+  grid-row: 2;
+}
+
+.grid-scene {
+  grid-row: 3;
+}
+
+/* Layout for the Timeline panel */
+.grid-timeline-title {
+  grid-row: 4;
+  grid-column: 1 / span 2;
+}
+
+.grid-timeline {
+  grid-row: 5;
+  grid-column: 1 / span 2;
+}
+
+/* Styling for the Header */
+.logo-column {
+  display: flex;
+  align-items:center;
+  justify-content:center;
+  margin: 5px;
+}
+
+.logo {
+  width: 3em;
+  height: 3em;
+}
+
+.header-column {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.header-label {
+  padding-left: 8px;
+  padding-right: 4px;
+  font: 12px sans-serif;
+}
+
+.header-input {
+  width: 15%;
+  height: 1em;
+  font: 12px sans-serif;
+  padding: 1px 2px;
+}
+
+.header-datetime {
+  width: 175px;
+  height: 1em;
+  font: 12px sans-serif;
+  padding: 1px 2px;
+}
+
+.header-loader {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  margin-left: 20px;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 2s linear infinite;
+  opacity: 0;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Styling for Charts and Timeline */
+.graphs-container {
+  display: grid;
+  grid-gap: 0px;
+  width: 100%;
+  height: 100%;
+}
+
+.line {
+  fill: none;
+  stroke-width: 1;
+}
+
+.chart-label {
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.current-step-line {
+  stroke: black;
+  stroke-width: 2px;
+}
+
+.mouse-line {
+  stroke: darkgrey;
+  stroke-width: 1px;
+}
+
+.mouse-circle {
+  fill: solid;
+  stroke-width: 1px;
+  r: 3;
+}
+
+.mouse-label {
+  text-anchor: middle;
+}
+
+.human-rect {
+  stroke: red;
+  fill: red;
+  opacity: 0.3;
+}
+
+.ai-rect {
+  stroke: green;
+  fill: green;
+  opacity: 0.3;
+}
+
+.shift-rect {
+  stroke: black;
+  fill: #69a3b2;
+  opacity: 0.3;
+}
+
+.mouse-input {
+  fill: none;
+  pointer-events: all;
+}
+
+/* Styling for Scene panel */
+
+.scene_text_3d {
+  text-align: left;
+  font-family: Arial, Helvetica, sans-serif;
+}

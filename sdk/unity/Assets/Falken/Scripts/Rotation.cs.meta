@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 8abe8ea8adad3494a895b892aa2957ab
+labels:
+- gvh
+- gvh_version-0.0.10
+- gvh_version-0.0.7
+- gvh_version-0.0.8
+- gvhp_exportpath-Falken/Scripts/Rotation.cs
+timeCreated: 1480838400
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon:
+    instanceID: 0
+  userData:
+  assetBundleName:
+  assetBundleVariant:

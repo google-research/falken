@@ -1,0 +1,513 @@
+dict_value {
+  fields {
+    key: "collect_data_spec"
+    value {
+      named_tuple_value {
+        name: "Trajectory"
+        values {
+          key: "step_type"
+          value {
+            tensor_spec_value {
+              name: "step_type"
+              shape {
+              }
+              dtype: DT_INT32
+            }
+          }
+        }
+        values {
+          key: "observation"
+          value {
+            dict_value {
+              fields {
+                key: "camera"
+                value {
+                  dict_value {
+                    fields {
+                      key: "position"
+                      value {
+                        tensor_spec_value {
+                          name: "position"
+                          shape {
+                            dim {
+                              size: 3
+                            }
+                          }
+                          dtype: DT_FLOAT
+                        }
+                      }
+                    }
+                    fields {
+                      key: "rotation"
+                      value {
+                        tensor_spec_value {
+                          name: "rotation"
+                          shape {
+                            dim {
+                              size: 4
+                            }
+                          }
+                          dtype: DT_FLOAT
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              fields {
+                key: "global_entities"
+                value {
+                  dict_value {
+                    fields {
+                      key: "0"
+                      value {
+                        dict_value {
+                          fields {
+                            key: "position"
+                            value {
+                              tensor_spec_value {
+                                name: "position"
+                                shape {
+                                  dim {
+                                    size: 3
+                                  }
+                                }
+                                dtype: DT_FLOAT
+                              }
+                            }
+                          }
+                          fields {
+                            key: "rotation"
+                            value {
+                              tensor_spec_value {
+                                name: "rotation"
+                                shape {
+                                  dim {
+                                    size: 4
+                                  }
+                                }
+                                dtype: DT_FLOAT
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "1"
+                      value {
+                        dict_value {
+                          fields {
+                            key: "position"
+                            value {
+                              tensor_spec_value {
+                                name: "position"
+                                shape {
+                                  dim {
+                                    size: 3
+                                  }
+                                }
+                                dtype: DT_FLOAT
+                              }
+                            }
+                          }
+                          fields {
+                            key: "rotation"
+                            value {
+                              tensor_spec_value {
+                                name: "rotation"
+                                shape {
+                                  dim {
+                                    size: 4
+                                  }
+                                }
+                                dtype: DT_FLOAT
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "2"
+                      value {
+                        dict_value {
+                          fields {
+                            key: "drink"
+                            value {
+                              bounded_tensor_spec_value {
+                                name: "drink"
+                                shape {
+                                  dim {
+                                    size: 1
+                                  }
+                                }
+                                dtype: DT_INT32
+                                minimum {
+                                  dtype: DT_INT32
+                                  tensor_shape {
+                                  }
+                                  int_val: 0
+                                }
+                                maximum {
+                                  dtype: DT_INT32
+                                  tensor_shape {
+                                  }
+                                  int_val: 2
+                                }
+                              }
+                            }
+                          }
+                          fields {
+                            key: "evilness"
+                            value {
+                              bounded_tensor_spec_value {
+                                name: "evilness"
+                                shape {
+                                  dim {
+                                    size: 1
+                                  }
+                                }
+                                dtype: DT_FLOAT
+                                minimum {
+                                  dtype: DT_FLOAT
+                                  tensor_shape {
+                                  }
+                                  float_val: 0.0
+                                }
+                                maximum {
+                                  dtype: DT_FLOAT
+                                  tensor_shape {
+                                  }
+                                  float_val: 100.0
+                                }
+                              }
+                            }
+                          }
+                          fields {
+                            key: "position"
+                            value {
+                              tensor_spec_value {
+                                name: "position"
+                                shape {
+                                  dim {
+                                    size: 3
+                                  }
+                                }
+                                dtype: DT_FLOAT
+                              }
+                            }
+                          }
+                          fields {
+                            key: "rotation"
+                            value {
+                              tensor_spec_value {
+                                name: "rotation"
+                                shape {
+                                  dim {
+                                    size: 4
+                                  }
+                                }
+                                dtype: DT_FLOAT
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              fields {
+                key: "player"
+                value {
+                  dict_value {
+                    fields {
+                      key: "feeler"
+                      value {
+                        bounded_tensor_spec_value {
+                          name: "feeler"
+                          shape {
+                            dim {
+                              size: 3
+                            }
+                            dim {
+                              size: 2
+                            }
+                          }
+                          dtype: DT_FLOAT
+                          minimum {
+                            dtype: DT_FLOAT
+                            tensor_shape {
+                            }
+                            float_val: 0.0
+                          }
+                          maximum {
+                            dtype: DT_FLOAT
+                            tensor_shape {
+                            }
+                            float_val: 100.0
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "health"
+                      value {
+                        bounded_tensor_spec_value {
+                          name: "health"
+                          shape {
+                            dim {
+                              size: 1
+                            }
+                          }
+                          dtype: DT_FLOAT
+                          minimum {
+                            dtype: DT_FLOAT
+                            tensor_shape {
+                            }
+                            float_val: 0.0
+                          }
+                          maximum {
+                            dtype: DT_FLOAT
+                            tensor_shape {
+                            }
+                            float_val: 100.0
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "position"
+                      value {
+                        tensor_spec_value {
+                          name: "position"
+                          shape {
+                            dim {
+                              size: 3
+                            }
+                          }
+                          dtype: DT_FLOAT
+                        }
+                      }
+                    }
+                    fields {
+                      key: "rotation"
+                      value {
+                        tensor_spec_value {
+                          name: "rotation"
+                          shape {
+                            dim {
+                              size: 4
+                            }
+                          }
+                          dtype: DT_FLOAT
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        values {
+          key: "action"
+          value {
+            dict_value {
+              fields {
+                key: "joy_pitch_yaw"
+                value {
+                  bounded_tensor_spec_value {
+                    name: "joy_pitch_yaw"
+                    shape {
+                      dim {
+                        size: 2
+                      }
+                    }
+                    dtype: DT_FLOAT
+                    minimum {
+                      dtype: DT_FLOAT
+                      tensor_shape {
+                      }
+                      float_val: -1.0
+                    }
+                    maximum {
+                      dtype: DT_FLOAT
+                      tensor_shape {
+                      }
+                      float_val: 1.0
+                    }
+                  }
+                }
+              }
+              fields {
+                key: "joy_xz"
+                value {
+                  bounded_tensor_spec_value {
+                    name: "joy_xz"
+                    shape {
+                      dim {
+                        size: 2
+                      }
+                    }
+                    dtype: DT_FLOAT
+                    minimum {
+                      dtype: DT_FLOAT
+                      tensor_shape {
+                      }
+                      float_val: -1.0
+                    }
+                    maximum {
+                      dtype: DT_FLOAT
+                      tensor_shape {
+                      }
+                      float_val: 1.0
+                    }
+                  }
+                }
+              }
+              fields {
+                key: "joy_xz_world"
+                value {
+                  bounded_tensor_spec_value {
+                    name: "joy_xz_world"
+                    shape {
+                      dim {
+                        size: 2
+                      }
+                    }
+                    dtype: DT_FLOAT
+                    minimum {
+                      dtype: DT_FLOAT
+                      tensor_shape {
+                      }
+                      float_val: -1.0
+                    }
+                    maximum {
+                      dtype: DT_FLOAT
+                      tensor_shape {
+                      }
+                      float_val: 1.0
+                    }
+                  }
+                }
+              }
+              fields {
+                key: "switch_weapon"
+                value {
+                  bounded_tensor_spec_value {
+                    name: "switch_weapon"
+                    shape {
+                      dim {
+                        size: 1
+                      }
+                    }
+                    dtype: DT_INT32
+                    minimum {
+                      dtype: DT_INT32
+                      tensor_shape {
+                      }
+                      int_val: 0
+                    }
+                    maximum {
+                      dtype: DT_INT32
+                      tensor_shape {
+                      }
+                      int_val: 3
+                    }
+                  }
+                }
+              }
+              fields {
+                key: "throttle"
+                value {
+                  bounded_tensor_spec_value {
+                    name: "throttle"
+                    shape {
+                      dim {
+                        size: 1
+                      }
+                    }
+                    dtype: DT_FLOAT
+                    minimum {
+                      dtype: DT_FLOAT
+                      tensor_shape {
+                      }
+                      float_val: -1.0
+                    }
+                    maximum {
+                      dtype: DT_FLOAT
+                      tensor_shape {
+                      }
+                      float_val: 1.0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        values {
+          key: "policy_info"
+          value {
+            tuple_value {
+            }
+          }
+        }
+        values {
+          key: "next_step_type"
+          value {
+            tensor_spec_value {
+              name: "step_type"
+              shape {
+              }
+              dtype: DT_INT32
+            }
+          }
+        }
+        values {
+          key: "reward"
+          value {
+            tensor_spec_value {
+              name: "reward"
+              shape {
+              }
+              dtype: DT_FLOAT
+            }
+          }
+        }
+        values {
+          key: "discount"
+          value {
+            bounded_tensor_spec_value {
+              name: "discount"
+              shape {
+              }
+              dtype: DT_FLOAT
+              minimum {
+                dtype: DT_FLOAT
+                tensor_shape {
+                }
+                float_val: 0.0
+              }
+              maximum {
+                dtype: DT_FLOAT
+                tensor_shape {
+                }
+                float_val: 1.0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  fields {
+    key: "policy_state_spec"
+    value {
+      tuple_value {
+      }
+    }
+  }
+}

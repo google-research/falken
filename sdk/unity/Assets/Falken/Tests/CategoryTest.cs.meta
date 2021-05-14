@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 20b263fcadb6d46bc854ee86c57ab4cb
+labels:
+- gvh
+- gvh_version-0.0.7
+- gvh_version-0.0.8
+- gvhp_exportpath-Falken/Tests/CategoryTest.cs
+timeCreated: 1480838400
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon:
+    instanceID: 0
+  userData:
+  assetBundleName:
+  assetBundleVariant:

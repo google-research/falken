@@ -133,6 +133,14 @@ class FileSystem(object):
 
     shutil.move(source_path, destination_path)
 
+  def remove_file(self, path):
+    """Removes a file.
+
+    Args:
+      path: The path of the file to remove.
+    """
+    os.remove(os.path.join(self._root_path, path))
+
   def glob(self, pattern):
     """Encapsulates glob.glob.
 

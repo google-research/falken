@@ -55,13 +55,13 @@ on acquired assignments locks assignments for writing, which allows is to
 clean up the notification files and provide stronger guarantees.
 """
 
-import hashlib
 import os.path
 import queue
 import threading
 import time
 
 from data_store import file_system
+from data_store import resource_id
 
 
 class _Metronome:
@@ -228,13 +228,10 @@ class AssignmentMonitor:
         why the assignment should be triggered.
     """
     # There's no need to lock for this.
-    chunk_hash = hashlib.sha256(
-        episode_chunk_id.episode_chunk.encode('utf-8')).hexdigest()
     path = os.path.join(
         self._get_assignment_directory(assignment_id),
-        f'chunk_{time.time()}_{chunk_hash}')
-    self._fs.write_file(
-        path, f'{str(assignment_id)}\n{str(episode_chunk_id)}')
+        f'chunk_{episode_chunk_id.episode}_{episode_chunk_id.chunk}')
+    self._fs.write_file(path, b'')
 
   def _get_assignment_directory(self, assignment_id):
     """Gives the directory given the resource id of an assignment."""
@@ -242,15 +239,16 @@ class AssignmentMonitor:
 
   def _poll_assignments_and_episode_chunks(self):
     """Polls the notification dir using the metronome to dictate frequency."""
-    callback = None
-
     for _ in self._metronome.wait_for_tick():
+      callback = None
+
       with self._acquired_assignment_in_process_lock:
         if self._acquired_assignment_id:
-          # TODO(b/185940506): List new chunks belonging to
-          # self._acquired_assignment_id.
-          callback = lambda: self._chunk_callback(  # pylint: disable=g-long-lambda
-              self._acquired_assignment_id, ['test'])
+          chunks = self._pop_episode_chunks(self._acquired_assignment_id)
+
+          if chunks:
+            callback = lambda: self._chunk_callback(  # pylint: disable=g-long-lambda
+                self._acquired_assignment_id, chunks)  # pylint: disable=cell-var-from-loop
         else:
           # TODO(b/185940506): List chunks for all assignments that aren't
           # acquired by any other processes.
@@ -258,3 +256,38 @@ class AssignmentMonitor:
 
       if callback:
         callback()
+
+  def _pop_episode_chunks(self, assignment_id):
+    """Get and remove all new episode chunks for a given assignment id.
+
+    Args:
+      assignment_id: Resource id for the assignment to pop episode chunks for.
+    Returns:
+      A list of resource ids for each episode chunk found.
+    """
+    assert self._acquired_assignment_id == assignment_id
+
+    chunks = []
+    files = self._fs.glob(os.path.join(
+        self._get_assignment_directory(assignment_id), 'chunk_*'))
+    for f in files:
+      id_parts = os.path.basename(f).split('_')
+      if len(id_parts) != 3 or id_parts[0] != 'chunk':
+        raise ValueError(f'Invalid chunk file {f}.')
+      episode_id, chunk_id = id_parts[1:]
+
+      try:
+        chunk_id = int(chunk_id)
+      except ValueError:
+        raise ValueError(f'Failed to parse {chunk_id} as an int, for file {f}.')
+
+      chunks.append(resource_id.FalkenResourceId(
+          project=assignment_id.project,
+          brain=assignment_id.brain,
+          session=assignment_id.session,
+          episode=episode_id,
+          chunk=int(chunk_id)))
+
+      self._fs.remove_file(f)
+
+    return chunks

@@ -70,6 +70,14 @@ class FileSystemTest(parameterized.TestCase):
     self._fs.write_file(path, self._text)
     self.assertTrue(self._fs.exists(path))
 
+  def test_remove_file(self):
+    """Tests FileSystem.remove_file."""
+    path = 'dirA/dirB/file.pb'
+    self._fs.write_file(path, self._text)
+    self.assertTrue(self._fs.exists(path))
+    self._fs.remove_file(path)
+    self.assertFalse(self._fs.exists(path))
+
   def test_list_by_globbing(self):
     ds = data_store.DataStore(self._fs)
     s0 = data_store_pb2.Session(

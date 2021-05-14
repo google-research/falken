@@ -83,6 +83,7 @@ _DEFAULT_TEST_MODULES = [
     'learner.brains.specs_test',
     'learner.brains.tensor_nest_test',
     'learner.brains.weights_initializer_test',
+    'learner.assignment_processor_test',
     'learner.data_fetcher_test',
     'learner.file_system_test',
     'learner.model_exporter_test',

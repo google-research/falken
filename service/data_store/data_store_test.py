@@ -411,6 +411,12 @@ class DataStoreTest(parameterized.TestCase):
     res_id = self._data_store.resource_id_from_proto_ids(**key_dict)
     self.assertRegex(str(res_id), want_regex)
 
+  def test_list_resource_with_subdirs(self):
+    self._data_store.write(data_store_pb2.Project(project_id='p0'))
+    self._data_store.write(data_store_pb2.Brain(project_id='p0', brain_id='b0'))
+    result, _ = self._data_store.list_by_proto_ids(project_id='*')
+    self.assertEqual(['projects/p0'], result)
+
 
 if __name__ == '__main__':
   absltest.main()

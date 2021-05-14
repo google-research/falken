@@ -353,7 +353,7 @@ class ResourceStore:
     Returns:
       A tuple of a list of resource ID strings and pagination token.
     """
-    glob_path = os.path.join(str(res_id_glob), '*')
+    glob_path = os.path.join(str(res_id_glob), f'{self._RESOURCE_PREFIX}*')
     files = self._fs.glob(glob_path)
     paths = [os.path.dirname(f) for f in files]
     timestamps = [

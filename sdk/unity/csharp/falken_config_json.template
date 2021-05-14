@@ -1,0 +1,7 @@
+{
+  "project_id": "@VAR_PROJECT_ID@",
+  "api_key": "@VAR_API_KEY@",
+  "service": {
+      "environment": "dev"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "dashboard",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "config": {
+    "build_rpc": "./remote_build_scripts/generate_rpc_interface.sh --build_machine \"$npm_config_build_machine\""
+  },
+  "scripts": {
+    "watch": "$npm_package_config_build_rpc && npx webpack --watch",
+    "start": "$npm_package_config_build_rpc && npx webpack serve",
+    "build": "$npm_package_config_build_rpc && npx webpack",
+    "preview": "$npm_package_config_build_rpc && npx webpack && npx firebase hosting:channel:deploy preview",
+    "publish": "$npm_package_config_build_rpc && npx webpack && npx firebase deploy --only hosting"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "d3": "^6.5.0",
+    "three": "^0.125.1",
+    "webpack": "^5.18.0",
+    "webpack-cli": "^4.4.0",
+    "webpack-dev-server": "^3.11.2"
+  },
+  "dependencies": {
+    "@seregpie/three.text-sprite": "^3.2.0",
+    "firebase": "^8.2.5",
+    "firebase-tools": "^9.2.2"
+  }
+}

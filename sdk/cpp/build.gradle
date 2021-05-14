@@ -1,0 +1,115 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+    repositories {
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:4.1.0"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion "30.0.0"
+
+    defaultConfig {
+        minSdkVersion 19
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+        ndk {
+            // TODO(jballoffet): Add armeabi-v7a and x86_64 once this works properly on Kokoro.
+            abiFilters 'arm64-v8a'
+        }
+        externalNativeBuild {
+            cmake {
+                cppFlags.add("-std=c++14")
+                arguments "-DDOWNLOAD_MACHINE=$FALKEN_DOWNLOAD_MACHINE",
+                  "-DDOWNLOAD_CITC_CLIENT=$FALKEN_DOWNLOAD_CITC_CLIENT",
+                  "-DPYTHON=$FALKEN_PYTHON"
+            }
+        }
+        sourceSets {
+            main {
+                manifest.srcFile 'AndroidManifest.xml'
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            // TODO(jballoffet): Add some logic to look for a valid installed CMake version.
+            path "CMakeLists.txt"
+            version "$FALKEN_CMAKE_VERSION"
+        }
+    }
+}
+
+/*
+ * Host operating system.
+ */
+enum OperatingSystem {
+    UNKNOWN, MAC_OSX, WINDOWS, LINUX
+
+    /*
+     * Get the current operating system.
+     *
+     * @returns Current host operating system.
+     */
+    static OperatingSystem getOperatingSystem() {
+        String os_name = System.getProperty("os.name").toLowerCase()
+        if (os_name.contains("mac os x")) {
+            return OperatingSystem.MAC_OSX
+        } else if (os_name.contains("windows")) {
+            return OperatingSystem.WINDOWS
+        } else if (os_name.contains("linux")) {
+            return OperatingSystem.LINUX
+        }
+        return OperatingSystem.UNKNOWN
+    }
+}
+
+/*
+ * Search the path variable for an executable file.
+ *
+ * @param filename Name of the file to search for.
+ *
+ * @return If found, the File object that references the file, null otherwise.
+ */
+File findFileInPath(String filename) {
+    def stdout = new ByteArrayOutputStream()
+    exec {
+        executable OperatingSystem.getOperatingSystem() == OperatingSystem.WINDOWS ?
+                "where" : "which"
+        args filename
+        ignoreExitValue true
+        standardOutput = stdout
+    }
+    String resultString = stdout.toString()
+    return resultString.isEmpty() ? null : new File(resultString)
+}
+
+task setFalkenProperties {
+    doLast {
+        String pythonExecutable = OperatingSystem.getOperatingSystem() == OperatingSystem.WINDOWS ?
+                "python" : "python3"
+        project.setProperty('FALKEN_PYTHON', findFileInPath(pythonExecutable))
+        println "FALKEN_PYTHON: $FALKEN_PYTHON"
+    }
+}

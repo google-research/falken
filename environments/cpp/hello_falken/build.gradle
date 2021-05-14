@@ -1,0 +1,100 @@
+import groovy.json.JsonSlurper
+
+buildscript {
+  repositories {
+    google()
+    jcenter()
+  }
+  dependencies {
+    classpath "com.android.tools.build:gradle:4.1.2"
+    classpath 'de.undercouch:gradle-download-task:4.1.1'
+  }
+}
+
+allprojects {
+  repositories {
+    google()
+    jcenter()
+  }
+}
+
+apply plugin: 'com.android.application'
+apply plugin: 'de.undercouch.download'
+
+android {
+  compileSdkVersion 30
+  buildToolsVersion "30.0.0"
+
+  sourceSets {
+    main {
+      jniLibs.srcDirs = ['libs']
+      manifest.srcFile 'AndroidManifest.xml'
+      java.srcDirs = ['src/android/java']
+      res.srcDirs = ['res']
+    }
+  }
+
+  defaultConfig {
+    applicationId "com.google.falken.hellofalken"
+    minSdkVersion 19
+    targetSdkVersion 30
+    versionCode 1
+    versionName "1.0"
+    externalNativeBuild.cmake {
+      arguments "-DFALKEN_CPP_SDK_DIR=$gradle.falken_cpp_sdk_dir"
+      // TODO(jballoffet): Add armeabi-v7a and x86_64 once this works properly.
+      abiFilters 'arm64-v8a'
+    }
+  }
+  buildTypes {
+    release {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+    }
+  }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+  externalNativeBuild.cmake {
+    path 'CMakeLists.txt'
+    version "$FALKEN_CMAKE_VERSION"
+  }
+}
+
+/*
+ * Downloads all files present in the indicated GitHub directory contents
+ * description into the destination path.
+ *
+ * @param githubDirectoryUri URI pointing to a GitHub directory contents
+ *     description (see https://docs.github.com/en/rest/reference/repos#contents).
+ * @param destination Path where to save the downloaded files.
+ */
+void downloadGithubDirectoryContents(String githubDirectoryUri, String destination) {
+  def directoryContentsDescription = new File(buildDir, "github_directory_contents.json")
+  download {
+    src githubDirectoryUri
+    dest directoryContentsDescription
+  }
+  def directoryContents = new JsonSlurper().parseFile(directoryContentsDescription, "utf-8")
+  def contentsUrls = directoryContents.collect {it.download_url}
+  download {
+    src contentsUrls
+    dest destination
+  }
+  directoryContentsDescription.delete()
+}
+
+task fetchSdl2Content {
+  // The release tag must be the same as the one used on the C++ side
+  // (see hello_falken/src/CMakeLists.txt).
+  downloadGithubDirectoryContents(
+      'https://api.github.com/repos/libsdl-org/SDL/contents/android-project/app/src/main/java/org/libsdl/app?ref=release-2.0.14',
+      'src/android/java/org/libsdl/app')
+}
+
+dependencies {
+  implementation fileTree(include: ['*.jar'], dir: 'libs')
+  implementation 'androidx.appcompat:appcompat:1.2.0'
+  implementation 'com.google.android.material:material:1.2.1'
+}

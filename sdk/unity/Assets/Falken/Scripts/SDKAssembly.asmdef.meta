@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: baeee6523701449bcab3c6dad97eef43
+labels:
+- gvh
+- gvh_version-0.0.7
+- gvh_version-0.0.8
+- gvhp_exportpath-Falken/Scripts/SDKAssembly.asmdef
+timeCreated: 1480838400
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData:
+  assetBundleName:
+  assetBundleVariant:

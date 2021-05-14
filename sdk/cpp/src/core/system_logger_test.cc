@@ -191,7 +191,7 @@ TEST_F(SystemLoggerTest, VersionInformation) {
 #if !defined(NDEBUG)
   std::regex regex(
       "Falken SDK: Version ([0-9]+)\\.([0-9]+)\\.([0-9]+) \\(CL: "
-      "[a-zA-Z0-9_]+, Commit: [0-9a-f]{2,40}, (Debug|Release|Nightly)\\)");
+      "[a-zA-Z0-9_]+, Commit: [0-9a-f]{1,40}, (Debug|Release|Nightly)\\)");
   EXPECT_TRUE(std::regex_match(log_version, regex));
 #else
   EXPECT_EQ(log_version, "Falken SDK: Version 1.2.3 (CL: 5, Commit: 12)");

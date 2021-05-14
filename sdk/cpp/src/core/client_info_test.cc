@@ -25,7 +25,7 @@ TEST(ClientInfoTest, GetVersionInformation) {
 #if !defined(NDEBUG)
   std::regex regex(
       "Version ([0-9]+)\\.([0-9]+)\\.([0-9]+) \\(CL: [a-zA-Z0-9_]+, Commit: "
-      "[0-9a-f]{2,40}, (Debug|Release|Nightly)\\)");
+      "[0-9a-f]{1,40}, (Debug|Release|Nightly)\\)");
   EXPECT_TRUE(std::regex_match(GetVersionInformation(), regex));
 #else
   EXPECT_EQ(GetVersionInformation(), "Version 1.2.3 (CL: 5, Commit: 12)");
@@ -35,7 +35,7 @@ TEST(ClientInfoTest, GetVersionInformation) {
 TEST(ClientInfoTest, GetUserAgent) {
   static const char kExpectedUserAgent[] =
       "falken-cpp/([0-9]+)\\.([0-9]+)\\.([0-9]+) "
-      "falken-cpp-commit/[0-9a-f]{2,40} "
+      "falken-cpp-commit/[0-9a-f]{1,40} "
       "falken-cpp-cl/[a-zA-Z0-9_]+ "
 #if defined(NDEBUG)
       "falken-cpp-build/release "

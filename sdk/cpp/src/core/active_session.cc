@@ -289,12 +289,10 @@ absl::Status ActiveEpisode::Step(BrainSpecBase& brain_spec, proto::Step&& step,
   // need to guard chunk_, queued_step and model_ and model_id_
   std::lock_guard<std::recursive_mutex> lock(core_mutex_);
 
-  // If a new model is available, use it.
-  UpdateModelFromSession();
-
   const auto step_call_timestamp_ = absl::Now();
   if ((step_call_timestamp_ - latest_upload_time_) > kUploadInterval) {
     latest_upload_time_ = step_call_timestamp_;
+    UpdateModelFromSession();
     TriggerAsyncUploadToServiceProcess(session_ptr, false);
   }
 

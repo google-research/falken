@@ -18,6 +18,7 @@ import glob
 import os.path
 import tempfile
 import threading
+import time
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -77,6 +78,16 @@ class FileSystemTest(parameterized.TestCase):
     self.assertTrue(self._fs.exists(path))
     self._fs.remove_file(path)
     self.assertFalse(self._fs.exists(path))
+
+  def test_get_modification_time(self):
+    """Tests FileSystem.get_modification_file."""
+    paths = ['dirA/file1.pb', 'dirA/file2.pb']
+    for path in paths:
+      self._fs.write_file(path, self._text)
+      # Ensure next file is in a different millisecond.
+      time.sleep(0.1)
+    times = [self._fs.get_modification_time(path) for path in paths]
+    self.assertLess(*times)
 
   def test_list_by_globbing(self):
     ds = data_store.DataStore(self._fs)

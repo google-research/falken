@@ -141,6 +141,16 @@ class FileSystem(object):
     """
     os.remove(os.path.join(self._root_path, path))
 
+  def get_modification_time(self, path):
+    """Gives the modification time of a file.
+
+    Args:
+      path: The path of the file.
+    Returns:
+      An int with the number of milliseconds since epoch.
+    """
+    return int(1000 * os.path.getmtime(os.path.join(self._root_path, path)))
+
   def glob(self, pattern):
     """Encapsulates glob.glob.
 

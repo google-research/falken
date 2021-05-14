@@ -55,6 +55,7 @@ on acquired assignments locks assignments for writing, which allows is to
 clean up the notification files and provide stronger guarantees.
 """
 
+import collections
 import os.path
 import queue
 import threading
@@ -124,6 +125,12 @@ class _FakeMetronome:
     self._ticks.join()
 
 
+# A path for a file, with its corresponding timestamp in milliseconds since
+# the epoch.
+TimestampedPath = collections.namedtuple(
+    'TimestampedPath', ['path', 'timestamp'])
+
+
 class AssignmentMonitor:
   """Monitors creation of assignments."""
 
@@ -169,6 +176,14 @@ class AssignmentMonitor:
     # Set callbacks.
     self._assignment_callback = assignment_callback
     self._chunk_callback = chunk_callback
+
+    # Keys are assignment dir paths, and each value is a pair
+    # (timestamp, chunks), with:
+    # - timestamp: Last timestamp seen for that assignment.
+    # - chunks: Set of chunk files seen with that timestamp. This allows
+    #   detecting new chunks that happen to have the same timestamp than a
+    #   previous one.
+    self._last_timestamp = {}
 
     # Start polling.
     self._thread = threading.Thread(
@@ -252,7 +267,9 @@ class AssignmentMonitor:
         else:
           # TODO(b/185940506): List chunks for all assignments that aren't
           # acquired by any other processes.
-          callback = lambda: self._assignment_callback('test')
+          callback = lambda: [  # pylint: disable=g-long-lambda
+              self._assignment_callback(a)
+              for a in self._get_assignments_with_changes()]
 
       if callback:
         callback()
@@ -291,3 +308,66 @@ class AssignmentMonitor:
       self._fs.remove_file(f)
 
     return chunks
+
+  def _get_assignments_with_changes(self):
+    """Gives a list of assignments that had additions to their chunks list.
+
+    This allows for monitoring on all assignments; see comment at top of
+    this file for more details.
+
+    Additions are considered since last time this method was called in the
+    current process. This listing method can be slower than _pop_episode_chunks,
+    as learners spend more time training for specific assignments than waiting
+    for a new assignment.
+
+    Modifies the self._last_timestamp cache as a side-effect.
+
+    Returns:
+      List of resource ids for the assignments that have changed.
+    """
+    assert self._acquired_assignment_id is None
+
+    assignment_dirs = self._fs.glob(os.path.join(
+        self._notification_dir,
+        str(resource_id.FalkenResourceId(
+            project='*', brain='*', session='*', assignment='*'))) + os.sep)
+
+    assignment_ids_with_changes = []
+    for assignment_dir in assignment_dirs:
+      # Process only assignment dirs for assignments that haven't been acquired
+      # by another process.
+      locked = True
+      try:
+        with self._fs.lock_file_context(assignment_dir):
+          locked = False
+      except file_system.UnableToLockFileError:
+        pass
+
+      if locked:
+        continue
+
+      # Ignore chunk data we've already seen.
+      chunks = [TimestampedPath(c, self._fs.get_modification_time(c))
+                for c in self._fs.glob(os.path.join(assignment_dir, '*'))]
+
+      if assignment_dir in self._last_timestamp:
+        last_timestamp, last_chunks = self._last_timestamp[assignment_dir]
+        max_last_timestamp = last_timestamp
+        new_chunks = []
+        new_chunks_by_timestamp = collections.defaultdict(set)
+        for chunk in chunks:
+          if (chunk.timestamp >= last_timestamp and
+              chunk.path not in last_chunks):
+            new_chunks.append(chunk)
+            new_chunks_by_timestamp[chunk.timestamp].add(chunk)
+            max_last_timestamp = max(max_last_timestamp, chunk.timestamp)
+        self._last_timestamp[assignment_dir] = (
+            max_last_timestamp, new_chunks_by_timestamp[max_last_timestamp])
+        chunks = new_chunks
+
+      if chunks:
+        assignment_ids_with_changes.append(
+            resource_id.FalkenResourceId(
+                os.path.relpath(assignment_dir, self._notification_dir)))
+
+    return assignment_ids_with_changes

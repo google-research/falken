@@ -29,7 +29,6 @@ _REQUIRED_PYTHON_MODULES = [
     ('grpcio-tools', ''),
     ('googleapis-common-protos', ''),
     ('flatbuffers', ''),
-    ('watchdog', ''),
     ('flufl.lock', ''),
 ]
 

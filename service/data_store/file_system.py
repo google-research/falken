@@ -25,36 +25,11 @@ import shutil
 
 import braceexpand
 import flufl.lock
-import watchdog.events
-import watchdog.observers
 
 
 class UnableToLockFileError(RuntimeError):
   """Signals that we were unable to lock a file."""
   pass
-
-
-class FileMovedEventHandler(watchdog.events.FileSystemEventHandler):
-  """Event handler for file moves."""
-
-  def __init__(self, root_path, callback):
-    """Initializes the event handler.
-
-    Args:
-      root_path: Path where all Falken files will be stored.
-      callback: Function that takes a single argument for the destination path
-        of the file that was moved.
-    """
-    self._root_path = root_path
-    self._callback = callback
-
-  def on_moved(self, event):
-    """Method called every time a file move is detected.
-
-    Args:
-      event: A watchdog.events.FileMovedEvent object.
-    """
-    self._callback(os.path.relpath(event.dest_path, self._root_path))
 
 
 class FileSystem(object):
@@ -67,42 +42,6 @@ class FileSystem(object):
       root_path: Path where all Falken files will be stored.
     """
     self._root_path = root_path
-    self._observers = {}
-
-  def __del__(self):
-    self.remove_all_file_callbacks()
-
-  def add_file_callback(self, callback):
-    """Sets up a callback function.
-
-    The callback function will be called every time a file is created with
-    write_file(..., trigger_callback=True).
-
-    Args:
-      callback: Function that takes a single argument for the destination path
-        of the file that was moved.
-    """
-    event_handler = FileMovedEventHandler(self._root_path, callback)
-
-    observer = watchdog.observers.Observer()
-    observer.schedule(event_handler, self._root_path, recursive=True)
-    observer.start()
-
-    if callback in self._observers:
-      raise ValueError('Added callback twice.')
-
-    self._observers[callback] = observer
-
-  def remove_file_callback(self, callback):
-    """Removes all file callbacks."""
-    observer = self._observers.pop(callback)
-    observer.stop()
-    observer.join()
-
-  def remove_all_file_callbacks(self):
-    """Removes all file callbacks."""
-    while self._observers:
-      self.remove_file_callback(next(iter(self._observers)))
 
   def read_file(self, path):
     """Reads a file.

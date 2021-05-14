@@ -17,7 +17,6 @@
 import glob
 import os.path
 import tempfile
-import threading
 import time
 
 from absl.testing import absltest
@@ -117,23 +116,6 @@ class FileSystemTest(parameterized.TestCase):
         ['projects/p0/brains/b0/sessions/s0',
          'projects/p0/brains/b0/sessions/s1',
          'projects/p2/brains/b2/sessions/s3'])
-
-  def test_callback(self):
-    """Tests callback system."""
-    callback_called = threading.Event()
-    found_files = []
-
-    def callback(file):
-      nonlocal found_files
-      found_files.append(file)
-      callback_called.set()
-
-    self._fs.add_file_callback(callback)
-    self._fs.write_file('dir1/trigger.txt', self._text)
-    self.assertTrue(callback_called.wait(timeout=3))
-
-    self.assertEqual(['dir1/trigger.txt'], found_files)
-    self._fs.remove_all_file_callbacks()
 
   def test_lock(self):
     """Tests locking system."""

@@ -350,20 +350,24 @@ class AssignmentMonitor:
       chunks = [TimestampedPath(c, self._fs.get_modification_time(c))
                 for c in self._fs.glob(os.path.join(assignment_dir, '*'))]
 
+      last_timestamp = 0
+      last_chunks = set()
       if assignment_dir in self._last_timestamp:
         last_timestamp, last_chunks = self._last_timestamp[assignment_dir]
-        max_last_timestamp = last_timestamp
-        new_chunks = []
-        new_chunks_by_timestamp = collections.defaultdict(set)
-        for chunk in chunks:
-          if (chunk.timestamp >= last_timestamp and
-              chunk.path not in last_chunks):
-            new_chunks.append(chunk)
-            new_chunks_by_timestamp[chunk.timestamp].add(chunk)
-            max_last_timestamp = max(max_last_timestamp, chunk.timestamp)
-        self._last_timestamp[assignment_dir] = (
-            max_last_timestamp, new_chunks_by_timestamp[max_last_timestamp])
-        chunks = new_chunks
+
+      max_last_timestamp = last_timestamp
+      new_chunks = []
+      new_chunks_by_timestamp = collections.defaultdict(set)
+      new_chunks_by_timestamp[last_timestamp] = last_chunks
+      for chunk in chunks:
+        if (chunk.timestamp >= last_timestamp and
+            chunk.path not in last_chunks):
+          new_chunks.append(chunk)
+          new_chunks_by_timestamp[chunk.timestamp].add(chunk.path)
+          max_last_timestamp = max(max_last_timestamp, chunk.timestamp)
+      self._last_timestamp[assignment_dir] = (
+          max_last_timestamp, new_chunks_by_timestamp[max_last_timestamp])
+      chunks = new_chunks
 
       if chunks:
         assignment_ids_with_changes.append(

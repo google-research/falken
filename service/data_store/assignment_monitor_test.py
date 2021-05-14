@@ -88,11 +88,23 @@ class AssignmentMonitorTest(absltest.TestCase):
     chunk_id = resource_id.FalkenResourceId(
         project='p0', brain='b0', session='s0', episode='e0',
         chunk=0)
-    self._monitor.trigger_assignment_notification(assignment_id, chunk_id)
+    assignment_id_2 = resource_id.FalkenResourceId(
+        project='p0', brain='b0', session='s1', assignment='a1')
+    chunk_id_2 = resource_id.FalkenResourceId(
+        project='p0', brain='b0', session='s1', episode='e0',
+        chunk=0)
 
+    self._monitor.trigger_assignment_notification(assignment_id, chunk_id)
     metronome.force_tick()
     self.assertTrue(callback_called.wait(3))
     assignment_callback.assert_called_once_with(assignment_id)
+    chunk_callback.assert_not_called()
+    reset_callbacks()
+
+    self._monitor.trigger_assignment_notification(assignment_id_2, chunk_id_2)
+    metronome.force_tick()
+    self.assertTrue(callback_called.wait(3))
+    assignment_callback.assert_called_once_with(assignment_id_2)
     chunk_callback.assert_not_called()
     reset_callbacks()
 
@@ -111,6 +123,14 @@ class AssignmentMonitorTest(absltest.TestCase):
     metronome.force_tick()
     assignment_callback.assert_not_called()
     chunk_callback.assert_not_called()
+    reset_callbacks()
+
+    self._monitor.release_assignment()
+    self.assertTrue(self._monitor.acquire_assignment(assignment_id_2))
+    metronome.force_tick()
+    self.assertTrue(callback_called.wait(3))
+    assignment_callback.assert_not_called()
+    chunk_callback.assert_called_once_with(assignment_id_2, [chunk_id_2])
     reset_callbacks()
 
     metronome.stop()

@@ -16,6 +16,7 @@
 """Brain that can continuously learn from human demonstrations."""
 
 import glob
+import math
 import os
 import random
 import shutil
@@ -109,8 +110,8 @@ class BCAgent(behavioral_cloning_agent.BehavioralCloningAgent):
     Returns:
       Dictionary updated with derived hparameters.
     """
-    hparams['training_steps'] = int(hparams['training_examples'] /
-                                    hparams['batch_size'])
+    hparams['training_steps'] = (
+        int(math.ceil(hparams['training_examples'] / hparams['batch_size'])))
     return hparams
 
   @staticmethod

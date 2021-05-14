@@ -27,8 +27,8 @@ class FileSystemPrimitives:
   def delete_recursively(self, path):
     shutil.rmtree(path)
 
-  def make_dirs(self, path):
-    pathlib.Path(path).mkdir(parents=True)
+  def make_dirs(self, path, exist_ok=True):
+    pathlib.Path(path).mkdir(parents=True, exist_ok=exist_ok)
 
   def copy(self, src, dst):
     shutil.copy(src, dst)
@@ -50,6 +50,9 @@ class FileSystem:
     self._checkpoints_directory = checkpoints_directory
     self._summaries_directory = summaries_directory
     self._fs = FileSystemPrimitives()
+
+  def is_directory(self, path):
+    return self._fs.is_directory(path)
 
   def _get_sanitized_string(self, unsafe):
     """Returns a valid path, replacing non-alphanumerics with an underscore."""

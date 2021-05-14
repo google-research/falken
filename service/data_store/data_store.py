@@ -211,6 +211,10 @@ class _FalkenResourceResolver:
         type(resource))
     if attribute_name:
       accessor_map[resource_id.ATTRIBUTE] = attribute_name
+    if not accessor_map:
+      raise ValueError(
+          'Could not determine resource id of resource of type ' +
+          f'{type(resource)}:\n===\n{resource}\n===')
     return resource_id.FalkenResourceId(**accessor_map)
 
 

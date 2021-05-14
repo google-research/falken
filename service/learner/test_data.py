@@ -50,6 +50,39 @@ ASSIGNMENT_ID = (
 SUBTASK_ID = 'subtask_1'
 
 
+def populate_data_store(data_store):
+  """Populate a datastore with a number of default protos."""
+  protos = [
+      project(),
+      data_store_brain(),
+      session(),
+      assignment()]
+  protos += episode_chunks([2, 2], EPISODE_ID)
+  for proto in protos:
+    data_store.write(proto)
+
+
+def project():
+  """Return a test data_store_pb2.Project."""
+  return data_store_pb2.Project(project_id=PROJECT_ID)
+
+
+def data_store_brain():
+  """Return a test data_store_pb2.Brain."""
+  return data_store_pb2.Brain(
+      project_id=PROJECT_ID,
+      brain_id=BRAIN_ID,
+      brain_spec=brain_spec())
+
+
+def session():
+  """Return a test data_store_pb2.Session."""
+  return data_store_pb2.Session(
+      project_id=PROJECT_ID,
+      brain_id=BRAIN_ID,
+      session_id=SESSION_ID)
+
+
 def assignment_id(override_dict):
   """Return the default test assignment id with hparam overrides."""
   assignment_dict = json.loads(ASSIGNMENT_ID)

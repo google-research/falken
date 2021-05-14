@@ -85,6 +85,7 @@ _DEFAULT_TEST_MODULES = [
     'learner.brains.weights_initializer_test',
     'learner.data_fetcher_test',
     'learner.file_system_test',
+    'learner.model_exporter_test',
     'learner.model_manager_test',
     'learner.stats_collector_test',
     'learner.storage_test',

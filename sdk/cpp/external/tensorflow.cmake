@@ -23,8 +23,8 @@ include(OverridableFetchContent)
 OverridableFetchContent_Declare(
   tensorflow
   GIT_REPOSITORY https://github.com/tensorflow/tensorflow.git
-  # Fix MSVC2017 build issue due to templated function with constexpr argument.
-  GIT_TAG d781a9ef9f56bdbbf9c4cb57e6ce99dafb89e14a
+  # Fix MSVC2015 build issues.
+  GIT_TAG d24f1369180d52d0ad79db5fd4df369776c2dc14
   # It's not currently possible to shallow clone with a GIT TAG
   # as cmake attempts to git checkout the commit hash after the clone
   # which doesn't work as it's a shallow clone hence a different commit hash.

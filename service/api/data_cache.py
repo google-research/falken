@@ -17,8 +17,6 @@
 
 import functools
 
-from data_store import resource_id
-
 _MAX_CACHE = 512
 
 
@@ -48,8 +46,7 @@ def get_brain(data_store, project_id, brain_id):
   Returns:
     data_store_pb2.Brain instance.
   """
-  return data_store.read(
-      resource_id.FalkenResourceId(f'projects/{project_id}/brains/{brain_id}'))
+  return data_store.read_by_proto_ids(project_id=project_id, brain_id=brain_id)
 
 
 @functools.lru_cache(maxsize=_MAX_CACHE)
@@ -65,8 +62,8 @@ def get_session_type(data_store, project_id, brain_id, session_id):
   Returns:
     session_pb2.SessionType enum.
   """
-  return data_store.read(
-      resource_id.FalkenResourceId(f'projects/{project_id}/brains/{brain_id}'
-                                   f'/sessions/{session_id}')).session_type
+  return data_store.read_by_proto_ids(
+      project_id=project_id, brain_id=brain_id,
+      session_id=session_id).session_type
 
 

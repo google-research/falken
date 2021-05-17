@@ -30,7 +30,6 @@ from api import unique_id
 import common.generate_protos  # pylint: disable=unused-import
 import brain_pb2
 from data_store import data_store
-from data_store import resource_id
 import data_store_pb2
 import falken_service_pb2
 import falken_service_pb2_grpc
@@ -155,14 +154,13 @@ class FalkenServiceTest(absltest.TestCase):
         (falken_service._API_METADATA_KEY, 'test_api_key')
     ]
     datastore = mock.Mock()
-    datastore.read.return_value = data_store_pb2.Project(
+    datastore.read_by_proto_ids.return_value = data_store_pb2.Project(
         project_id='test_project_id', api_key='test_api_key')
     ds.return_value = datastore
 
     falken_service.FalkenService()._validate_project_and_api_key(
         request, context)
-    ds.read.called_once_with(
-        resource_id.FalkenResourceId('projects/test_project_id'))
+    ds.read_by_proto_ids.called_once_with(project_id='test_project_id')
     context.abort.assert_not_called()
 
   @mock.patch.object(falken_service.FalkenService, '_create_api_keys')
@@ -212,7 +210,7 @@ class FalkenServiceTest(absltest.TestCase):
     request = mock.Mock()
     request.project_id = 'test_project_id'
     datastore = mock.Mock()
-    datastore.read_project.return_value = data_store_pb2.Project(
+    datastore.read_by_proto_ids.return_value = data_store_pb2.Project(
         project_id='test_project_id', api_key='different_api_key')
     ds.return_value = datastore
 
@@ -222,8 +220,8 @@ class FalkenServiceTest(absltest.TestCase):
     context.abort.assert_called_with(
         code_pb2.UNAUTHENTICATED,
         'Project ID test_project_id and API key test_api_key does not match.')
-    ds.read.called_once_with(
-        resource_id.FalkenResourceId('projects/test_project_id'))
+    datastore.read_by_proto_ids.assert_called_once_with(
+        project_id='test_project_id')
 
 
 if __name__ == '__main__':

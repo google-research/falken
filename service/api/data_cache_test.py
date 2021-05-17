@@ -25,17 +25,17 @@ class DataCacheTest(absltest.TestCase):
 
   def test_get_brain(self):
     mock_ds = mock.Mock()
-    mock_ds.read.return_value = mock.Mock()
+    mock_ds.read_by_proto_ids.return_value = mock.Mock()
     # Call twice.
     self.assertEqual(
         data_cache.get_brain(mock_ds, 'test_project_id', 'test_brain_id'),
-        mock_ds.read.return_value)
+        mock_ds.read_by_proto_ids.return_value)
     self.assertEqual(
         data_cache.get_brain(mock_ds, 'test_project_id', 'test_brain_id'),
-        mock_ds.read.return_value)
+        mock_ds.read_by_proto_ids.return_value)
     # Datastore read only called once.
-    mock_ds.read.assert_called_once_with(
-        'projects/test_project_id/brains/test_brain_id')
+    mock_ds.read_by_proto_ids.assert_called_once_with(
+        project_id='test_project_id', brain_id='test_brain_id')
 
   @mock.patch.object(data_cache, 'get_brain')
   def test_get_brain_spec(self, get_brain):
@@ -51,20 +51,20 @@ class DataCacheTest(absltest.TestCase):
 
   def test_get_session_type(self):
     mock_ds = mock.Mock()
-    mock_ds.read.return_value = mock.Mock()
+    mock_ds.read_by_proto_ids.return_value = mock.Mock()
     # Call twice.
     self.assertEqual(
         data_cache.get_session_type(mock_ds, 'test_project_id', 'test_brain_id',
                                     'test_session_id'),
-        mock_ds.read.return_value.session_type)
+        mock_ds.read_by_proto_ids.return_value.session_type)
     self.assertEqual(
         data_cache.get_session_type(mock_ds, 'test_project_id', 'test_brain_id',
                                     'test_session_id'),
-        mock_ds.read.return_value.session_type)
+        mock_ds.read_by_proto_ids.return_value.session_type)
     # Datastore read only called once.
-    mock_ds.read.assert_called_once_with(
-        'projects/test_project_id/brains/test_brain_id/sessions/'
-        'test_session_id')
+    mock_ds.read_by_proto_ids.assert_called_once_with(
+        project_id='test_project_id', brain_id='test_brain_id',
+        session_id='test_session_id')
 
 
 if __name__ == '__main__':

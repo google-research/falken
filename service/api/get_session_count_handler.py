@@ -19,7 +19,6 @@ from absl import logging
 
 import common.generate_protos  # pylint: disable=unused-import
 
-from data_store import resource_id
 import falken_service_pb2
 from google.rpc import code_pb2
 
@@ -50,7 +49,8 @@ def get_session_count(request, context, data_store):
         'Project ID and brain ID must be specified in GetSessionCountRequest.')
     return
 
-  session_ids, _ = data_store.list(resource_id.FalkenResourceId(
-      project=request.project_id, brain=request.brain_id, session='*'))
+  session_ids, _ = data_store.list_by_proto_ids(
+      project_id=request.project_id, brain_id=request.brain_id,
+      session_id='*')
   return falken_service_pb2.GetSessionCountResponse(
       session_count=len(session_ids))

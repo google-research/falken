@@ -20,6 +20,7 @@ from unittest import mock
 
 from absl.testing import absltest
 from api import create_brain_handler
+from api import data_cache
 from api import proto_conversion
 from api import test_constants
 from api import unique_id
@@ -50,7 +51,8 @@ class CreateBrainHandlerTest(absltest.TestCase):
   @mock.patch.object(proto_conversion.ProtoConverter,
                      'convert_proto')
   @mock.patch.object(unique_id, 'generate_unique_id')
-  def test_valid_request(self, generate_unique_id, convert_proto):
+  @mock.patch.object(data_cache, 'get_brain')
+  def test_valid_request(self, get_brain, generate_unique_id, convert_proto):
     generate_unique_id.return_value = 'test_brain_uuid'
     request = falken_service_pb2.CreateBrainRequest(
         display_name='test_brain',
@@ -73,7 +75,7 @@ class CreateBrainHandlerTest(absltest.TestCase):
         brain_spec=text_format.Parse(test_constants.TEST_BRAIN_SPEC,
                                      brain_pb2.BrainSpec()),
         create_time=timestamp_pb2.Timestamp(seconds=1619726720))
-    self._ds.read.return_value = (data_store_brain)
+    get_brain.return_value = (data_store_brain)
     convert_proto.return_value = expected_brain
 
     self.assertEqual(
@@ -82,10 +84,9 @@ class CreateBrainHandlerTest(absltest.TestCase):
 
     generate_unique_id.assert_called_once_with()
     self._ds.write.assert_called_once_with(write_brain)
-    self.assertEqual(
-        str(self._ds.read.call_args[0][0]),
-        'projects/test_project/brains/test_brain_uuid')
-    convert_proto.called_once_with(data_store_brain)
+    get_brain.assert_called_once_with(
+        self._ds, 'test_project', 'test_brain_uuid')
+    convert_proto.assert_called_once_with(data_store_brain)
 
   def test_missing_brain_spec(self):
     request = falken_service_pb2.CreateBrainRequest(

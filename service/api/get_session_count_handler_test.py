@@ -21,7 +21,6 @@ from api import get_session_count_handler
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
-from data_store import resource_id
 import falken_service_pb2
 from google.rpc import code_pb2
 
@@ -42,7 +41,10 @@ class GetSessionCountHandlerTest(absltest.TestCase):
     mock_context = mock.Mock()
     mock_context.abort.side_effect = Exception()
     mock_ds = mock.Mock()
-    mock_ds.list.return_value = (['s0', 's1', 's2'], None)
+    mock_ds.list_by_proto_ids.return_value = (
+        ['projects/p0/brains/b0/session/s0',
+         'projects/p0/brains/b0/session/s1',
+         'projects/p0/brains/b0/session/s2'], None)
 
     self.assertEqual(
         get_session_count_handler.get_session_count(
@@ -53,9 +55,8 @@ class GetSessionCountHandlerTest(absltest.TestCase):
         falken_service_pb2.GetSessionCountResponse(session_count=3))
 
     mock_context.abort.assert_not_called()
-    mock_ds.list.assert_called_once_with(
-        resource_id.FalkenResourceId(
-            project='test_project_id', brain='test_brain_id', session='*'))
+    mock_ds.list_by_proto_ids.assert_called_once_with(
+        project_id='test_project_id', brain_id='test_brain_id', session_id='*')
 
 
 if __name__ == '__main__':

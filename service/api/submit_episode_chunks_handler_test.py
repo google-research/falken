@@ -100,16 +100,22 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     request = falken_service_pb2.SubmitEpisodeChunksRequest(
         project_id='p0', brain_id='b0', session_id='s0',
         chunks=[episode_pb2.EpisodeChunk(episode_id='ep0')])
+    mock_ds = mock.Mock()
+    mock_ds.resource_id_from_proto_ids.return_value = self._ep_resource_id
     with self.assertRaises(Exception):
       submit_episode_chunks_handler.submit_episode_chunks(
-          request, mock_context, None)
+          request, mock_context, mock_ds)
     mock_context.abort.assert_called_once_with(
         code_pb2.INVALID_ARGUMENT,
         'Storing episode chunks failed for ep0. Value error.')
-    check_episode_data.assert_called_once_with(None, 'p0', 'b0', request.chunks)
+    check_episode_data.assert_called_once_with(mock_ds, 'p0', 'b0',
+                                               request.chunks)
     store_episode_chunks.assert_called_once_with(
-        None, request.chunks, resource_id.FalkenResourceId(
+        mock_ds, request.chunks, resource_id.FalkenResourceId(
             'projects/p0/brains/b0/sessions/s0/episodes/ep0'))
+    mock_ds.resource_id_from_proto_ids.assert_called_once_with(
+        project=request.project_id, brain=request.brain_id,
+        session=request.session_id, episode=request.chunks[0].episode_id)
 
   @mock.patch.object(submit_episode_chunks_handler,
                      '_check_episode_data_with_brain_spec')
@@ -125,17 +131,23 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     request = falken_service_pb2.SubmitEpisodeChunksRequest(
         project_id='p0', brain_id='b0', session_id='s0',
         chunks=[episode_pb2.EpisodeChunk(episode_id='ep0')])
+    mock_ds = mock.Mock()
+    mock_ds.resource_id_from_proto_ids.return_value = self._ep_resource_id
     with self.assertRaises(Exception):
       submit_episode_chunks_handler.submit_episode_chunks(
-          request, mock_context, None)
+          request, mock_context, mock_ds)
     mock_context.abort.assert_called_once_with(
         code_pb2.NOT_FOUND,
         'Starting assignment failed for episode ep0. Assignment not found.')
-    check_episode_data.assert_called_once_with(None, 'p0', 'b0', request.chunks)
+    check_episode_data.assert_called_once_with(
+        mock_ds, 'p0', 'b0', request.chunks)
     store_episode_chunks.assert_called_once_with(
-        None, request.chunks, self._ep_resource_id)
+        mock_ds, request.chunks, self._ep_resource_id)
     try_start_assignments.assert_called_once_with(
-        None, self._ep_resource_id, store_episode_chunks.return_value)
+        mock_ds, self._ep_resource_id, store_episode_chunks.return_value)
+    mock_ds.resource_id_from_proto_ids.assert_called_once_with(
+        project=request.project_id, brain=request.brain_id,
+        session=request.session_id, episode=request.chunks[0].episode_id)
 
   @mock.patch.object(data_cache, 'get_brain_spec')
   def test_check_episode_data_with_brain_spec_empty_in_progress(
@@ -335,10 +347,17 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     chunk = self._chunks()[0]
     _ = submit_episode_chunks_handler._record_online_evaluation(
         mock_ds, chunk, self._ep_resource_id)
-    mock_ds.write.called_once_with()
-    episode_complete.called_once_with(chunk)
-    episode_score.called_once_with(chunk)
-    get_episode_steps_type.called_once_with(
+    mock_ds.write.assert_called_once_with(
+        data_store_pb2.OnlineEvaluation(
+            project_id=self._ep_resource_id.project,
+            brain_id=self._ep_resource_id.brain,
+            session_id=self._ep_resource_id.session,
+            episode_id=self._ep_resource_id.episode,
+            model='m0',
+            score=1.0))
+    episode_complete.assert_called_once_with(chunk)
+    episode_score.assert_called_once_with(chunk)
+    get_episode_steps_type.assert_called_once_with(
         mock_ds, chunk, self._ep_resource_id)
 
   @mock.patch.object(submit_episode_chunks_handler, '_episode_complete')
@@ -351,7 +370,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
                                            'Unsupported episode state 0.'):
       submit_episode_chunks_handler._record_online_evaluation(
           mock.Mock(), chunk, mock.Mock())
-    episode_complete.called_once_with(chunk)
+    episode_complete.assert_called_once_with(chunk)
 
   @mock.patch.object(submit_episode_chunks_handler, '_episode_score')
   @mock.patch.object(submit_episode_chunks_handler, '_episode_complete')
@@ -367,8 +386,8 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
       submit_episode_chunks_handler._record_online_evaluation(
           mock.Mock(), chunk, mock.Mock())
 
-    episode_complete.called_once_with(chunk)
-    episode_score.called_once_with(chunk)
+    episode_complete.assert_called_once_with(chunk)
+    episode_score.assert_called_once_with(chunk)
 
   @parameterized.named_parameters(
       ('no_steps_type_no_model_ids', (None, [])),
@@ -388,9 +407,9 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     chunk = self._chunks()[0]
     _ = submit_episode_chunks_handler._record_online_evaluation(
         mock_ds, chunk, self._ep_resource_id)
-    episode_complete.called_once_with(chunk)
-    episode_score.called_once_with(chunk)
-    get_episode_steps_type.called_once_with(
+    episode_complete.assert_called_once_with(chunk)
+    episode_score.assert_called_once_with(chunk)
+    get_episode_steps_type.assert_called_once_with(
         mock_ds, chunk, self._ep_resource_id)
     mock_ds.write.assert_not_called()
 
@@ -459,7 +478,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
   def test_get_episode_steps_type(self, merge_steps_types):
     mock_ds = mock.Mock()
     mock_ds.list.return_value = ([0, 1], None)
-    mock_ds.read.side_effect = [
+    mock_ds.read_by_proto_ids.side_effect = [
         data_store_pb2.EpisodeChunk(
             chunk_id=0,
             data=episode_pb2.EpisodeChunk(model_id='m0', chunk_id=0),
@@ -481,11 +500,13 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         (merge_steps_types.return_value, {'m2', 'm0', 'm1'}))
 
     mock_ds.list.assert_called_once_with(self._ep_resource_id)
-    mock_ds.read.assert_has_calls([
-        mock.call(resource_id.FalkenResourceId(
-            'projects/p0/brains/b0/sessions/s0/episodes/ep0/chunks/0')),
-        mock.call(resource_id.FalkenResourceId(
-            'projects/p0/brains/b0/sessions/s0/episodes/ep0/chunks/1'))
+    mock_ds.read_by_proto_ids.assert_has_calls([
+        mock.call(
+            project_id='p0', brain_id='b0', session_id='s0', episode_id='ep0',
+            chunk_id=0),
+        mock.call(
+            project_id='p0', brain_id='b0', session_id='s0', episode_id='ep0',
+            chunk_id=1)
     ])
     merge_steps_types.assert_has_calls([
         mock.call(data_store_pb2.UNKNOWN, data_store_pb2.ONLY_INFERENCES),
@@ -497,7 +518,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
   def test_get_episode_steps_type_count_mismatch(self, merge_steps_types):
     mock_ds = mock.Mock()
     mock_ds.list.return_value = ([0], None)
-    mock_ds.read.side_effect = [
+    mock_ds.read_by_proto_ids.side_effect = [
         data_store_pb2.EpisodeChunk(
             chunk_id=0,
             data=episode_pb2.EpisodeChunk(model_id='m0', chunk_id=0),
@@ -516,8 +537,9 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
           mock_ds, chunk, self._ep_resource_id)
 
     mock_ds.list.assert_called_once_with(self._ep_resource_id)
-    mock_ds.read.assert_called_once_with(resource_id.FalkenResourceId(
-        'projects/p0/brains/b0/sessions/s0/episodes/ep0/chunks/0'))
+    mock_ds.read_by_proto_ids.assert_called_once_with(
+        project_id='p0', brain_id='b0', session_id='s0', episode_id='ep0',
+        chunk_id=0)
     merge_steps_types.assert_called_once_with(data_store_pb2.UNKNOWN,
                                               data_store_pb2.ONLY_INFERENCES)
 
@@ -575,17 +597,18 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
       ('no_demo_data', data_store_pb2.ONLY_DEMONSTRATIONS, False))
   def test_try_start_assignments(self, merged_steps_type, expect_list_called):
     mock_ds = mock.Mock()
-    mock_ds.list.return_value = []
-    mock_ds.read.return_value = session_pb2.Session(
+    mock_ds.list_by_proto_ids.return_value = []
+    mock_ds.read_by_proto_ids.return_value = session_pb2.Session(
         session_type=session_pb2.INTERACTIVE_TRAINING)
 
     submit_episode_chunks_handler._try_start_assignments(
         mock_ds, self._ep_resource_id, merged_steps_type)
 
-    mock_ds.read.assert_called_once_with(self._session_resource_id)
+    mock_ds.read_by_proto_ids.assert_called_once_with(
+        project_id='p0', brain_id='b0', session_id='s0')
     if expect_list_called:
-      mock_ds.list.assert_called_once_with(
-          f'{str(self._session_resource_id)}/assignments/*')
+      mock_ds.list_by_proto_ids.assert_called_once_with(
+          project_id='p0', brain_id='b0', session_id='s0', assignment_id='*')
     else:
       mock_ds.list.assert_not_called()
 

@@ -24,7 +24,6 @@ from api import proto_conversion
 from api import unique_id
 
 import common.generate_protos  # pylint: disable=unused-import
-from data_store import resource_id
 import data_store_pb2
 import falken_service_pb2
 from google.protobuf import timestamp_pb2
@@ -94,11 +93,11 @@ class CreateSessionHandlerTest(parameterized.TestCase):
         snapshot_id='test_snapshot_id',
         session=previous_session.session_id)
     if snapshot_id:
-      self._ds.read.side_effect = [
-          snapshot, previous_session, data_store_session
-      ]
+      self._ds.read_by_proto_ids.side_effect = [
+          snapshot, previous_session, data_store_session]
     else:
-      self._ds.read.side_effect = [previous_session, data_store_session]
+      self._ds.read_by_proto_ids.side_effect = [
+          previous_session, data_store_session]
     convert_proto.return_value = expected_session
     self._ds.get_most_recent_snapshot.return_value = data_store_pb2.Snapshot(
         project_id=request.spec.snapshot_id,
@@ -118,30 +117,29 @@ class CreateSessionHandlerTest(parameterized.TestCase):
     if snapshot_id:
       expected_read_calls.append(
           mock.call(
-              resource_id.FalkenResourceId(
-                  f'projects/{request.spec.project_id}/brains/'
-                  f'{request.spec.brain_id}/snapshots/test_snapshot_id')))
+              project_id=request.spec.project_id,
+              brain_id=request.spec.brain_id,
+              snapshot_id='test_snapshot_id'))
     else:
       self._ds.get_most_recent_snapshot.assert_called_once_with(
           request.spec.project_id, request.spec.brain_id)
     expected_read_calls.extend([
         mock.call(
-            resource_id.FalkenResourceId(
-                f'projects/{request.spec.project_id}/brains/'
-                f'{request.spec.brain_id}/sessions/'
-                f'{previous_session.session_id}')),
+            project_id=request.spec.project_id,
+            brain_id=request.spec.brain_id,
+            session_id=previous_session.session_id),
         mock.call(
-            resource_id.FalkenResourceId(
-                f'projects/{request.spec.project_id}/brains/'
-                f'{request.spec.brain_id}/sessions/'
-                f'{data_store_session.session_id}'))])
+            project_id=request.spec.project_id,
+            brain_id=request.spec.brain_id,
+            session_id=data_store_session.session_id)
+    ])
     self._ds.write.assert_called_once_with(write_session)
-    self._ds.read.assert_has_calls(expected_read_calls)
+    self._ds.read_by_proto_ids.assert_has_calls(expected_read_calls)
     convert_proto.called_once_with(data_store_session)
 
   def test_get_snapshot_id_and_previous_session_id(self):
     mock_data_store = mock.Mock()
-    mock_data_store.read.return_value = data_store_pb2.Snapshot(
+    mock_data_store.read_by_proto_ids.return_value = data_store_pb2.Snapshot(
         project_id='test_project_id', brain_id='test_brain_id',
         snapshot_id='test_snapshot_id', session='test_prev_session_id')
     mock_session_spec = mock.Mock(
@@ -155,10 +153,9 @@ class CreateSessionHandlerTest(parameterized.TestCase):
             mock_data_store),
         (expected_snapshot_id, expected_prev_session_id)
     )
-    mock_data_store.read.assert_called_once_with(
-        resource_id.FalkenResourceId(
-            'projects/test_project_id/brains/test_brain_id/snapshots/'
-            'test_snapshot_id'))
+    mock_data_store.read_by_proto_ids.assert_called_once_with(
+        project_id='test_project_id', brain_id='test_brain_id',
+        snapshot_id='test_snapshot_id')
 
   def test_get_snapshot_id_and_previous_session_id_not_specified(self):
     mock_data_store = mock.Mock()

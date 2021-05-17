@@ -21,7 +21,6 @@ from api import model_selector
 
 import common.generate_protos  # pylint: disable=unused-import
 from data_store import data_store as data_store_module
-from data_store import resource_id
 
 # pylint: disable=g-bad-import-order
 import action_pb2
@@ -65,7 +64,7 @@ def submit_episode_chunks(request, context, data_store):
         'Episode data failed did not match the brain spec for the session. '
         f'{e}')
 
-  episode_resource_id = resource_id.FalkenResourceId(
+  episode_resource_id = data_store.resource_id_from_proto_ids(
       project=request.project_id, brain=request.brain_id,
       session=request.session_id, episode=request.chunks[0].episode_id)
 
@@ -276,7 +275,7 @@ def _record_online_evaluation(data_store, chunk, episode_resource_id):
   model_id = model_ids[0]
   logging.debug('Recording score %d for episode %d model %s.', episode_score,
                 episode_resource_id.episode, model_id)
-  data_store.write_online_evaluation(
+  data_store.write(
       data_store_pb2.OnlineEvaluation(
           project_id=episode_resource_id.project,
           brain_id=episode_resource_id.brain,
@@ -365,12 +364,11 @@ def _get_episode_steps_type(data_store, current_chunk, episode_resource_id):
   count = 0
   steps_type = data_store_pb2.UNKNOWN
   for chunk_id in read_chunk_ids:
-    chunk = data_store.read(
-        resource_id.FalkenResourceId(
-            project=episode_resource_id.project,
-            brain=episode_resource_id.brain,
-            session=episode_resource_id.session,
-            episode=episode_resource_id.episode, chunk=chunk_id))
+    chunk = data_store.read_by_proto_ids(
+        project_id=episode_resource_id.project,
+        brain_id=episode_resource_id.brain,
+        session_id=episode_resource_id.session,
+        episode_id=episode_resource_id.episode, chunk_id=chunk_id)
     steps_type = _merge_steps_types(steps_type, chunk.steps_type)
     if (chunk.steps_type != data_store_pb2.ONLY_DEMONSTRATIONS and
         chunk.data.model_id):
@@ -440,10 +438,10 @@ def _try_start_assignments(
         'Skipping assignment creation.', episode_resource_id.session)
     return
 
-  assignment_ids = data_store.list(
-      resource_id.FalkenResourceId(
-          project=episode_resource_id.project, brain=episode_resource_id.brain,
-          session=episode_resource_id.session, assignment='*'))
+  assignment_ids = data_store.list_by_proto_ids(
+      project_id=episode_resource_id.project,
+      brain_id=episode_resource_id.brain,
+      session_id=episode_resource_id.session, assignment_id='*')
 
   failed_assignments_count = 0
   for assignment_id in assignment_ids:

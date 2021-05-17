@@ -886,7 +886,6 @@ if(FALKEN_ENABLE_CPP_UNIT_TESTS)
   # Disable tests in other projects (like Eigen) that use CTest.
   set(BUILD_TESTING OFF CACHE BOOL "Disable tests." FORCE)
 
-  #
   # The test resource_id_test requires two extra files which are not included
   # in the main library.
   add_library(resource_id
@@ -908,36 +907,35 @@ if(FALKEN_ENABLE_CPP_UNIT_TESTS)
   target_link_libraries(resource_id PUBLIC falken_cpp_sdk_static)
 
   macro (cpp_build_tests test_file)
-   # Build all tests
-      get_filename_component(BINARY_NAME ${test_file} NAME_WE)
+    get_filename_component(BINARY_NAME ${test_file} NAME_WE)
 
-      message("Adding test ${BINARY_NAME}")
-      add_executable(${BINARY_NAME} ${test_file})
-      target_include_directories(${BINARY_NAME}
-        PRIVATE
-          "${FALKEN_CPP_SDK_DIR}"
-          "${PROTO_OUTPUT_DIR}"
-      )
-      target_compile_definitions(${BINARY_NAME}
-        PRIVATE
-          ${FALKEN_CPP_SDK_PRIVATE_DEFINES}
-      )
-      target_link_libraries(${BINARY_NAME}
-        absl_flags
-        absl_flags_parse
-        falken_cpp_sdk_static
-        example_model
-        absl::base
-        absl::flags
-        absl::flags_parse
-        resource_id
-        gmock_main
-      )
-      target_link_options(${BINARY_NAME} PUBLIC ${FALKEN_LINK_OPTIONS})
-      gtest_discover_tests(${BINARY_NAME}
-        EXTRA_ARGS
-          ${ARGN}
-      )
+    message("Adding test ${BINARY_NAME}")
+    add_executable(${BINARY_NAME} ${test_file})
+    target_include_directories(${BINARY_NAME}
+      PRIVATE
+        "${FALKEN_CPP_SDK_DIR}"
+        "${PROTO_OUTPUT_DIR}"
+    )
+    target_compile_definitions(${BINARY_NAME}
+      PRIVATE
+        ${FALKEN_CPP_SDK_PRIVATE_DEFINES}
+    )
+    target_link_libraries(${BINARY_NAME}
+      absl_flags
+      absl_flags_parse
+      falken_cpp_sdk_static
+      example_model
+      absl::base
+      absl::flags
+      absl::flags_parse
+      resource_id
+      gmock_main
+    )
+    target_link_options(${BINARY_NAME} PUBLIC ${FALKEN_LINK_OPTIONS})
+    gtest_discover_tests(${BINARY_NAME}
+      EXTRA_ARGS
+        ${ARGN}
+    )
   endmacro()
 
   cpp_build_tests("${CORE_SOURCE_DIR}/absl_log_sink_test.cc")

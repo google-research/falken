@@ -20,7 +20,7 @@ from unittest import mock
 from absl import logging
 from absl.testing import absltest
 
-import falken_logging
+from log import falken_logging
 
 
 class LoggingTest(absltest.TestCase):
@@ -83,7 +83,7 @@ class LoggingTest(absltest.TestCase):
         ' project_id: foo\n'
         ' brain_id: bar')
 
-  @mock.patch.object(logging, 'warn')
+  @mock.patch.object(logging, 'warning')
   def test_warn(self, mock_log_warn):
     """Test warning logging."""
     falken_logging.warn('hello', brain_id='pinky', session_id='dance')

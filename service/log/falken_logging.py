@@ -86,7 +86,7 @@ def error(message: str, **kwargs):
 def warn(message: str, **kwargs):
   """Logs a warning message."""
   _register_frame_to_skip()
-  logging.warn('\n'.join([message, _log_items_to_string(kwargs)]))
+  logging.warning('\n'.join([message, _log_items_to_string(kwargs)]))
 
 
 def info(message: str, **kwargs):

@@ -57,6 +57,7 @@ _DEFAULT_TEST_MODULES = [
     'api.get_handler_test',
     'api.get_session_count_handler_test',
     'api.list_handler_test',
+    'api.stop_session_handler_test',
     'api.submit_episode_chunks_handler_test',
     'api.falken_service_test',
     'api.proto_conversion_test',

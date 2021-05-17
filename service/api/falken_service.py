@@ -26,6 +26,7 @@ from api import get_handler
 from api import get_session_count_handler
 from api import list_handler
 from api import request_metadata
+from api import stop_session_handler
 from api import submit_episode_chunks_handler
 from api import unique_id
 
@@ -153,7 +154,7 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def StopSession(self, request, context):
     """Stops an active Session."""
     self._validate_project_and_api_key(request, context)
-    raise NotImplementedError('Method not implemented!')
+    return stop_session_handler.stop_session(request, context, self.data_store)
 
   def ListEpisodeChunks(self, request, context):
     """Returns all Steps in all Episodes for the Session."""

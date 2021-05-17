@@ -21,6 +21,7 @@ option(FALKEN_CPP_SDK_GENERATE_API_REFERENCE ON
 )
 option(FALKEN_CPP_SDK_CSHARP OFF "Generate C# bindings.")
 
+#
 set(FALKEN_PROJECT_ID "" CACHE STRING "Project ID for integration tests.")
 set(FALKEN_API_KEY "" CACHE STRING "API Key for integration tests.")
 
@@ -53,6 +54,8 @@ if("${FALKEN_PROJECT_ROOT_DIR}" STREQUAL "")
     REALPATH
   )
 endif()
+
+#
 
 # Get the root directory of the C++ SDK assuming this file is under
 # sdk/cpp/src/core, this should reference sdk/cpp.
@@ -120,6 +123,8 @@ foreach(PROTO ${SERVICE_INTERFACE_PROTO_SRCS})
     "${PROTO_OUTPUT_DIR}/${SERVICE_INTERFACE_PATH}/${BASENAME}.pb.h"
   )
 endforeach()
+
+#
 
 # Generate service interface protos.
 add_custom_command(

@@ -21,6 +21,9 @@ option(FALKEN_CPP_SDK_GENERATE_API_REFERENCE ON
 )
 option(FALKEN_CPP_SDK_CSHARP OFF "Generate C# bindings.")
 
+set(FALKEN_PROJECT_ID "" CACHE STRING "Project ID for integration tests.")
+set(FALKEN_API_KEY "" CACHE STRING "API Key for integration tests.")
+
 # Whether to enable tests.
 if(CMAKE_SYSTEM_NAME MATCHES "Android")
   option(FALKEN_ENABLE_CPP_UNIT_TESTS "Build tests for this project" OFF)
@@ -869,6 +872,7 @@ if(FALKEN_CPP_SDK_GENERATE_API_REFERENCE)
 endif()
 
 if(FALKEN_ENABLE_CPP_UNIT_TESTS)
+  enable_testing()
   find_package(GTest REQUIRED)
 
   include(GoogleTest)
@@ -898,53 +902,12 @@ if(FALKEN_ENABLE_CPP_UNIT_TESTS)
   )
   target_link_libraries(resource_id PUBLIC falken_cpp_sdk_static)
 
-  set(CPP_SDK_TEST_SOURCES
-    "${CORE_SOURCE_DIR}/absl_log_sink_test.cc"
-    "${CORE_SOURCE_DIR}/action_proto_converter_test.cc"
-    "${CORE_SOURCE_DIR}/actions_test.cc"
-    "${CORE_SOURCE_DIR}/allocator_test.cc"
-    "${CORE_SOURCE_DIR}/attribute_proto_converter_test.cc"
-    "${CORE_SOURCE_DIR}/attribute_test.cc"
-    "${CORE_SOURCE_DIR}/brain_spec_proto_converter_test.cc"
-    "${CORE_SOURCE_DIR}/callback_test.cc"
-    "${CORE_SOURCE_DIR}/child_resource_map_test.cc"
-    "${CORE_SOURCE_DIR}/client_info_test.cc"
-    "${CORE_SOURCE_DIR}/entity_proto_converter_test.cc"
-    "${CORE_SOURCE_DIR}/entity_test.cc"
-    "${CORE_SOURCE_DIR}/file_logger_test.cc"
-    "${CORE_SOURCE_DIR}/grpc_utils_test.cc"
-    "${CORE_SOURCE_DIR}/log_test.cc"
-    "${CORE_SOURCE_DIR}/logger_base_test.cc"
-    "${CORE_SOURCE_DIR}/logger_notifier_test.cc"
-    "${CORE_SOURCE_DIR}/model_signature_test.cc"
-    "${CORE_SOURCE_DIR}/model_test.cc"
-    "${CORE_SOURCE_DIR}/observation_proto_converter_test.cc"
-    "${CORE_SOURCE_DIR}/observations_test.cc"
-    "${CORE_SOURCE_DIR}/option_accessor_test.cc"
-    "${CORE_SOURCE_DIR}/primitives_test.cc"
-    "${CORE_SOURCE_DIR}/scheduler_test.cc"
-    "${CORE_SOURCE_DIR}/semaphore_test.cc"
-    "${CORE_SOURCE_DIR}/resource_id_test.cc"
-    # Uses services
-    # "${CORE_SOURCE_DIR}/service_test.cc"
-    "${CORE_SOURCE_DIR}/specs_test.cc"
-    "${CORE_SOURCE_DIR}/status_converter_test.cc"
-    "${CORE_SOURCE_DIR}/status_macros_test.cc"
-    "${CORE_SOURCE_DIR}/system_logger_test.cc"
-    "${CORE_SOURCE_DIR}/temp_file_test.cc"
-    "${CORE_SOURCE_DIR}/tensor_test.cc"
-    "${CORE_SOURCE_DIR}/unpack_model_test.cc"
-    "${CORE_SOURCE_DIR}/uuid4_test.cc"
-    "${CORE_SOURCE_DIR}/vector_search_test.cc"
-  )
-
-  macro (cpp_build_tests)
+  macro (cpp_build_tests test_file)
    # Build all tests
-    foreach(GTEST_SOURCE_FILE ${ARGN})
-      get_filename_component(BINARY_NAME ${GTEST_SOURCE_FILE} NAME_WE)
+      get_filename_component(BINARY_NAME ${test_file} NAME_WE)
 
       message("Adding test ${BINARY_NAME}")
-      add_executable(${BINARY_NAME} ${GTEST_SOURCE_FILE})
+      add_executable(${BINARY_NAME} ${test_file})
       target_include_directories(${BINARY_NAME}
         PRIVATE
           "${FALKEN_CPP_SDK_DIR}"
@@ -955,6 +918,8 @@ if(FALKEN_ENABLE_CPP_UNIT_TESTS)
           ${FALKEN_CPP_SDK_PRIVATE_DEFINES}
       )
       target_link_libraries(${BINARY_NAME}
+        absl_flags
+        absl_flags_parse
         falken_cpp_sdk_static
         example_model
         absl::base
@@ -966,10 +931,50 @@ if(FALKEN_ENABLE_CPP_UNIT_TESTS)
       target_link_options(${BINARY_NAME} PUBLIC ${FALKEN_LINK_OPTIONS})
       gtest_discover_tests(${BINARY_NAME}
         EXTRA_ARGS
-          --example_model_path "${CMAKE_CURRENT_LIST_DIR}/../tf_wrapper/example_model"
+          ${ARGN}
       )
-    endforeach()
   endmacro()
 
-  cpp_build_tests(${CPP_SDK_TEST_SOURCES})
+  cpp_build_tests("${CORE_SOURCE_DIR}/absl_log_sink_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/action_proto_converter_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/actions_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/allocator_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/attribute_proto_converter_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/attribute_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/brain_spec_proto_converter_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/callback_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/child_resource_map_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/client_info_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/entity_proto_converter_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/entity_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/file_logger_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/grpc_utils_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/log_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/logger_base_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/logger_notifier_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/model_signature_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/model_test.cc"
+    --example_model_path
+    "${CMAKE_CURRENT_LIST_DIR}/../tf_wrapper/example_model"
+  )
+  cpp_build_tests("${CORE_SOURCE_DIR}/observation_proto_converter_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/observations_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/option_accessor_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/primitives_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/scheduler_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/semaphore_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/resource_id_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/service_test.cc"
+    --env dev --api_key "${FALKEN_API_KEY}"
+    --project_id "${FALKEN_PROJECT_ID}"
+  )
+  cpp_build_tests("${CORE_SOURCE_DIR}/specs_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/status_converter_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/status_macros_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/system_logger_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/temp_file_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/tensor_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/unpack_model_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/uuid4_test.cc")
+  cpp_build_tests("${CORE_SOURCE_DIR}/vector_search_test.cc")
 endif()

@@ -14,6 +14,10 @@
 
 #include "falken/service.h"
 
+#if _MSC_VER
+#define _USE_MATH_DEFINES
+#endif  // _MSC_VER
+
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -36,14 +40,18 @@
 #include "src/core/temp_file.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
 #include "absl/time/time.h"
 
-ABSL_FLAG(std::string, env, "dev",
-          "The environment for running the test.");
+ABSL_FLAG(std::string, env, "dev", "The environment for running the test.");
 
 ABSL_FLAG(std::string, api_key, "",
+          "The API key used to authorize access to the Falken API.");
+
+ABSL_FLAG(std::string, project_id, "",
           "The API key used to authorize access to the Falken API.");
 
 using ::testing::AllOf;
@@ -84,10 +92,10 @@ namespace {
 constexpr uint64_t kStepsPerEpisode = 10;
 // Threshold to consider actions as equal.
 constexpr float kDeltaMaxAverageError = 0.02f;
-const char* kProjectId = "Test_Project";
 const char* kBrainDisplayName = "test_brain";
 
-std::string GetJSONConfig(const std::string& api_key = "",
+std::string GetJSONConfig(const std::string& project_id = "",
+                          const std::string& api_key = "",
                           const std::string& env = "") {
   return absl::StrFormat(
       "{\n"
@@ -96,7 +104,8 @@ std::string GetJSONConfig(const std::string& api_key = "",
       "  \"api_call_timeout_milliseconds\": 120000,\n"
       "  \"service\": { \"environment\": \"%s\" }\n"
       "}\n",
-      kProjectId,
+      !project_id.empty() ? project_id
+                          : absl::GetFlag(FLAGS_project_id).c_str(),
       !api_key.empty() ? api_key : absl::GetFlag(FLAGS_api_key).c_str(),
       !env.empty() ? env : absl::GetFlag(FLAGS_env));
 }
@@ -318,6 +327,15 @@ float TrainingData(TestTemplateBrainSpec& spec, int step_index,
                     spec.actions, observation_scale);
     return spec.actions.speed;
   }
+
+  // Populate actions with default values.
+  TestActions& actions = spec.actions;
+  actions.set_source(falken::ActionsBase::kSourceNone);
+  actions.speed.set_value(5.0f);
+  actions.steering.set_value(0.0f);
+  actions.select_item.set_value(0);
+  actions.use_item.set_value(false);
+
   return GenerateSpeedAction(spec.actions, observations, observation_scale) /
          GetNumberAttributeRange(spec.actions.speed);
 }
@@ -458,11 +476,9 @@ absl::Status TrainSession(
       return absl::InternalError("Could not complete episode.");
     }
   }
-  RETURN_IF_ERROR(WaitForTrainingToComplete(
-      session, brain, initial_state,
-      session_state_transitions, training_mode,
-      completion_threshold));
-  return absl::OkStatus();
+  return WaitForTrainingToComplete(session, brain, initial_state,
+                                   session_state_transitions, training_mode,
+                                   completion_threshold);
 }
 
 // Infer actions in an episode, calculating the average normalized error
@@ -556,8 +572,9 @@ absl::Status RunEvaluation(
     int number_of_episodes, int number_of_steps_per_episode,
     float passing_episode_average_error, float *eval_error) {
   float minimum_average_error = passing_episode_average_error;
-  std::map<float, int> error_occurrence;
 
+  bool different_models_served;
+  std::string initial_model_id;
   for (int ep = 0; ep < number_of_episodes; ++ep) {
     float average_episode_error;
     std::shared_ptr<falken::Episode> episode = session->StartEpisode();
@@ -565,17 +582,18 @@ absl::Status RunEvaluation(
     EXPECT_NE(falken::Session::TrainingState::kTrainingStateInvalid,
               session->training_state());
 
+    auto current_model_id = falken::ServiceTest::GetEpisodeModelId(*episode);
+    if (ep == 0) {
+      initial_model_id = current_model_id;
+    } else {
+      if (initial_model_id != current_model_id) {
+        different_models_served = true;
+      }
+    }
+
     absl::Status episode_ok = RunInferenceEpisode(
         brain, episode, number_of_steps_per_episode, average_episode_error);
     if (!episode_ok.ok()) return episode_ok;
-
-    // Add the error calculated to the occurrence dictionary.
-    auto it = error_occurrence.find(average_episode_error);
-    if (it != error_occurrence.end()) {
-      ++error_occurrence[average_episode_error];
-    } else {
-      error_occurrence[average_episode_error] = 1;
-    }
 
     // Keep track of the minimum average error.
     minimum_average_error =
@@ -604,14 +622,8 @@ absl::Status RunEvaluation(
     }
   }
 
-  // Print out the occurrence of the error
-  std::cerr << "Average error occurrence after evaluation: " << std::endl;
   // Verify that a variety of models were served to the client.
-  EXPECT_GT(error_occurrence.size(), 1);
-  for (auto it : error_occurrence) {
-    std::cerr << std::to_string(it.first) << " episode[s] with error "
-              << std::to_string(it.second) << std::endl;
-  }
+  EXPECT_TRUE(different_models_served);
 
   if (eval_error) {
     *eval_error = minimum_average_error;
@@ -931,13 +943,24 @@ TEST_F(ServiceTemporaryDirectoryTest, SetTemporaryDirectoryUsingApiTest) {
 }
 
 TEST_F(ServiceTemporaryDirectoryTest, SetTemporaryDirectoryUsingEnvVarTest) {
+#if _MSC_VER
+  std::string tmp_dir = "FALKEN_TMPDIR=" + falken_temporary_dir_;
+  _putenv(tmp_dir.c_str());
+#else
   setenv("FALKEN_TMPDIR", falken_temporary_dir_.c_str(), 1);
+#endif  // _MSC_VER
+
   // We need to call SetupSystemTemporaryDirectory in order to make the SDK look
   // for FALKEN_TMPDIR value.
   falken::core::TempFile::SetupSystemTemporaryDirectory(stdout_logger_);
   EXPECT_STREQ(falken::Service::GetTemporaryDirectory().c_str(),
                falken_temporary_dir_.c_str());
+
+#if _MSC_VER
+  _putenv("FALKEN_TMPDIR=");
+#else
   unsetenv("FALKEN_TMPDIR");
+#endif  // _MSC_VER
 }
 
 // Basic integration test for the SDK.
@@ -1027,7 +1050,7 @@ const ServiceTest::TrainedBrainInfo& ServiceTest::TrainOrGetTrainedBrainInfo() {
 
           if (!snapshot_id.empty()) {
             trained_brain_info_->brain_id = brain->id();
-            trained_brain_info_->snapshot_id = snapshot_id;
+            trained_brain_info_->snapshot_id = std::string(snapshot_id.c_str());
             trained_brain_info_->training_episodes = kTrainingEpisodes;
             trained_brain_info_->training_steps_per_episode =
                 kTrainingStepsPerEpisode;
@@ -1056,16 +1079,15 @@ std::shared_ptr<falken::Brain<TestTemplateBrainSpec>>
 
 std::shared_ptr<falken::Service> ServiceTest::ConnectToService() {
   std::shared_ptr<falken::Service> service = falken::Service::Connect(
-      kProjectId, absl::GetFlag(FLAGS_api_key).c_str(),
-      GetJSONConfig().c_str());
+      absl::GetFlag(FLAGS_project_id).c_str(),
+      absl::GetFlag(FLAGS_api_key).c_str(), GetJSONConfig().c_str());
   EXPECT_TRUE(service);
   return service;
 }
 
 TEST_F(ServiceTest, ConnectTestFails) {
   std::shared_ptr<falken::Service> service =
-      falken::Service::Connect(nullptr, nullptr,
-                               GetJSONConfig("invalid", "xyz").c_str());
+      falken::Service::Connect(nullptr, nullptr);
   EXPECT_EQ(service, nullptr);
 }
 
@@ -1086,8 +1108,8 @@ TEST_F(ServiceTest, ConnectWithJsonConfig) {
     EXPECT_TRUE(service);
   }
   {
-    auto service =
-        falken::Service::Connect(kProjectId, nullptr, json_config.c_str());
+    auto service = falken::Service::Connect(
+        absl::GetFlag(FLAGS_project_id).c_str(), nullptr, json_config.c_str());
     EXPECT_TRUE(service);
   }
   {
@@ -1117,9 +1139,8 @@ TEST_F(ServiceTest, CreateBrainBaseTest) {
 }
 
 TEST_F(ServiceTest, CreateWrongBrainBaseTest) {
-  std::shared_ptr<falken::Service> service =
-      falken::Service::Connect(kProjectId, "ABC",
-                               GetJSONConfig().c_str());
+  std::shared_ptr<falken::Service> service = falken::Service::Connect(
+      absl::GetFlag(FLAGS_project_id).c_str(), "ABC", GetJSONConfig().c_str());
   ASSERT_TRUE(service);
   TestObservations test_observations;
   test_observations.health.set_number(1.0f);
@@ -2181,3 +2202,12 @@ TEST_F(ModelUpdateTests, TestModelGetsUpdatedDuringEvaluation) {
 }
 
 }  // namespace
+
+// Define main so ParseCommandLine can be called and arguments
+// can be retrieved.
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  absl::ParseCommandLine(argc, const_cast<char**>(argv));
+
+  return RUN_ALL_TESTS();
+}

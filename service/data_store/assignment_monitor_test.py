@@ -62,7 +62,8 @@ class AssignmentMonitorTest(parameterized.TestCase):
     self._temporary_directory = tempfile.TemporaryDirectory()
     self._fs = file_system.FileSystem(self._temporary_directory.name)
     self._monitor = assignment_monitor.AssignmentMonitor(
-        self._fs, 'notif', lambda x: None, lambda x, y: None)
+        self._fs, lambda x: None, lambda x, y: None)
+    self._notifier = assignment_monitor.AssignmentNotifier(self._fs)
 
   def tearDown(self):
     """Clean up the temporary directory and datastore."""
@@ -74,7 +75,7 @@ class AssignmentMonitorTest(parameterized.TestCase):
   def test_acquire_release(self):
     """Tests acquiring is exclusive."""
     self._second_monitor = assignment_monitor.AssignmentMonitor(
-        self._fs, 'notif', lambda x: None, lambda x, y: None)
+        self._fs, lambda x: None, lambda x, y: None)
 
     assignment_id = resource_id.FalkenResourceId(
         project='p0', brain='b0', session='s0', assignment='a0')
@@ -108,7 +109,7 @@ class AssignmentMonitorTest(parameterized.TestCase):
     self._monitor._metronome.stop()
     patch_file_system(self._fs, time_increment)
     self._monitor = assignment_monitor.AssignmentMonitor(
-        self._fs, 'notif', assignment_callback, chunk_callback)
+        self._fs, assignment_callback, chunk_callback)
     metronome = self._monitor._metronome
 
     metronome.force_tick()
@@ -127,14 +128,14 @@ class AssignmentMonitorTest(parameterized.TestCase):
         project='p0', brain='b0', session='s1', episode='e0',
         chunk=0)
 
-    self._monitor.trigger_assignment_notification(assignment_id, chunk_id)
+    self._notifier.trigger_assignment_notification(assignment_id, chunk_id)
     metronome.force_tick()
     self.assertTrue(callback_called.wait(3))
     assignment_callback.assert_called_once_with(assignment_id)
     chunk_callback.assert_not_called()
     reset_callbacks()
 
-    self._monitor.trigger_assignment_notification(assignment_id_2, chunk_id_2)
+    self._notifier.trigger_assignment_notification(assignment_id_2, chunk_id_2)
     metronome.force_tick()
     self.assertTrue(callback_called.wait(3))
     assignment_callback.assert_called_once_with(assignment_id_2)

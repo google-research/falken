@@ -131,17 +131,54 @@ TimestampedPath = collections.namedtuple(
     'TimestampedPath', ['path', 'timestamp'])
 
 
-class AssignmentMonitor:
+class _AssignmentMonitorBase:
+  """Common functionality for AssignmentNotifier and AssignmentMonitor."""
+
+  def __init__(self, fs):
+    """Initialize the instance.
+
+    Args:
+      fs: A FileSystem object used for queue storage.
+    """
+    super().__init__()
+    self._fs = fs
+    self._notification_dir = 'notifications'
+
+  def _get_assignment_directory(self, assignment_resource_id):
+    """Gives the directory given the resource id of an assignment."""
+    return os.path.join(self._notification_dir, str(assignment_resource_id))
+
+
+class AssignmentNotifier(_AssignmentMonitorBase):
+  """Sends assignment notifications."""
+
+  def trigger_assignment_notification(self, assignment_id, episode_chunk_id):
+    """Triggers a notification for a given assignment.
+
+    This will create files in the corresponding directory that make the polling
+    method of another process run the callbacks.
+
+    Args:
+      assignment_id: Resource id of the assignment to trigger notifications for.
+      episode_chunk_id: Resource id of a newly created chunk that's the reason
+        why the assignment should be triggered.
+    """
+    # There's no need to lock for this.
+    path = os.path.join(
+        self._get_assignment_directory(assignment_id),
+        f'chunk_{episode_chunk_id.episode}_{episode_chunk_id.chunk}')
+    self._fs.write_file(path, b'')
+
+
+class AssignmentMonitor(_AssignmentMonitorBase):
   """Monitors creation of assignments."""
 
-  def __init__(self, fs, notification_dir, assignment_callback, chunk_callback,
+  def __init__(self, fs, assignment_callback, chunk_callback,
                notification_frequency=5):
     """Initializes an assignment monitor.
 
     Args:
       fs: A FileSystem object.
-      notification_dir: Directory path where the files used to handle
-        chunk notifications are stored.
       assignment_callback: A callback function with a single argument,
         the resource id for the assignment. This callback function will be
         called to notify every time any assignment has received a new episode
@@ -157,12 +194,12 @@ class AssignmentMonitor:
         before the first callback call.
       notification_frequency: Maximum amount of times per second to poll.
     """
+    super().__init__(fs)
+
     if not assignment_callback or not chunk_callback:
       raise ValueError('All callbacks must be set.')
 
-    self._fs = fs
     self._metronome = _Metronome(notification_frequency)
-    self._notification_dir = notification_dir
 
     # Information about the currently acquired assignment.
     self._acquired_assignment_id = None
@@ -189,8 +226,6 @@ class AssignmentMonitor:
     self._thread = threading.Thread(
         target=self._poll_assignments_and_episode_chunks, daemon=True)
     self._thread.start()
-
-    super().__init__()
 
   def acquire_assignment(self, assignment_id):
     """Acquires an assignment.
@@ -230,27 +265,6 @@ class AssignmentMonitor:
       self._fs.unlock_file(self._acquired_assignment_lock_file)
       self._acquired_assignment_id = None
       self._acquired_assignment_lock_file = None
-
-  def trigger_assignment_notification(self, assignment_id, episode_chunk_id):
-    """Triggers a notification for a given assignment.
-
-    This will create files in the corresponding directory that make the polling
-    method of another process run the callbacks.
-
-    Args:
-      assignment_id: Resource id of the assignment to trigger notifications for.
-      episode_chunk_id: Resource id of a newly created chunk that's the reason
-        why the assignment should be triggered.
-    """
-    # There's no need to lock for this.
-    path = os.path.join(
-        self._get_assignment_directory(assignment_id),
-        f'chunk_{episode_chunk_id.episode}_{episode_chunk_id.chunk}')
-    self._fs.write_file(path, b'')
-
-  def _get_assignment_directory(self, assignment_id):
-    """Gives the directory given the resource id of an assignment."""
-    return os.path.join(self._notification_dir, str(assignment_id))
 
   def _poll_assignments_and_episode_chunks(self):
     """Polls the notification dir using the metronome to dictate frequency."""

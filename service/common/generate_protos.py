@@ -21,6 +21,8 @@ import subprocess
 import sys
 import urllib.request
 
+import common.pip_installer  # pylint: disable=unused-import
+
 _PROTO_GEN_DIR = 'proto_gen_module'
 
 _EXTERNAL_PROTOS = [
@@ -39,6 +41,11 @@ def get_generated_protos_dir():
       _PROTO_GEN_DIR)
 
 
+def _get_download_protos_dir():
+  """Returns path to the directory to download external protos."""
+  return os.path.join(get_generated_protos_dir(), 'proto', 'external')
+
+
 def get_service_dir():
   """Returns the /service directory."""
   # Since this file is in /service/common, return its parent dir.
@@ -52,6 +59,7 @@ def get_source_proto_dirs():
   proto directory.
   """
   return [
+      _get_download_protos_dir(),
       os.path.join(get_service_dir(), 'proto'),
       os.path.join(get_service_dir(), 'data_store', 'proto')
   ]
@@ -63,7 +71,7 @@ def download_external_protos():
   Returns:
     Path to where the external protos are downloaded.
   """
-  downloaded_proto_dir = os.path.join(get_service_dir(), 'proto', 'external')
+  downloaded_proto_dir = _get_download_protos_dir()
   if not os.path.exists(downloaded_proto_dir):
     for proto_url, proto_path in _EXTERNAL_PROTOS:
       file_name = os.path.join(downloaded_proto_dir, proto_path)
@@ -108,7 +116,7 @@ def generate():
 
 def clean_up():
   """Clean up the generated protos directory created by generate()."""
-  external_protos_dir = download_external_protos()
+  external_protos_dir = _get_download_protos_dir()
   if os.path.exists(external_protos_dir):
     shutil.rmtree(external_protos_dir)
   generated_protos_dir = get_generated_protos_dir()

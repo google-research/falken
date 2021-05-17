@@ -24,7 +24,7 @@ from absl.testing import absltest
 # Set the environment variable to false so the test can call the method to
 # generate flatbuffers explicitly.
 os.environ['FALKEN_AUTO_GENERATE_FLATBUFFERS'] = '0'
-import generate_flatbuffers
+from common import generate_flatbuffers
 
 
 class GenerateFlatbuffersTest(absltest.TestCase):

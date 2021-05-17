@@ -43,11 +43,11 @@ sys.path.extend(
 )
 
 _DEFAULT_SUBPROCESS_TESTS = [
-    'launcher_test.py',
-    'common/generate_flatbuffers_test.py',
-    'common/generate_protos_test.py',
-    'common/pip_installer_test.py',
-    'tools/generate_sdk_configuration_test.py',
+    'launcher_test',
+    'common.generate_flatbuffers_test',
+    'common.generate_protos_test',
+    'common.pip_installer_test',
+    'tools.generate_sdk_configuration_test',
 ]
 
 _DEFAULT_TEST_MODULES = [
@@ -125,8 +125,8 @@ def run_absltests():
   # affect the other tests' environments.
   for subprocess_test in subprocess_tests:
     subprocess.check_call(
-        [sys.executable, os.path.join(
-            os.path.dirname(__file__), subprocess_test)])
+        [sys.executable, '-m', subprocess_test],
+        cwd=os.path.dirname(__file__))
 
   # Import test modules.
   for module_name in test_modules:

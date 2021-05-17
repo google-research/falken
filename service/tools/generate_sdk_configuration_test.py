@@ -23,7 +23,7 @@ from unittest import mock
 
 from absl.testing import absltest
 
-import generate_sdk_configuration
+from tools import generate_sdk_configuration
 
 
 class GenerateSdkConfigurationTest(absltest.TestCase):

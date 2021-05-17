@@ -26,7 +26,7 @@ from absl.testing import absltest
 # Set the environment variable to false so the test can call the method to
 # install dependencies explicitly.
 os.environ['FALKEN_AUTO_INSTALL_DEPENDENCIES'] = '0'
-import pip_installer
+from common import pip_installer
 
 
 class PipInstallerTest(absltest.TestCase):

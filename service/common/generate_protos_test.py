@@ -26,7 +26,7 @@ from absl.testing import absltest
 # Set the environment variable to false so the test can call the method to
 # generate protos explicitly.
 os.environ['FALKEN_AUTO_GENERATE_PROTOS'] = '0'
-import generate_protos
+from common import generate_protos
 
 
 class GenerateProtosTest(absltest.TestCase):

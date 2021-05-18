@@ -61,22 +61,34 @@ def populate_data_store(data_store, assignment_id=None, episode_ids=None,
     steps_per_episode_chunk: List of number of steps for each episode chunk.
       For example, [2, 4] would create two chunks with 2 and 4 steps
       respectively. If this is None, this argument defaults to [2, 2].
+
+  Returns:
+    (assignment_resource_id, episode_chunk_resource_ids) where
+    assignment_resource_id is resource ID of the written assignment and
+    episode_chunk_resource_ids is a list of episode chunk resource IDs written
+    to the data store.
   """
+  assignment_proto = assignment(assignment_id=assignment_id)
+  assignment_resource_id = data_store.to_resource_id(assignment_proto)
   protos = [
       project(),
       data_store_brain(),
       session(),
-      assignment(assignment_id=assignment_id)
+      assignment_proto,
   ]
   if not steps_per_episode_chunk:
     steps_per_episode_chunk = [2, 2]
   if episode_ids is None:
     episode_ids = [EPISODE_ID]
+  episode_chunk_resource_ids = []
   if episode_ids:
     for episode_id in episode_ids:
-      protos += episode_chunks(steps_per_episode_chunk, episode_id)
+      for chunk in episode_chunks(steps_per_episode_chunk, episode_id):
+        episode_chunk_resource_ids.append(data_store.to_resource_id(chunk))
+        protos.append(chunk)
   for proto in protos:
     data_store.write(proto)
+  return assignment_resource_id, episode_chunk_resource_ids
 
 
 def project():

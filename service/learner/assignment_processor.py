@@ -345,14 +345,18 @@ class AssignmentProcessor:
     return demo_frames
 
   def _chunk_generator(self):
-    """Generates lists of chunks by querying the database."""
+    """Generates lists of chunks by querying the database.
+
+    Yields:
+      List of new chunks if available, None otherwise.
+    """
     earliest_timestamp_micros = 0
     # Fetch data associated with ancestors AND with the current session.
     session_ids = self._storage.get_ancestor_session_ids(
         self._read_assignment.project_id,
         self._read_assignment.brain_id,
         self._read_assignment.session_id)
-    session_ids.append(self._read_assignment.session_id)
+    session_ids.add(self._read_assignment.session_id)
 
     def generate_chunk_key(chunk):
       """Returns a unique string identifier for an episode chunk proto.
@@ -363,7 +367,7 @@ class AssignmentProcessor:
       Returns:
         Unique identifier for the chunk proto.
       """
-      return f'{chunk.episode_id}_{chunk.chunk_id}'
+      return f'{chunk.session_id}_{chunk.episode_id}_{chunk.chunk_id}'
 
     previous_chunk_keys = set()
     while True:  # Yield new chunks, potentially forever.
@@ -380,9 +384,9 @@ class AssignmentProcessor:
                                           chunk.created_micros)
           new_chunks.append(chunk)
           new_chunk_keys.add(chunk_key)
-      previous_chunk_keys = new_chunk_keys
       self.assignment_stats.queries_completed += 1
       if new_chunks:
+        previous_chunk_keys = new_chunk_keys
         yield new_chunks
       else:
         yield None

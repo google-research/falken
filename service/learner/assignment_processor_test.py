@@ -23,6 +23,8 @@ from absl import flags
 from absl.testing import absltest
 from absl.testing import parameterized
 
+from data_store import data_store as data_store_module
+from data_store import file_system as data_store_file_system
 from learner import assignment_processor
 from learner import storage
 from learner import test_data
@@ -39,7 +41,9 @@ class AssignmentProcessorTest(parameterized.TestCase):
   def setUp(self):
     super().setUp()
     self._assignment = test_data.assignment()
-    self._write_assignment = falken_schema_pb2.Assignment()
+    write_assignment = test_data.assignment()
+    write_assignment.session_id = 'write_session'
+    self._write_assignment = write_assignment
     self._mock_storage = mock.Mock()
     self._mock_storage.get_brain_spec.return_value = falken_schema_pb2.Brain()
     self._mock_storage.get_assignment.return_value = self._assignment
@@ -130,7 +134,8 @@ class AssignmentProcessorTest(parameterized.TestCase):
               prefix=os.path.join(
                   flags.FLAGS.test_tmpdir, 'checkpoint')).name)
       tmp_model_path = tmp_checkpoint_path.replace('checkpoint', 'saved_model')
-      self._mock_fs.create_tmp_checkpoint_path.return_value = tmp_checkpoint_path
+      self._mock_fs.create_tmp_checkpoint_path.return_value = (
+          tmp_checkpoint_path)
       self._mock_fs.extract_tmp_model_path_from_checkpoint_path.return_value = (
           tmp_model_path)
       os.makedirs(tmp_checkpoint_path)
@@ -173,6 +178,40 @@ class AssignmentProcessorTest(parameterized.TestCase):
           status, assignment_processor.ProcessAssignmentStatus.PROCESSED_STEP)
       self.assertIsNone(metadata)
       self.assertGreater(self._mock_fs.wipe_checkpoints.call_count, 0)
+
+  def test_chunk_generator(self):
+    """Test fetching episode chunks."""
+    temporary_file_system = data_store_file_system.FileSystem(
+        self.create_tempdir())
+    data_store = data_store_module.DataStore(temporary_file_system)
+    with assignment_processor.AssignmentProcessor(
+        self._assignment,
+        self._mock_fs,
+        storage.Storage(data_store, temporary_file_system),
+        brain_cache.BrainCache(
+            assignment_processor.populate_hparams_with_defaults_and_validate),
+        get_session_state=(lambda: storage.SessionState.ENDED),
+        write_assignment=self._write_assignment,
+        always_block_when_fetching=False) as proc:
+
+      _, episode_chunk_resource_ids = test_data.populate_data_store(
+          data_store, episode_ids=['episode_0', 'episode_1'],
+          steps_per_episode_chunk=[3] * 2)
+
+      # Should return the current set of chunks.
+      chunk_generator = proc._chunk_generator()
+      chunks = next(iter(chunk_generator))
+      read_resource_ids = [data_store.to_resource_id(c) for c in chunks]
+      self.assertCountEqual(episode_chunk_resource_ids, read_resource_ids)
+      # Add and fetch more chunks.
+      _, episode_chunk_resource_ids = test_data.populate_data_store(
+          data_store, episode_ids=['episode_2', 'episode_3', 'episode_4'],
+          steps_per_episode_chunk=[4] * 3)
+      chunks = next(iter(chunk_generator))
+      read_resource_ids = [data_store.to_resource_id(c) for c in chunks]
+      self.assertCountEqual(episode_chunk_resource_ids, read_resource_ids)
+      # No more chunks.
+      self.assertIsNone(next(iter(chunk_generator)))
 
 
 if __name__ == '__main__':

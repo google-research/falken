@@ -173,8 +173,14 @@ class GetHandlerTest(absltest.TestCase):
     mock_context = mock.Mock()
     mock_context.abort.side_effect = Exception()
     mock_ds = mock.Mock()
-    mock_ds.list.return_value = (
-        ['test_session_id_0', 'test_session_id_1', 'test_session_id_2'], None)
+    brain_res_id = 'projects/test_project_id/brains/test_brain_id'
+    mock_ds.list.return_value = ([
+        resource_id.FalkenResourceId(
+            f'{brain_res_id}/sessions/test_session_id_0'),
+        resource_id.FalkenResourceId(
+            f'{brain_res_id}/sessions/test_session_id_1'),
+        resource_id.FalkenResourceId(
+            f'{brain_res_id}/sessions/test_session_id_2')], None)
     read_and_convert_proto.return_value = session_pb2.Session()
 
     self.assertEqual(

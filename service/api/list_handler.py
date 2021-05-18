@@ -68,13 +68,12 @@ class ListHandler:
     """Read a resource based on its resource ID.
 
     Args:
-      res_id: The resource ID represented as a string.
+      res_id: A resource_id.ResourceID.
 
     Returns:
       The resource represented as a proto.
     """
-    return self._data_store.read(
-        resource_id.FalkenResourceId(res_id))
+    return self._data_store.read(res_id)
 
   def list(self):
     """Retrieves instances of the requested proto in data store.
@@ -116,7 +115,7 @@ class ListHandler:
 
     Args:
       response: falken_service_pb2.List*Response instance getting populated.
-      res_ids: Resource id string of the protos to fill the response with.
+      res_ids: Resource id of the protos to fill the response with.
     """
     for res_id in res_ids:
       getattr(response, self._response_proto_repeated_field_name).append(

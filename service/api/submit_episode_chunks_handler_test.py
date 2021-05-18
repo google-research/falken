@@ -477,8 +477,11 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
   @mock.patch.object(submit_episode_chunks_handler, '_merge_steps_types')
   def test_get_episode_steps_type(self, merge_steps_types):
     mock_ds = mock.Mock()
-    mock_ds.list.return_value = ([0, 1], None)
-    mock_ds.read_by_proto_ids.side_effect = [
+    chunk_res_ids = [
+        resource_id.FalkenResourceId(f'{self._ep_resource_id}/chunks/0'),
+        resource_id.FalkenResourceId(f'{self._ep_resource_id}/chunks/1')]
+    mock_ds.list.return_value = (chunk_res_ids, None)
+    mock_ds.read.side_effect = [
         data_store_pb2.EpisodeChunk(
             chunk_id=0,
             data=episode_pb2.EpisodeChunk(model_id='m0', chunk_id=0),
@@ -500,14 +503,10 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         (merge_steps_types.return_value, {'m2', 'm0', 'm1'}))
 
     mock_ds.list.assert_called_once_with(self._ep_resource_id)
-    mock_ds.read_by_proto_ids.assert_has_calls([
-        mock.call(
-            project_id='p0', brain_id='b0', session_id='s0', episode_id='ep0',
-            chunk_id=0),
-        mock.call(
-            project_id='p0', brain_id='b0', session_id='s0', episode_id='ep0',
-            chunk_id=1)
-    ])
+    mock_ds.read.assert_has_calls([
+        mock.call(chunk_res_ids[0]),
+        mock.call(chunk_res_ids[1])])
+
     merge_steps_types.assert_has_calls([
         mock.call(data_store_pb2.UNKNOWN, data_store_pb2.ONLY_INFERENCES),
         mock.call(data_store_pb2.ONLY_INFERENCES,
@@ -517,8 +516,9 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
   @mock.patch.object(submit_episode_chunks_handler, '_merge_steps_types')
   def test_get_episode_steps_type_count_mismatch(self, merge_steps_types):
     mock_ds = mock.Mock()
-    mock_ds.list.return_value = ([0], None)
-    mock_ds.read_by_proto_ids.side_effect = [
+    mock_ds.list.return_value = (
+        [f'{self._ep_resource_id}/chunks/0'], None)
+    mock_ds.read.side_effect = [
         data_store_pb2.EpisodeChunk(
             chunk_id=0,
             data=episode_pb2.EpisodeChunk(model_id='m0', chunk_id=0),
@@ -537,9 +537,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
           mock_ds, chunk, self._ep_resource_id)
 
     mock_ds.list.assert_called_once_with(self._ep_resource_id)
-    mock_ds.read_by_proto_ids.assert_called_once_with(
-        project_id='p0', brain_id='b0', session_id='s0', episode_id='ep0',
-        chunk_id=0)
+    mock_ds.read.assert_called_once_with(f'{self._ep_resource_id}/chunks/0')
     merge_steps_types.assert_called_once_with(data_store_pb2.UNKNOWN,
                                               data_store_pb2.ONLY_INFERENCES)
 

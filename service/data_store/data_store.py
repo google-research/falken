@@ -343,7 +343,8 @@ class ResourceStore:
            res_id_glob: resource_id.ResourceId,
            min_timestamp_micros: int = 0,
            page_token: Optional[str] = None,
-           page_size: Optional[int] = None) -> Tuple[List[str], str]:
+           page_size: Optional[int] = None) -> (
+               Tuple[List[resource_id.ResourceId], str]):
     """Lists all resource_ids that match the provided pattern.
 
     Args:
@@ -355,7 +356,7 @@ class ResourceStore:
       page_size: The size of the page or None to return all IDs.
 
     Returns:
-      A tuple of a list of resource ID strings and pagination token.
+      A tuple of a list of resource IDs and pagination token.
     """
     glob_path = os.path.join(str(res_id_glob), f'{self._RESOURCE_PREFIX}*')
     files = self._fs.glob(glob_path)
@@ -383,7 +384,7 @@ class ResourceStore:
           res_id_string <= page_token_res_id):
         continue
 
-      page.append(res_id_string)
+      page.append(self._resource_id_type(res_id_string))
       last_timestamp_micros = timestamp_micros
       if page_size and len(page) == page_size:
         break
@@ -438,7 +439,7 @@ class DataStore(ResourceStore):
       min_timestamp_micros: int = 0,
       page_token: Optional[str] = None,
       page_size: Optional[int] = None,
-      **kwargs) -> Tuple[List[str], str]:
+      **kwargs) -> Tuple[List[resource_id.FalkenResourceId], str]:
     """List resource ids their ID fields.
 
     Args:
@@ -457,7 +458,7 @@ class DataStore(ResourceStore):
           when globbing the 'assignment_id' field, only '*' is supported and
           every other string is interpreted as plain text.
     Returns:
-      A tuple of a list of resource ID strings and pagination token.
+      A tuple of a list of resource IDs and a pagination token.
     """
     res_id = self.resource_id_from_proto_ids(
         attribute_type=attribute_type, **kwargs)

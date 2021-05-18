@@ -23,6 +23,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 from data_store import data_store
 from data_store import file_system
+from data_store import resource_id
 
 import common.generate_protos  # pylint: disable=g-bad-import-order,unused-import
 
@@ -110,7 +111,8 @@ class FileSystemTest(parameterized.TestCase):
     ds.write(s1)
     ds.write(s2)
     ds.write(s3)
-    rids, _ = ds.list('projects/{p0,p2}/brains/*/sessions/*')
+    rids, _ = ds.list(resource_id.FalkenResourceId(
+        'projects/{p0,p2}/brains/*/sessions/*'))
     self.assertEqual(
         rids,
         ['projects/p0/brains/b0/sessions/s0',

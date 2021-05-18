@@ -18,6 +18,7 @@ from unittest import mock
 
 from absl.testing import absltest
 from api import get_session_count_handler
+from data_store import resource_id
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
@@ -42,9 +43,10 @@ class GetSessionCountHandlerTest(absltest.TestCase):
     mock_context.abort.side_effect = Exception()
     mock_ds = mock.Mock()
     mock_ds.list_by_proto_ids.return_value = (
-        ['projects/p0/brains/b0/session/s0',
-         'projects/p0/brains/b0/session/s1',
-         'projects/p0/brains/b0/session/s2'], None)
+        [resource_id.FalkenResourceId('projects/p0/brains/b0/sessions/s0'),
+         resource_id.FalkenResourceId('projects/p0/brains/b0/sessions/s1'),
+         resource_id.FalkenResourceId('projects/p0/brains/b0/sessions/s2')],
+        None)
 
     self.assertEqual(
         get_session_count_handler.get_session_count(

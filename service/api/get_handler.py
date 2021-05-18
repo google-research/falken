@@ -127,9 +127,8 @@ class GetSessionByIndexHandler(GetHandler):
           code_pb2.INVALID_ARGUMENT,
           f'Session at index {self._request.session_index} was not found.')
 
-    return self._read_and_convert_proto(resource_id.FalkenResourceId(
-        f'projects/{self._request.project_id}/brains/{self._request.brain_id}/'
-        f'sessions/{session_ids[self._request.session_index]}'))
+    return self._read_and_convert_proto(
+        session_ids[self._request.session_index])
 
 
 class GetModelHandler(GetHandler):

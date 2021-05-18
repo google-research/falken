@@ -350,8 +350,7 @@ class Storage:
     res_ids, _ = self._data_store.list(
         res_id_glob, min_timestamp_micros=min_timestamp_micros)
 
-    return [self._data_store.read(resource_id.FalkenResourceId(res_id))
-            for res_id in res_ids]
+    return [self._data_store.read(res_id) for res_id in res_ids]
 
   def _enqueue_pending_assignment(
       self, assignment: resource_id.ResourceId):

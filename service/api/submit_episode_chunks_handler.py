@@ -363,12 +363,8 @@ def _get_episode_steps_type(data_store, current_chunk, episode_resource_id):
 
   count = 0
   steps_type = data_store_pb2.UNKNOWN
-  for chunk_id in read_chunk_ids:
-    chunk = data_store.read_by_proto_ids(
-        project_id=episode_resource_id.project,
-        brain_id=episode_resource_id.brain,
-        session_id=episode_resource_id.session,
-        episode_id=episode_resource_id.episode, chunk_id=chunk_id)
+  for chunk_res_id in read_chunk_ids:
+    chunk = data_store.read(chunk_res_id)
     steps_type = _merge_steps_types(steps_type, chunk.steps_type)
     if (chunk.steps_type != data_store_pb2.ONLY_DEMONSTRATIONS and
         chunk.data.model_id):

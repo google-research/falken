@@ -368,7 +368,7 @@ class DataStoreTest(parameterized.TestCase):
 
     # Check ordering of returned elements.
     for rid, rid_next in zip(result, result[1:]):
-      self.assertLess(rid, rid_next)
+      self.assertLess(str(rid), str(rid_next))
 
     self.assertEqual(len(set(result)), len(result))
     self.assertLen(result, expected_results)

@@ -24,7 +24,6 @@ from absl.testing import parameterized
 
 from data_store import data_store
 from data_store import file_system as data_store_file_system
-from data_store import resource_id
 from learner import file_system
 from learner import model_exporter
 from learner import model_manager
@@ -204,8 +203,6 @@ class ModelExporterTest(parameterized.TestCase):
         session_id='*',
         model_id='*')
 
-    model_res_ids = [resource_id.FalkenResourceId(m) for m in model_res_ids]
-
     model_paths = [self._data_store.read(m).model_path for m in model_res_ids]
     self.assertEqual(model_paths, [
         os.path.join(self.models_path, '0'),
@@ -222,8 +219,6 @@ class ModelExporterTest(parameterized.TestCase):
     offline_eval_res_ids, _ = self._data_store.list_by_proto_ids(
         project_id='*', brain_id='*', session_id='*',
         model_id='*', offline_evaluation_id='*')
-    offline_eval_res_ids = [
-        resource_id.FalkenResourceId(r) for r in offline_eval_res_ids]
     offline_evals = [
         self._data_store.read(r) for r in offline_eval_res_ids]
     evals_results = {}

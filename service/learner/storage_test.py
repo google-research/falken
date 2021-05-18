@@ -25,7 +25,6 @@ from absl.testing import parameterized
 from data_store import assignment_monitor
 from data_store import data_store as data_store_module
 from data_store import file_system as data_store_file_system
-from data_store import resource_id
 import data_store_pb2
 from learner import storage as storage_module
 from learner import test_data
@@ -199,8 +198,7 @@ class StorageTest(parameterized.TestCase):
         model_id=model_id,
         offline_evaluation_id='*')
 
-    rids = [resource_id.FalkenResourceId(r)
-            for r in self.data_store.list(eval_rid_glob)[0]]
+    rids = self.data_store.list(eval_rid_glob)[0]
     scores = [self.data_store.read(rid).score for rid in rids]
     self.assertEqual(
         scores,
@@ -209,8 +207,7 @@ class StorageTest(parameterized.TestCase):
     evaluations = [(0, 2.0), (1, 4.0), (2, 8.0), (3, 16.0)]
     self.storage.record_evaluations(self.assignment, model_id, evaluations)
 
-    rids = [resource_id.FalkenResourceId(r)
-            for r in self.data_store.list(eval_rid_glob)[0]]
+    rids = self.data_store.list(eval_rid_glob)[0]
     scores = [self.data_store.read(rid).score for rid in rids]
     self.assertEqual(
         scores,

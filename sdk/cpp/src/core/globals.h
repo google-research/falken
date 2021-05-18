@@ -16,10 +16,10 @@
 #define FALKEN_SDK_CORE_GLOBALS_H_
 
 #ifdef FALKEN_SYNC_DESTRUCTION
-#include "absl/synchronization/mutex.h"
+#include <mutex>  // NOLINT
 
 #define FALKEN_LOCK_GLOBAL_MUTEX() \
-  absl::MutexLock _lock(&falken::kDestructionLock);
+  std::lock_guard<std::recursive_mutex> _lock(falken::kDestructionLock);
 #else  // FALKEN_SYNC_DESTRUCTION
 #define FALKEN_LOCK_GLOBAL_MUTEX()
 #endif  // FALKEN_SYNC_DESTRUCTION
@@ -28,7 +28,7 @@ namespace falken {
 
 #ifdef FALKEN_SYNC_DESTRUCTION
 // Lock used to synchronize destruction in GC languages like C#.
-extern absl::Mutex kDestructionLock;
+extern std::recursive_mutex kDestructionLock;
 #endif  // FALKEN_SYNC_DESTRUCTION
 
 }  // namespace falken

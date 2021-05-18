@@ -20,7 +20,7 @@
 
 namespace falken {
 #ifdef FALKEN_SYNC_DESTRUCTION
-absl::Mutex kDestructionLock(absl::kConstInit);
+std::recursive_mutex kDestructionLock;
 #endif  // FALKEN_SYNC_DESTRUCTION
 
 }  // namespace falken

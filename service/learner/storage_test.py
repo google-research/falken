@@ -359,6 +359,18 @@ class StorageTest(parameterized.TestCase):
     self.storage.record_assignment_done()
     mock_monitor.release_assignment.assert_called_once()
 
+  def test_create_session_and_assignment(self):
+    """Ensure a session and assignment proto are stored in the datastore."""
+    assignment = self.storage.create_session_and_assignment(
+        test_data.PROJECT_ID, test_data.BRAIN_ID, test_data.SESSION_ID,
+        test_data.ASSIGNMENT_ID)
+    self.assertIsNotNone(self.data_store.read_by_proto_ids(
+        project_id=test_data.PROJECT_ID, brain_id=test_data.BRAIN_ID,
+        session_id=test_data.SESSION_ID))
+    self.assertEqual(assignment, self.data_store.read_by_proto_ids(
+        project_id=test_data.PROJECT_ID, brain_id=test_data.BRAIN_ID,
+        session_id=test_data.SESSION_ID, assignment_id=test_data.ASSIGNMENT_ID))
+
 
 if __name__ == '__main__':
   absltest.main()

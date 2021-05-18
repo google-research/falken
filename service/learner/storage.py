@@ -432,3 +432,32 @@ class Storage:
     falken_logging.info('Recording assignment done.')
     self._assignment_monitor.release_assignment()
     falken_logging.info('Recorded assignment done.')
+
+  def create_session_and_assignment(self, project_id: str, brain_id: str,
+                                    session_id: str, assignment_id: str) -> (
+                                        data_store_pb2.Assignment):
+    """Create a new session and assignment.
+
+    Args:
+      project_id: Project to create the new session and assignment in.
+      brain_id: Brain to create a new session and assignment in.
+      session_id: New Session ID to create.
+      assignment_id: Assignment to create.
+
+    Returns:
+      New assignment proto.
+    """
+    assignment = data_store_pb2.Assignment(project_id=project_id,
+                                           brain_id=brain_id,
+                                           session_id=session_id,
+                                           assignment_id=assignment_id)
+    session = data_store_pb2.Session(project_id=project_id, brain_id=brain_id,
+                                     session_id=session_id)
+    falken_logging.info('Recording new session and assignment',
+                        project_id=assignment.project_id,
+                        brain_id=assignment.brain_id,
+                        session_id=assignment.session_id,
+                        assignment_id=assignment.assignment_id)
+    self._data_store.write(session)
+    self._data_store.write(assignment)
+    return assignment

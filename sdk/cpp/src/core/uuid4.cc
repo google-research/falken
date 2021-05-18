@@ -14,6 +14,7 @@
 
 #include "src/core/uuid4.h"
 
+#include <array>
 #include <ctime>
 #include <random>
 #include <sstream>
@@ -67,9 +68,10 @@ uint64_t UUIDGen::GetFreshSeed(const std::string& seed_str, uint64_t time) {
   std::string full_seed_str = (
       seed_str + std::to_string(time) + std::to_string(rng_counter++));
   std::seed_seq seed_seq(full_seed_str.begin(), full_seed_str.end());
-  uint64_t seed;
-  seed_seq.generate(&seed, &seed+ 1);
-  return seed;
+  std::array<uint32_t, 2> seed;
+  seed_seq.generate(seed.begin(), seed.end());
+  return static_cast<uint64_t>(seed[0]) |
+         (static_cast<uint64_t>(seed[1]) << 32);
 }
 
 UUIDGen::UUIDGen(const std::string& seed_helper) :

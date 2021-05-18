@@ -17,7 +17,6 @@
 # pylint: disable=g-bad-import-order
 import json
 import os
-import time
 import numpy as np
 import tensorflow as tf
 
@@ -50,14 +49,32 @@ ASSIGNMENT_ID = (
 SUBTASK_ID = 'subtask_1'
 
 
-def populate_data_store(data_store):
-  """Populate a datastore with a number of default protos."""
+def populate_data_store(data_store, assignment_id=None, episode_ids=None,
+                        steps_per_episode_chunk=None):
+  """Populate a datastore with an assignment.
+
+  Args:
+    data_store: DataStore instance to populate.
+    assignment_id: Assignment ID to create or ASSIGNMENT_ID if this is None.
+    episode_ids: IDs of episodes to create or a single episode with
+      EPISODE_ID if this is None.
+    steps_per_episode_chunk: List of number of steps for each episode chunk.
+      For example, [2, 4] would create two chunks with 2 and 4 steps
+      respectively. If this is None, this argument defaults to [2, 2].
+  """
   protos = [
       project(),
       data_store_brain(),
       session(),
-      assignment()]
-  protos += episode_chunks([2, 2], EPISODE_ID)
+      assignment(assignment_id=assignment_id)
+  ]
+  if not steps_per_episode_chunk:
+    steps_per_episode_chunk = [2, 2]
+  if episode_ids is None:
+    episode_ids = [EPISODE_ID]
+  if episode_ids:
+    for episode_id in episode_ids:
+      protos += episode_chunks(steps_per_episode_chunk, episode_id)
   for proto in protos:
     data_store.write(proto)
 
@@ -83,42 +100,64 @@ def session():
       session_id=SESSION_ID)
 
 
-def assignment_id(override_dict):
+def create_assignment_id(override_dict):
   """Return the default test assignment id with hparam overrides."""
   assignment_dict = json.loads(ASSIGNMENT_ID)
   assignment_dict.update(override_dict)
   return json.dumps(assignment_dict)
 
 
-def assignment():
+def assignment(assignment_id=None):
+  """Returns a test data_store_pb2.Assignment.
+
+  Args:
+    assignment_id: Assignment ID string to use or None to use
+      ASSIGNMENT_ID.
+
+  Returns:
+    data_store_pb2.Assignment instance.
+  """
   return data_store_pb2.Assignment(
             project_id=PROJECT_ID,
             brain_id=BRAIN_ID,
             session_id=SESSION_ID,
-            assignment_id=ASSIGNMENT_ID)
+            assignment_id=(assignment_id if assignment_id else ASSIGNMENT_ID))
 
 
-def episode_chunks(chunk_sizes, episode_id):
-  """Get example episode chunks."""
+def episode_chunks(steps_per_episode_chunk, episode_id):
+  """Get example episode chunks.
+
+  Args:
+    steps_per_episode_chunk: List of number of steps for each episode chunk.
+      For example, [2, 4] would create two chunks with 2 and 4 steps
+      respectively.
+    episode_id: ID of the episode all chunks belong to.
+
+  Returns:
+    List of episode_pb2.EpisodeChunk protos.
+  """
   chunk = episode_pb2.EpisodeChunk()
   chunks = []
-  for chunk_nr, chunk_size in enumerate(chunk_sizes):
+  step_timestamp = 0
+  number_of_chunks = len(steps_per_episode_chunk)
+  for chunk_index, chunk_size in enumerate(steps_per_episode_chunk):
     chunk = data_store_pb2.EpisodeChunk(
         project_id=PROJECT_ID,
         brain_id=BRAIN_ID,
         session_id=SESSION_ID,
         episode_id=episode_id,
-        chunk_id=chunk_nr)
+        chunk_id=chunk_index)
     for _ in range(chunk_size):
       step = episode_pb2.Step()
-      step.timestamp_millis = int(time.time() * 1000)
+      step.timestamp_millis = step_timestamp
+      step_timestamp += 1000
       step.observation.CopyFrom(observation_data(50, [1, 2, 3]))
       step.action.CopyFrom(action_data(1, 0.3))
 
       chunk.data.episode_id = episode_id
-      chunk.data.chunk_id = chunk_nr
+      chunk.data.chunk_id = chunk_index
       chunk.data.steps.append(step)
-      if chunk_nr < len(chunk_sizes) - 1:
+      if chunk_index < number_of_chunks - 1:
         chunk.data.episode_state = episode_pb2.IN_PROGRESS
       else:
         chunk.data.episode_state = episode_pb2.SUCCESS
@@ -196,7 +235,7 @@ def brain_spec():
 
 
 def brain():
-  return brain_pb2.Brain(
+  return data_store_pb2.Brain(
       project_id=PROJECT_ID,
       brain_id=BRAIN_ID,
       name='test_brain',

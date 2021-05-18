@@ -23,7 +23,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from data_store import data_store
-from data_store import file_system as ds_file_system
+from data_store import file_system as data_store_file_system
 from data_store import resource_id
 from learner import file_system
 from learner import model_exporter
@@ -45,13 +45,14 @@ class ModelExporterTest(parameterized.TestCase):
     super(ModelExporterTest, self).setUp()
 
     self._tmp_data_store_root = tempfile.TemporaryDirectory()
-    self._data_store = data_store.DataStore(
-        ds_file_system.FileSystem(self._tmp_data_store_root.name))
+    temp_file_system = data_store_file_system.FileSystem(
+        self._tmp_data_store_root.name)
+    self._data_store = data_store.DataStore(temp_file_system)
 
     test_data.populate_data_store(self._data_store)
 
     self._assignment = test_data.assignment()
-    self._storage = storage.Storage(self._data_store)
+    self._storage = storage.Storage(self._data_store, temp_file_system)
 
     self._tmp_export_path = tempfile.TemporaryDirectory()
 

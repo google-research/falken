@@ -16,16 +16,20 @@
 """Handles interactions with the storage layer."""
 
 import datetime
+import queue
 import time
+from typing import List, Optional
 import uuid
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
+from data_store import assignment_monitor
 from data_store import data_store as data_store_module
+from data_store import file_system as data_store_file_system
 from data_store import resource_id
 import data_store_pb2
-from log import falken_logging
 from google.rpc import code_pb2
+from log import falken_logging
 
 
 _DEFAULT_STALE_SECONDS = 600
@@ -68,15 +72,21 @@ class Storage:
 
   def __init__(self,
                data_store: data_store_module.DataStore,
+               file_system: data_store_file_system.FileSystem,
                stale_seconds=_DEFAULT_STALE_SECONDS):
     """Create a new Storage instance.
 
     Args:
       data_store: A DataStore object to access the storage layer.
+      file_system: FileSystem instance to use to monitor assignments.
       stale_seconds: How many seconds need to elapse for an event on a session
         before it is considered stale.
     """
     self._data_store = data_store
+    self._assignment_monitor = assignment_monitor.AssignmentMonitor(
+        file_system, self._enqueue_pending_assignment,
+        self._episode_chunk_notification)
+    self._pending_assignments = queue.Queue()
     self._stale_seconds = stale_seconds
 
   @wrap_data_store_exception
@@ -342,3 +352,84 @@ class Storage:
 
     return [self._data_store.read(resource_id.FalkenResourceId(res_id))
             for res_id in res_ids]
+
+  def _enqueue_pending_assignment(
+      self, assignment: resource_id.ResourceId):
+    """Called when a new assignment is available.
+
+    Args:
+      assignment: ResourceId instance that references an assignment.
+    """
+    self._pending_assignments.put(assignment)
+
+  def _episode_chunk_notification(
+      self, assignment: resource_id.ResourceId,
+      episode_chunks: List[resource_id.ResourceId]):
+    """Called when a new episode chunk is available for an assignment.
+
+    Args:
+      assignment: ResourceId instance that references an assignment.
+      episode_chunks: ResourceId instances that reference the new chunks in the
+        assignment.
+    """
+    pass  # TODO(lph): Integrate with get_episode_chunks().
+
+  @wrap_data_store_exception
+  def receive_assignment(self, timeout: float = None) -> (
+      Optional[data_store_pb2.Assignment]):
+    """Retrieves the last unprocessed Assignment from the Assignments queue.
+
+    Args:
+      timeout: If a positive number, max amount of seconds to wait for an
+        Assignment. If <=0, return immediately. If None, allow for infinite
+        waiting time.
+
+    Returns:
+      Assignment proto, or None if there are no unprocessed assignments.
+      The returned assignment is locked by this process and should be released
+      when complete using record_assignment_done().
+    """
+    assignment = None
+    deadline = time.time()
+    if timeout is None:
+      remaining = None
+    elif timeout <= 0:
+      remaining = 0
+    else:
+      deadline += timeout
+      remaining = timeout
+
+    while remaining is None or remaining >= 0:
+      assignment_resource_id = self._pending_assignments.get(timeout=remaining)
+      if (assignment_resource_id and
+          self._assignment_monitor.acquire_assignment(assignment_resource_id)):
+        assignment = self._data_store.read(assignment_resource_id)
+        break
+      elif remaining is None:
+        break
+      remaining = deadline - time.time()
+    return assignment
+
+  def handle_assignment_error(self, assignment: data_store_pb2.Assignment,
+                              error: Exception):
+    """Handle assignment that has errored.
+
+    Args:
+      assignment: Assignment proto instance for the assignment that experienced
+        the error.
+      error: Exception that occurred while processing the assignment.
+    """
+    # If we wanted to support retries we could retry training the assignment
+    # and only abort the session after a number of retries. For the moment,
+    # if an error occurs abort the session.
+    # Log the source assignment.
+    self.record_assignment_error(assignment, error)
+    # Abort the session.
+    self.record_session_error(assignment, error)
+
+  @wrap_data_store_exception
+  def record_assignment_done(self):
+    """Mark the currently acquired assignment as done / complete."""
+    falken_logging.info('Recording assignment done.')
+    self._assignment_monitor.release_assignment()
+    falken_logging.info('Recorded assignment done.')

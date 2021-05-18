@@ -18,11 +18,13 @@
 import datetime
 import tempfile
 import time
+from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+from data_store import assignment_monitor
 from data_store import data_store as data_store_module
-from data_store import file_system
+from data_store import file_system as data_store_file_system
 from data_store import resource_id
 import data_store_pb2
 from learner import storage as storage_module
@@ -34,24 +36,22 @@ class StorageTest(parameterized.TestCase):
   def setUp(self):
     super().setUp()
     self.tmp_dir = tempfile.TemporaryDirectory()
-    self.data_store = data_store_module.DataStore(
-        file_system.FileSystem(self.tmp_dir.name))
-    self.storage = storage_module.Storage(self.data_store)
-    self.project = data_store_pb2.Project(
-        project_id=test_data.PROJECT_ID)
-    self.brain = data_store_pb2.Brain(
-        project_id=test_data.PROJECT_ID,
-        brain_id=test_data.BRAIN_ID,
-        brain_spec=test_data.brain_spec())
-    self.session = data_store_pb2.Session(
-        project_id=test_data.PROJECT_ID,
-        brain_id=test_data.BRAIN_ID,
-        session_id=test_data.SESSION_ID)
-    self.assignment = data_store_pb2.Assignment(
-        project_id=test_data.PROJECT_ID,
-        brain_id=test_data.BRAIN_ID,
-        session_id=test_data.SESSION_ID,
-        assignment_id=test_data.ASSIGNMENT_ID)
+    self.data_store_file_system = data_store_file_system.FileSystem(
+        self.tmp_dir.name)
+    self.data_store = data_store_module.DataStore(self.data_store_file_system)
+    with mock.patch.object(assignment_monitor, 'AssignmentMonitor') as (
+        mock_assignment_monitor):
+      self.storage = storage_module.Storage(self.data_store,
+                                            self.data_store_file_system)
+      # Verify assignment monitor is constructed with the correct arguments.
+      mock_assignment_monitor.assert_called_with(
+          self.data_store_file_system, self.storage._enqueue_pending_assignment,
+          self.storage._episode_chunk_notification)
+
+    self.project = test_data.project()
+    self.brain = test_data.brain()
+    self.session = test_data.session()
+    self.assignment = test_data.assignment()
 
   def tearDown(self):
     self.tmp_dir.cleanup()
@@ -123,6 +123,25 @@ class StorageTest(parameterized.TestCase):
         session_id=self.session.session_id)
 
     self.assertEqual('Test exception', got_session.status.message)
+
+  def test_handle_assignment_error(self):
+    """Test handling an assignment error."""
+    self.populate_datastore()
+    self.storage.handle_assignment_error(
+        self.assignment, Exception('Test exception'))
+
+    got_assignment = self.storage.get_assignment(
+        self.assignment.project_id,
+        self.assignment.brain_id,
+        self.assignment.session_id,
+        self.assignment.assignment_id)
+    self.assertEqual(got_assignment.status.message, 'Test exception')
+
+    got_session = self.data_store.read_by_proto_ids(
+        project_id=self.assignment.project_id,
+        brain_id=self.assignment.brain_id,
+        session_id=self.assignment.session_id)
+    self.assertEqual(got_session.status.message, 'Test exception')
 
   def test_get_session_state(self):
     """Tests querying SessionState."""
@@ -280,6 +299,68 @@ class StorageTest(parameterized.TestCase):
     self.assertCountEqual(
         [('s2', 'e0', 2), ('s4', 'e1', 1), ('s4', 'e1', 2)],
         chunk_keys)
+
+  @staticmethod
+  def _fake_time_callable(increment):
+    """Generate a time.time() callable that generates incremental timestamps.
+
+    Args:
+      increment: Increment between each timestamp starting at 0.
+
+    Returns:
+      Callable that generates timestamps from 0 at each specified increment.
+    """
+    timestamp = 0
+    def get_next_timestamp():
+      """Returns a timestamp in one second increments."""
+      nonlocal timestamp
+      timestamp += increment
+      return timestamp
+    return get_next_timestamp
+
+  @parameterized.named_parameters(
+      ('No Timeout', None, [mock.call(timeout=None)]),
+      ('Poll', 0, [mock.call(timeout=0)]),
+      # We're emulating 1 second per queue query so receive_assignment() should
+      # try to pull three items from the queue.
+      ('Timeout', 2, [mock.call(timeout=2),
+                      mock.call(timeout=1),
+                      mock.call(timeout=0)]))
+  def test_receive_assignment_with_timeout(self, timeout, expected_calls):
+    """Test receiving an enqueued assignment with no timeout."""
+    with mock.patch.object(time, 'time') as mock_time:
+      mock_time.side_effect = self._fake_time_callable(1)
+      mock_pending_assignments = mock.Mock()
+      mock_pending_assignments.get.return_value = None
+      self.storage._pending_assignments = mock_pending_assignments
+
+      self.assertIsNone(self.storage.receive_assignment(timeout=timeout))
+      mock_pending_assignments.get.assert_has_calls(expected_calls)
+
+  @parameterized.named_parameters(
+      ('Already Acquired', False),
+      ('Acquired', True))
+  def test_receive_assignment_acquire_and_read(self, can_acquire_assignment):
+    """Receive an enqueue assignment that can't be acquired."""
+    self.populate_datastore()
+    with mock.patch.object(time, 'time') as mock_time:
+      mock_time.side_effect = self._fake_time_callable(1)
+      test_assignment_id = self.data_store.to_resource_id(self.assignment)
+      self.storage._enqueue_pending_assignment(test_assignment_id)
+      mock_monitor = self.storage._assignment_monitor
+      mock_monitor.acquire_assignment.return_value = can_acquire_assignment
+      expected_assignment = self.assignment if can_acquire_assignment else None
+
+      self.assertEqual(self.storage.receive_assignment(timeout=0.5),
+                       expected_assignment)
+      mock_monitor.acquire_assignment.assert_called_once_with(
+          test_assignment_id)
+
+  def test_record_assignment_done(self):
+    """Mark the currently acquired assignment as complete."""
+    mock_monitor = self.storage._assignment_monitor
+    self.storage.record_assignment_done()
+    mock_monitor.release_assignment.assert_called_once()
 
 
 if __name__ == '__main__':

@@ -315,6 +315,10 @@ class StorageTest(parameterized.TestCase):
       return timestamp
     return get_next_timestamp
 
+  def test_receive_assignment_from_empty_queue(self):
+    """Try pulling an assignment from an empty queue."""
+    self.assertIsNone(self.storage.receive_assignment(timeout=0))
+
   @parameterized.named_parameters(
       ('No Timeout', None, [mock.call(timeout=None)]),
       ('Poll', 0, [mock.call(timeout=0)]),

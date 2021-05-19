@@ -399,7 +399,12 @@ class Storage:
       remaining = timeout
 
     while remaining is None or remaining >= 0:
-      assignment_resource_id = self._pending_assignments.get(timeout=remaining)
+      try:
+        assignment_resource_id = self._pending_assignments.get(
+            timeout=remaining)
+      except queue.Empty:
+        assignment_resource_id = None
+
       if (assignment_resource_id and
           self._assignment_monitor.acquire_assignment(assignment_resource_id)):
         assignment = self._data_store.read(assignment_resource_id)

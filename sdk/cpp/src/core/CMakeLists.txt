@@ -488,10 +488,7 @@ macro(falken_cpp_sdk_library TARGET_NAME LIBRARY_TYPE)
   )
   set(FALKEN_SHARED_LIBRARY_DEPENDENCIES "")
 
-  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    # TensorFlow Lite depends upon libdl so export the dependency here.
-    list(APPEND FALKEN_SHARED_LIBRARY_DEPENDENCIES ${CMAKE_DL_LIBS})
-  elseif(CMAKE_SYSTEM_NAME MATCHES "Android")
+  if(CMAKE_SYSTEM_NAME MATCHES "Android")
     list(APPEND FALKEN_STATIC_LIBRARY_DEPENDENCIES ${ANDROID_LOG})
   endif()
 

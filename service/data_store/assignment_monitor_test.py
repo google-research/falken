@@ -87,6 +87,18 @@ class AssignmentMonitorTest(parameterized.TestCase):
     self._monitor._metronome.stop()
     self._second_monitor._metronome.stop()
 
+  def test_trigger_assignment_notification_bad_resource_id(self):
+    """Test triggering assignment notification with a bad resource ID."""
+    with self.assertRaises(AssertionError):
+      self._notifier.trigger_assignment_notification(
+          resource_id.FalkenResourceId(
+              project='project_0', brain='brain_0', session='session_0',
+              assignment='assignment_0'),
+          resource_id.FalkenResourceId(
+              project='project_0', brain='brain_0', session='session_0',
+              episode='episode_0',
+              chunk=0))
+
   @parameterized.named_parameters([
       ('Files written at the same time', 0),
       ('Files written at different times', 10_000)])

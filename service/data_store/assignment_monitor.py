@@ -159,10 +159,14 @@ class AssignmentNotifier(_AssignmentMonitorBase):
     method of another process run the callbacks.
 
     Args:
-      assignment_id: Resource id of the assignment to trigger notifications for.
-      episode_chunk_id: Resource id of a newly created chunk that's the reason
-        why the assignment should be triggered.
+      assignment_id: Resource ID of the assignment to trigger notifications for.
+      episode_chunk_id: Resource ID of a newly created chunk that's the reason
+        why the assignment should be triggered. The episode component of
+        the resource ID must not contain underscores.
     """
+    # Underscores are used to separate metadata components in the chunk
+    # filename so make sure encoded fields do not contain underscores.
+    assert '_' not in episode_chunk_id.episode
     # There's no need to lock for this.
     path = os.path.join(
         self._get_assignment_directory(assignment_id),

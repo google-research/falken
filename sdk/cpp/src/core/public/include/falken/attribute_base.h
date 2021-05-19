@@ -473,10 +473,11 @@ class FALKEN_EXPORT AttributeBase {
   static void SetNotifyContainerOfAttributes(
       AttributeContainer& container, AttributeContainer* notify_container);
 
-  // Pimpl data struct.
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START
+  // Private data.
   struct AttributeBaseData;
-
   std::unique_ptr<AttributeBaseData> attribute_data_;
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END
 
   template <typename T>
   struct NumberValueAndRange {

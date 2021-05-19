@@ -117,9 +117,11 @@ class FALKEN_EXPORT BrainSpecBase {
   // Allocate memory for observations and actions.
   BrainSpecBase();
 
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START
+  // Private data.
   struct BrainSpecData;
-
   std::unique_ptr<BrainSpecData> brain_spec_data_;
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END
 };
 
 /// Templated brain specification. Usage example:

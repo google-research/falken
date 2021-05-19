@@ -159,9 +159,11 @@ class FALKEN_EXPORT BrainBase {
   static bool MatchesBrainSpec(const BrainSpecBase& brain_spec,
                                const BrainSpecBase& other_brain_spec);
 
-  // Forward declaration and implementation of the brain data class.
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START
+  // Private data.
   struct BrainData;
   std::unique_ptr<BrainData> brain_data_;
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END
 };
 
 /// Brain with templatized specifications.

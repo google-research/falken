@@ -122,10 +122,11 @@ class FALKEN_EXPORT AttributeContainer {
 
   std::string GetAttributeNamesString() const;
 
-  // Pimpl data struct.
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START
+  // Private data.
   struct AttributeContainerData;
-
   std::unique_ptr<AttributeContainerData> attribute_container_data_;
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END
 };
 
 }  // namespace falken

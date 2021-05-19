@@ -25,13 +25,29 @@
 #define FALKEN_EXPORT __declspec(dllimport)
 #endif  // defined(FALKEN_BUILD_DLL)
 
+#define FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START \
+  __pragma(warning(push)) \
+  __pragma(warning(disable : 4251))
+
+#define FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END \
+  __pragma(warning(pop))
+
 #elif defined(__GNUC__) || defined(__clang__)  // gcc or clang.
+
 #define FALKEN_EXPORT __attribute__((visibility("default")))
 
+#define FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START
+#define FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END
+
 #else  // Untested compiler.
+
 #define FALKEN_EXPORT
 #pragma warning Unknown dynamic link export semantics.
-#endif
+
+#define FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START
+#define FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END
+
+#endif  // defined(_MSC_VER)
 
 #if defined(SWIG) || defined(DOXYGEN)
 // SWIG needs to ignore the FALKEN_DEPRECATED tag.

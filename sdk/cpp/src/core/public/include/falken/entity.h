@@ -75,9 +75,11 @@ class FALKEN_EXPORT EntityContainer {
   void AddEntity(EntityBase* entity);
 
  private:
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START
   // Private data.
   struct EntityContainerData;
   std::unique_ptr<EntityContainerData> data_;
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END
 };
 
 /// Observations of an in-game entity.
@@ -122,9 +124,11 @@ class FALKEN_EXPORT EntityBase : public AttributeContainer {
   // Clear container.
   void ClearContainer();
 
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START
   // Private data.
   struct EntityBaseData;
   std::unique_ptr<EntityBaseData> data_;
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END
 };
 }  // namespace falken
 

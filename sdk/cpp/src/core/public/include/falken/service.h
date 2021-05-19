@@ -153,9 +153,11 @@ class FALKEN_EXPORT Service {
 
   Service();
 
-  // Forward declaration and implementation of the service data class.
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START
+  // Private data.
   struct ServiceData;
   std::unique_ptr<ServiceData> service_data_;
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END
 };
 
 template <typename T>

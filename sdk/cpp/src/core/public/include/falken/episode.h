@@ -157,9 +157,11 @@ class FALKEN_EXPORT Episode {
   // Get the model id used by the episode
   std::string model_id() const;
 
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START
   // Private data.
   struct EpisodeData;
   std::unique_ptr<EpisodeData> data_;
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END
 };
 
 }  // namespace falken

@@ -162,9 +162,11 @@ class FALKEN_EXPORT Session {
   /// Set the fraction of training time completed for the current session.
   void set_training_progress(float training_progress);
 
-  // Forward declaration and implementation of the service data class.
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_START
+  // Private data.
   struct SessionData;
   std::unique_ptr<SessionData> data_;
+  FALKEN_ALLOW_DATA_IN_EXPORTED_CLASS_END
 
   // Fetch and save session data.
   bool LoadSessionData() const;

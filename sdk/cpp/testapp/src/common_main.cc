@@ -93,7 +93,7 @@ constexpr const char* kJsonConfigSchema =
     })";
 
 // Acceptable average error.
-const float kAverageErrorLimit = 0.05;
+const float kAverageErrorLimit = 0.05f;
 
 // Time to wait between polling the service to determine whether training is
 // complete.
@@ -169,9 +169,9 @@ void GetObservation(TestTemplateBrainSpec& brain_spec, int step_count,
   feelers_distances[0] = feelers_maximum_length * observation_value;
   feelers_distances[1] = feelers_maximum_length * (1 - observation_value);
   feelers_distances[2] = feelers_maximum_length * observation_value / 2.0f;
-  feelers_ids[0] = first_half ? 2.0f : 1.0f;
-  feelers_ids[1] = first_half ? 1.0f : 0.0f;
-  feelers_ids[2] = first_half ? 0.0f : 2.0f;
+  feelers_ids[0] = first_half ? 2 : 1;
+  feelers_ids[1] = first_half ? 1 : 0;
+  feelers_ids[2] = first_half ? 0 : 2;
   float health_range = (observations.evil_guy.health.number_maximum() -
                         observations.evil_guy.health.number_minimum());
   observations.evil_guy.health = health_range * observation_value +
@@ -213,7 +213,7 @@ struct TestEpisodeData {
 };
 
 bool AreEqualFloat(float a, float b) {
-  const float kFloatErrorLimit = 0.1;
+  const float kFloatErrorLimit = 0.1f;
   if (std::fabs(a - b) < kFloatErrorLimit) {
     return true;
   }
@@ -451,8 +451,9 @@ int TestInteractiveTraining(falken::Service& service) {
                 (output_actions.number.value_maximum() -
                  output_actions.number.value_minimum());
             float category_error =
-                (std::fabs(static_cast<int>(output_actions.category) -
-                           static_cast<int>(expert_policy_actions.category))) /
+                static_cast<float>(std::fabs(
+                    static_cast<int>(output_actions.category) -
+                    static_cast<int>(expert_policy_actions.category))) /
                 static_cast<float>(output_actions.category.categories().size());
             float bool_error =
                 static_cast<bool>(output_actions.boolean) !=
@@ -550,7 +551,7 @@ int TestInteractiveTraining(falken::Service& service) {
   // Load episode count.
   auto& loaded_session = sessions[0];
   int loaded_episode_count = loaded_session->GetEpisodeCount();
-  int submitted_episode_count = submitted_episodes.size();
+  int submitted_episode_count = static_cast<int>(submitted_episodes.size());
   if (loaded_episode_count != submitted_episode_count) {
     LogError(
         "Loaded session %s of brain %s reports a different number of episodes "
@@ -572,7 +573,8 @@ int TestInteractiveTraining(falken::Service& service) {
 
     // Load step count.
     int loaded_step_count = loaded_episode->GetStepCount();
-    int submitted_step_count = submitted_episodes[ep].steps.size();
+    int submitted_step_count =
+        static_cast<int>(submitted_episodes[ep].steps.size());
     if (loaded_step_count != submitted_step_count) {
       LogError(
           "Loaded episode %d of session %s reports a different number of steps "
@@ -650,8 +652,14 @@ class ServiceTest {
 };
 }  // namespace falken
 
-static void* CustomAllocate(size_t size, void* context) { return malloc(size); }
-static void CustomFree(void* ptr, void* context) { free(ptr); }
+static void* CustomAllocate(size_t size, void* context) {
+  (void)context;
+  return malloc(size);
+}
+static void CustomFree(void* ptr, void* context) {
+  (void)context;
+  free(ptr);
+}
 
 // Test app entry point.
 extern "C" int common_main(int argc, const char* argv[]) {

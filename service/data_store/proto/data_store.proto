@@ -234,6 +234,7 @@ message OfflineEvaluation {
   string brain_id = 2;
   string session_id = 3;
   string model_id = 4;
+  string assignment = 10;
   // Version of the eval set. Increasing == newer. Only scores of versions with
   // the same evaluation_set_id should be compared against each other.
   uint64 offline_evaluation_id = 5;

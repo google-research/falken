@@ -122,7 +122,7 @@ class Storage:
     """Record evaluations of a given model in the database.
 
     Args:
-      assignment: The assignment that created the model.
+      assignment: The data_store_pb2.Assignment instance that created the model.
       model_id: The ID of the model.
       version_evals: An iterable of pairs (version, score) where version is a
         version_id string and score is a float.
@@ -132,7 +132,7 @@ class Storage:
         project_id=assignment.project_id,
         brain_id=assignment.brain_id,
         session_id=assignment.session_id,
-        model_id=model_id)
+        model_id=model_id, assignment=assignment.assignment_id)
     timestamp = int(time.time() * 1e6)
 
     for eval_set_version, eval_score in version_evals:

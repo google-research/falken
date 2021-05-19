@@ -53,7 +53,6 @@ class FalkenServiceTest(absltest.TestCase):
   def tearDown(self):
     """Tear down the testing environment."""
     super().tearDown()
-    common.generate_protos.clean_up()
     self._temp_dir.cleanup()
 
   def test_configure_server(self):

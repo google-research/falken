@@ -23,7 +23,7 @@ from unittest import mock
 
 from absl import flags
 from absl.testing import absltest
-import common.generate_protos
+import common.generate_protos  # pylint: disable=unused-import
 import launcher
 
 FLAGS = flags.FLAGS
@@ -40,7 +40,6 @@ class LauncherTest(absltest.TestCase):
   def tearDown(self):
     """Tear down the testing environment."""
     super(LauncherTest, self).tearDown()
-    common.generate_protos.clean_up()
     shutil.rmtree(FLAGS.ssl_dir)
 
   @mock.patch.object(subprocess, 'Popen', autospec=True)

@@ -34,9 +34,6 @@ class GenerateProtosTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
-    # Clean up any generated proto state that may have remained from other
-    # processes run before this test.
-    generate_protos.clean_up()
     os.environ['FALKEN_GENERATED_PROTOS_DIR'] = ''
     self._temp_dir = tempfile.TemporaryDirectory()
 
@@ -44,7 +41,6 @@ class GenerateProtosTest(absltest.TestCase):
     """Tear down the testing environment."""
     super().tearDown()
     self._temp_dir.cleanup()
-    generate_protos.clean_up()
 
   def test_get_generated_protos_dir(self):
     """Get the generated protos directory."""

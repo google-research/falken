@@ -113,7 +113,7 @@ const struct LogLevelNameToEnum {
 struct TestEntity : public falken::EntityBase {
   explicit TestEntity(falken::EntityContainer& entity_container,
                       const char* name)
-      : falken::EntityBase(entity_container, "Evil_guy"),
+      : falken::EntityBase(entity_container, name),
         FALKEN_NUMBER(health, 0.0f, 100.0f),
         FALKEN_NUMBER(evilness, 1.0f, 25.0f) {}
   falken::NumberAttribute<float> health;

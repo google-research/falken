@@ -356,10 +356,48 @@ class StorageTest(parameterized.TestCase):
                        expected_assignment)
       mock_monitor.acquire_assignment.assert_called_once_with(
           test_assignment_id)
+      # Requesting the assignment again should yield the same result.
+      self.assertEqual(self.storage.receive_assignment(timeout=0.5),
+                       expected_assignment)
+
+  def test_number_of_pending_assignments(self):
+    """Get the number of pending / enqueued assignments."""
+    self.assertEqual(self.storage._number_of_pending_assignments, 0)
+    self.populate_datastore()
+    another_assignment = test_data.assignment(
+        assignment_id=test_data.create_assignment_id(
+            {'another_param': True}))
+    self.data_store.write(another_assignment)
+
+    self.storage._enqueue_pending_assignment(
+        self.data_store.to_resource_id(self.assignment))
+    self.assertEqual(self.storage._number_of_pending_assignments, 1)
+
+    self.storage._enqueue_pending_assignment(self.data_store.to_resource_id(
+        another_assignment))
+    self.assertEqual(self.storage._number_of_pending_assignments, 2)
+
+    self.storage.receive_assignment()
+    self.assertEqual(self.storage._number_of_pending_assignments, 2)
+    self.storage.record_assignment_done()
+    self.assertEqual(self.storage._number_of_pending_assignments, 1)
+    self.storage.receive_assignment()
+    self.assertEqual(self.storage._number_of_pending_assignments, 1)
+    self.storage.record_assignment_done()
+    self.assertEqual(self.storage._number_of_pending_assignments, 0)
+
+  def test_record_assignment_done_no_received_assignment(self):
+    """Check for an when a non-pending assignment is marked complete."""
+    with self.assertRaises(AssertionError):
+      self.storage.record_assignment_done()
 
   def test_record_assignment_done(self):
     """Mark the currently acquired assignment as complete."""
     mock_monitor = self.storage._assignment_monitor
+    self.populate_datastore()
+    self.storage._enqueue_pending_assignment(
+        self.data_store.to_resource_id(self.assignment))
+    self.storage.receive_assignment()
     self.storage.record_assignment_done()
     mock_monitor.release_assignment.assert_called_once()
 

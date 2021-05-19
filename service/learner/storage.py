@@ -87,6 +87,7 @@ class Storage:
         file_system, self._enqueue_pending_assignment,
         self._episode_chunk_notification)
     self._pending_assignments = queue.Queue()
+    self._in_progress_assignment = None
     self._stale_seconds = stale_seconds
 
   @wrap_data_store_exception
@@ -361,6 +362,12 @@ class Storage:
     """
     self._pending_assignments.put(assignment)
 
+  @property
+  def _number_of_pending_assignments(self) -> int:
+    """Get the number of pending assignments."""
+    return self._pending_assignments.qsize() + (
+        1 if self._in_progress_assignment else 0)
+
   def _episode_chunk_notification(
       self, assignment: resource_id.ResourceId,
       episode_chunks: List[resource_id.ResourceId]):
@@ -388,7 +395,6 @@ class Storage:
       The returned assignment is locked by this process and should be released
       when complete using record_assignment_done().
     """
-    assignment = None
     deadline = time.time()
     if timeout is None:
       remaining = None
@@ -398,7 +404,8 @@ class Storage:
       deadline += timeout
       remaining = timeout
 
-    while remaining is None or remaining >= 0:
+    while (not self._in_progress_assignment and
+           remaining is None or remaining >= 0):
       try:
         assignment_resource_id = self._pending_assignments.get(
             timeout=remaining)
@@ -407,12 +414,13 @@ class Storage:
 
       if (assignment_resource_id and
           self._assignment_monitor.acquire_assignment(assignment_resource_id)):
-        assignment = self._data_store.read(assignment_resource_id)
+        self._in_progress_assignment = self._data_store.read(
+            assignment_resource_id)
         break
       elif remaining is None:
         break
       remaining = deadline - time.time()
-    return assignment
+    return self._in_progress_assignment
 
   def handle_assignment_error(self, assignment: data_store_pb2.Assignment,
                               error: Exception):
@@ -434,8 +442,10 @@ class Storage:
   @wrap_data_store_exception
   def record_assignment_done(self):
     """Mark the currently acquired assignment as done / complete."""
+    assert self._in_progress_assignment
     falken_logging.info('Recording assignment done.')
     self._assignment_monitor.release_assignment()
+    self._in_progress_assignment = None
     falken_logging.info('Recorded assignment done.')
 
   def create_session_and_assignment(self, project_id: str, brain_id: str,

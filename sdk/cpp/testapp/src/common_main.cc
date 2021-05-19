@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(_MSC_VER)  // MSVC.
+#define _CRT_SECURE_NO_WARNINGS
+#endif  // defined(_MSC_VER)
+
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>

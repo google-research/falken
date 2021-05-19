@@ -24,7 +24,7 @@ import sys
 _REQUIRED_PYTHON_MODULES = [
     ('absl-py', ''),
     ('braceexpand', ''),
-    ('tensorflow', ''),
+    ('tensorflow', '>=2.5.0'),
     ('tf-agents', '==0.8.0rc1'),
     ('grpcio-tools', ''),
     ('googleapis-common-protos', ''),

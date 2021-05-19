@@ -173,7 +173,10 @@ class DataStoreTest(parameterized.TestCase):
         self._data_store.read_by_proto_ids(**keys),
         assignment)
 
-  def test_list_by_proto_ids(self):
+  @parameterized.named_parameters(
+      ('descending', True),
+      ('ascending', False))
+  def test_list_by_proto_ids(self, descending):
     id_dict = dict(project_id='p1', brain_id='b1',
                    session_id='s1')
 
@@ -182,14 +185,19 @@ class DataStoreTest(parameterized.TestCase):
       id_dict['assignment_id'] = f'a{i}'
       proto = data_store_pb2.Assignment(**id_dict)
       res_id = self._data_store.write(proto)
-      list_result, _ = self._data_store.list_by_proto_ids(**id_dict)
+      list_result, _ = self._data_store.list_by_proto_ids(
+          **id_dict, time_descending=descending)
       self.assertEqual(list_result, [res_id])
       res_ids.append(res_id)
 
     id_dict['assignment_id'] = '*'
-    list_result, _ = self._data_store.list_by_proto_ids(**id_dict)
+    list_result, _ = self._data_store.list_by_proto_ids(
+        **id_dict, time_descending=descending)
 
-    self.assertCountEqual(list_result, res_ids)
+    if descending:
+      self.assertEqual(list_result, list(reversed(res_ids)))
+    else:
+      self.assertEqual(list_result, res_ids)
 
   def test_get_attribute_by_resource_id(self):
     id_dict = dict(project_id='p1', brain_id='b1',
@@ -335,6 +343,26 @@ class DataStoreTest(parameterized.TestCase):
       self.assertEqual(page_token, want_token)
     self.assertEqual(result, rid_strings[5:])
 
+  @parameterized.named_parameters(
+      ('descending', True),
+      ('ascending', False))
+  @mock.patch.object(time, 'time', autospec=True)
+  def test_list_order_time(self, descending, mock_time):
+    rids = []
+
+    for i in range(100):
+      mock_time.return_value = i / 1e6
+      rids.append(self._data_store.write(
+          data_store_pb2.Project(project_id=f'{i:04}')))
+    rid_glob = resource_id.FalkenResourceId(rids[0].parts[:-1] + ['*'])
+
+    # Test time_descending
+    result, _ = self._data_store.list(rid_glob, time_descending=descending)
+    if descending:
+      self.assertCountEqual(result, list(reversed(rids)))
+    else:
+      self.assertCountEqual(result, rids)
+
   @parameterized.parameters(range(1, 10))
   @mock.patch.object(time, 'time', autospec=True)
   def test_pagination_overlapping_timestamps(
@@ -411,10 +439,14 @@ class DataStoreTest(parameterized.TestCase):
     res_id = self._data_store.resource_id_from_proto_ids(**key_dict)
     self.assertRegex(str(res_id), want_regex)
 
-  def test_list_resource_with_subdirs(self):
+  @parameterized.named_parameters(
+      ('descending', True),
+      ('ascending', False))
+  def test_list_resource_with_subdirs(self, descending):
     self._data_store.write(data_store_pb2.Project(project_id='p0'))
     self._data_store.write(data_store_pb2.Brain(project_id='p0', brain_id='b0'))
-    result, _ = self._data_store.list_by_proto_ids(project_id='*')
+    result, _ = self._data_store.list_by_proto_ids(
+        project_id='*', time_descending=descending)
     self.assertEqual(['projects/p0'], result)
 
 

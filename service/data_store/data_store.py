@@ -343,7 +343,8 @@ class ResourceStore:
            res_id_glob: resource_id.ResourceId,
            min_timestamp_micros: int = 0,
            page_token: Optional[str] = None,
-           page_size: Optional[int] = None) -> (
+           page_size: Optional[int] = None,
+           time_descending: Optional[bool] = False) -> (
                Tuple[List[resource_id.ResourceId], str]):
     """Lists all resource_ids that match the provided pattern.
 
@@ -354,6 +355,7 @@ class ResourceStore:
         timestamp.
       page_token: The token for the previous page if any.
       page_size: The size of the page or None to return all IDs.
+      time_descending: If True, list items in descending create time.
 
     Returns:
       A tuple of a list of resource IDs and pagination token.
@@ -363,7 +365,7 @@ class ResourceStore:
     paths = [os.path.dirname(f) for f in files]
     timestamps = [
         int(os.path.basename(f)[len(self._RESOURCE_PREFIX):]) for f in files]
-    by_timestamp = sorted(zip(timestamps, paths))
+    by_timestamp = sorted(zip(timestamps, paths), reverse=time_descending)
 
     combined_min_timestamp = min_timestamp_micros
     if page_token:
@@ -439,6 +441,7 @@ class DataStore(ResourceStore):
       min_timestamp_micros: int = 0,
       page_token: Optional[str] = None,
       page_size: Optional[int] = None,
+      time_descending: Optional[bool] = False,
       **kwargs) -> Tuple[List[resource_id.FalkenResourceId], str]:
     """List resource ids their ID fields.
 
@@ -451,6 +454,7 @@ class DataStore(ResourceStore):
         timestamp.
       page_token: The token for the previous page if any.
       page_size: The size of the page or None to return all IDs.
+      time_descending: If True, list items in descending create time.
       **kwargs: A string-valued dictionary that maps proto ID fields to
           proto field values, e.g.:
               ds.read_by_proto_ids(project_id='p0', brain_id='b0')
@@ -466,7 +470,8 @@ class DataStore(ResourceStore):
         res_id,
         min_timestamp_micros=min_timestamp_micros,
         page_token=page_token,
-        page_size=page_size)
+        page_size=page_size,
+        time_descending=time_descending)
 
   def resource_id_from_proto_ids(
       self,

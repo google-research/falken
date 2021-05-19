@@ -116,13 +116,13 @@ inline float UnconstrainedAttribute<float, AttributeBase::kTypeFloat>::value()
 template <>
 inline void UnconstrainedAttribute<int, AttributeBase::kTypeFloat>::set_value(
     const int& value) {
-  set_number(value);
+  set_number(static_cast<float>(value));
 }
 
 template <>
 inline int UnconstrainedAttribute<int, AttributeBase::kTypeFloat>::value()
     const {
-  return number();
+  return static_cast<int>(number());
 }
 
 template <>

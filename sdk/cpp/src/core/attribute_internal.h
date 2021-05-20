@@ -85,7 +85,8 @@ struct AttributeBase::AttributeBaseData {
         name(other.name),
         type(other.type),
         category_values(other.category_values),
-        dirty(false) {}
+        dirty(false),
+        clamp_values(other.clamp_values) {}
 
   // Copy constructor.
   AttributeBaseData(const AttributeBaseData& other)
@@ -94,7 +95,8 @@ struct AttributeBase::AttributeBaseData {
         name(other.name),
         type(other.type),
         category_values(other.category_values),
-        dirty(false) {}
+        dirty(false),
+        clamp_values(other.clamp_values) {}
 
   // Move constructor.
   AttributeBaseData(AttributeBaseData&& other)
@@ -102,7 +104,8 @@ struct AttributeBase::AttributeBaseData {
         notify_container(this->container),
         type(other.type),
         category_values(std::move(other.category_values)),
-        dirty(false) {}
+        dirty(false),
+        clamp_values(other.clamp_values) {}
 
   // Keep reference to the container. If deletion of container happens
   // before this attribute is destroyed, this pointer will be set to null.
@@ -124,6 +127,8 @@ struct AttributeBase::AttributeBaseData {
   /// implemented as containers of other attributes, such as feelers and
   /// joystick, don't use this variable at all.
   bool dirty;
+
+  bool clamp_values = false;
 };
 
 // Pimpl struct to hold all the Attribute Container private fields.

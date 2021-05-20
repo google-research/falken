@@ -449,6 +449,12 @@ class FALKEN_EXPORT AttributeBase {
   /// @return Joystick attribute cast from attribute base.
   const JoystickAttribute& AsJoystick() const;
 
+  // Clamp a set value if it's out of range.
+  void set_enable_clamping(bool enable);
+
+  // Determine whether value should be clamped if out of range.
+  bool enable_clamping() const;
+
   FALKEN_DEFINE_NEW_DELETE
 
  private:
@@ -485,17 +491,24 @@ class FALKEN_EXPORT AttributeBase {
     T min_value;
     T max_value;
 
-    bool set_value(const char* attribute_name, T value_to_set) {
+    bool set_value(const char* attribute_name, T value_to_set, bool clamp) {
       if (!IsInRange(value_to_set)) {
-        std::stringstream ss;
-        ss << "Unable to set value of attribute '" << attribute_name << "' to "
-           << value_to_set
-           << " as it is out of the specified "
-              "range "
-           << min_value << " to " << max_value << ".";
-        std::shared_ptr<SystemLogger> logger = SystemLogger::Get();
-        logger->Log(kLogLevelFatal, ss.str().c_str());
-        return false;
+        if (clamp) {
+          T clamped_value =
+              std::max(min_value, std::min(max_value, value_to_set));
+          // Log warning about the value being out of range.
+          value_to_set = clamped_value;
+        } else {
+          std::stringstream ss;
+          ss << "Unable to set value of attribute '" << attribute_name
+             << "' to " << value_to_set
+             << " as it is out of the specified "
+                "range "
+             << min_value << " to " << max_value << ".";
+          std::shared_ptr<SystemLogger> logger = SystemLogger::Get();
+          logger->Log(kLogLevelFatal, ss.str().c_str());
+          return false;
+        }
       }
       value = value_to_set;
       return true;

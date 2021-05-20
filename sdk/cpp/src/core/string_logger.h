@@ -60,6 +60,9 @@ class StringLogger : public LoggerBase {
     return nullptr;
   }
 
+  // Clear all logs.
+  void clear() { logs_.clear(); }
+
  private:
   std::vector<std::pair<LogLevel, std::string>> logs_;
 };

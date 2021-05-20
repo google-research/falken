@@ -317,7 +317,8 @@ AttributeBase::AttributeBase(AttributeContainer& container, const char* name,
           std::make_unique<AttributeBaseData>(container, kTypeFloat, name)) {
   value_.float_value.min_value = minimum;
   value_.float_value.max_value = maximum;
-  value_.float_value.set_value(name, value_.float_value.min_value);
+  value_.float_value.set_value(name, value_.float_value.min_value,
+                               attribute_data_->clamp_values);
   container.AddAttribute(this);
 }
 
@@ -330,7 +331,7 @@ AttributeBase::AttributeBase(AttributeContainer& container, const char* name,
   }
   value_.int_value.min_value = 0;
   value_.int_value.max_value = category_values.size() - 1;
-  value_.int_value.set_value(name, 0);
+  value_.int_value.set_value(name, 0, false);
   container.AddAttribute(this);
 }
 
@@ -444,7 +445,7 @@ void AttributeBase::InitializeUnconstrained() {
     case kTypeFloat:
       value_.float_value.min_value = std::numeric_limits<float>::lowest();
       value_.float_value.max_value = std::numeric_limits<float>::max();
-      value_.float_value.set_value(name(), 0.0f);
+      value_.float_value.set_value(name(), 0.0f, attribute_data_->clamp_values);
       break;
     case kTypeRotation:
       value_.rotation = new Rotation();
@@ -463,13 +464,13 @@ void AttributeBase::InitializeUnconstrained() {
         value_.int_value.min_value = 0;
         value_.int_value.max_value =
             attribute_data_->category_values.size() - 1;
-        value_.int_value.set_value(name(), 0);
+        value_.int_value.set_value(name(), 0, false);
       }
       break;
     case kTypeBool:
       value_.int_value.min_value = 0;
       value_.int_value.max_value = 1;
-      value_.int_value.set_value(name(), 0);
+      value_.int_value.set_value(name(), 0, false);
       break;
     case kTypeFeelers:
       value_.feelers = new FeelersData(attribute_data_->notify_container, 1,
@@ -710,8 +711,9 @@ void AttributeBase::CopyValue(const AttributeBase& other) {
 }
 
 bool AttributeBase::set_number(float number) {
-  const auto modified =
-      type() == kTypeFloat && value_.float_value.set_value(name(), number);
+  const auto modified = type() == kTypeFloat &&
+                        value_.float_value.set_value(
+                            name(), number, attribute_data_->clamp_values);
   return SetModifiedAndNotifyContainer(modified);
 }
 
@@ -738,7 +740,7 @@ float AttributeBase::number_maximum() const {
 
 bool AttributeBase::set_category(int category) {
   const auto modified = type() == kTypeCategorical &&
-                        value_.int_value.set_value(name(), category);
+                        value_.int_value.set_value(name(), category, false);
   return SetModifiedAndNotifyContainer(modified);
 }
 
@@ -755,7 +757,8 @@ const Vector<String>& AttributeBase::category_values() const {
 
 bool AttributeBase::set_boolean(bool value) {
   const auto modified =
-      type() == kTypeBool && value_.int_value.set_value(name(), value ? 1 : 0);
+      type() == kTypeBool &&
+      value_.int_value.set_value(name(), value ? 1 : 0, false);
   return SetModifiedAndNotifyContainer(modified);
 }
 
@@ -1044,6 +1047,65 @@ bool AttributeBase::IsNotModified(
 }
 
 void AttributeBase::ClearContainer() { attribute_data_->container = nullptr; }
+
+void AttributeBase::set_enable_clamping(bool enable) {
+  attribute_data_->clamp_values = enable;
+  switch (attribute_data_->type) {
+    case falken::AttributeBase::Type::kTypeFloat:
+      break;
+    case falken::AttributeBase::Type::kTypeFeelers:
+      for (auto& distance : value_.feelers->distances_static_) {
+        distance.set_enable_clamping(enable);
+      }
+      break;
+    case falken::AttributeBase::Type::kTypeJoystick:
+      value_.joystick->x_axis_.set_enable_clamping(enable);
+      value_.joystick->y_axis_.set_enable_clamping(enable);
+      break;
+    default:
+      LogError(
+          "Attempted to set the clamping configuration of attribute %s, which "
+          "is of type %s and therefore it does not support clamping",
+          attribute_data_->name.c_str(),
+          AttributeBaseTypeToString(attribute_data_->type));
+      break;
+  }
+}
+
+bool AttributeBase::enable_clamping() const {
+  switch (attribute_data_->type) {
+    case falken::AttributeBase::Type::kTypeFloat:
+      break;
+    case falken::AttributeBase::Type::kTypeJoystick:
+      break;
+    case falken::AttributeBase::Type::kTypeFeelers: {
+      auto distances_clamping_matches_attribute_clamping = true;
+      for (const auto& distance : feelers_distances()) {
+        distances_clamping_matches_attribute_clamping =
+            distances_clamping_matches_attribute_clamping &&
+            (distance.enable_clamping() == attribute_data_->clamp_values);
+      }
+      if (!distances_clamping_matches_attribute_clamping) {
+        LogWarning(
+            "The individual distances within attribute %s of type %s have been "
+            "configured with clamping configurations that differ from that of "
+            "the parent attribute, please read the individual clamping "
+            "configurations for each distance",
+            attribute_data_->name.c_str(),
+            AttributeBaseTypeToString(attribute_data_->type));
+      }
+    } break;
+    default:
+      LogError(
+          "Attempted to read the clamping configuration of attribute %s, which "
+          "is of type %s and therefore it does not support clamping",
+          attribute_data_->name.c_str(),
+          AttributeBaseTypeToString(attribute_data_->type));
+      break;
+  }
+
+  return attribute_data_->clamp_values;
+}
 
 CategoricalAttribute& AttributeBase::AsCategorical() {
   AssertIsType(kTypeCategorical);

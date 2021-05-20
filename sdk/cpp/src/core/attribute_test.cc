@@ -272,6 +272,54 @@ TEST(NumberAttributeTest, TestConstruct) {
   EXPECT_FALSE(AttributeTest::AttributeBaseModified(attribute));
 }
 
+TEST(NumberAttributeTest, TestClamping) {
+  const auto kTolerance = 1e-3f;
+  falken::AttributeContainer attribute_container;
+  falken::NumberAttribute<float> attribute(attribute_container,
+                                           "float_attribute", 5.0f, 100.0f);
+  EXPECT_THAT(attribute.name(), StrEq("float_attribute"));
+  EXPECT_EQ(attribute.type(), falken::AttributeBase::kTypeFloat);
+  EXPECT_EQ(attribute.number_minimum(), 5.0f);
+  EXPECT_EQ(attribute.number_maximum(), 100.0f);
+
+  const auto kUnderMin = attribute.number_minimum() - 1.0f;
+  const auto kMidRange =
+      (attribute.number_maximum() + attribute.number_maximum()) * 0.5f;
+  const auto kOverMax = attribute.number_maximum() + 1.0f;
+
+  auto logger = falken::SystemLogger::Get();
+  logger->set_abort_on_fatal_error(false);
+
+  {
+    // default clamping value (off)
+    EXPECT_FALSE(attribute.enable_clamping());
+    EXPECT_TRUE(attribute.set_value(kMidRange));
+    EXPECT_NEAR(kMidRange, attribute.value(), kTolerance);
+    EXPECT_FALSE(attribute.set_value(kUnderMin));
+    EXPECT_FALSE(attribute.set_value(kOverMax));
+  }
+  {
+    // with clamping on
+    attribute.set_enable_clamping(true);
+    EXPECT_TRUE(attribute.enable_clamping());
+    EXPECT_TRUE(attribute.set_value(kMidRange));
+    EXPECT_NEAR(kMidRange, attribute.value(), kTolerance);
+    EXPECT_TRUE(attribute.set_value(kUnderMin));
+    EXPECT_NEAR(attribute.number_minimum(), attribute.value(), kTolerance);
+    EXPECT_TRUE(attribute.set_value(kOverMax));
+    EXPECT_NEAR(attribute.number_maximum(), attribute.value(), kTolerance);
+  }
+  {
+    // with clamping off
+    attribute.set_enable_clamping(false);
+    EXPECT_FALSE(attribute.enable_clamping());
+    EXPECT_TRUE(attribute.set_value(kMidRange));
+    EXPECT_NEAR(kMidRange, attribute.value(), kTolerance);
+    EXPECT_FALSE(attribute.set_value(kUnderMin));
+    EXPECT_FALSE(attribute.set_value(kOverMax));
+  }
+}
+
 TEST(NumberAttributeTest, TestSetValue) {
   falken::AttributeContainer attribute_container;
   falken::NumberAttribute<float> attribute(attribute_container,
@@ -313,6 +361,7 @@ TEST(NumberAttributeTest, TestCopyConstruct) {
   falken::AttributeContainer attribute_container;
   falken::NumberAttribute<float> attribute(attribute_container,
                                            "float_attribute", 5.0f, 100.0f);
+  attribute.set_enable_clamping(true);
   falken::AttributeContainer attribute_container2;
   falken::NumberAttribute<float> attribute2(attribute_container2, attribute);
   EXPECT_THAT(attribute2.name(), StrEq("float_attribute"));
@@ -320,6 +369,7 @@ TEST(NumberAttributeTest, TestCopyConstruct) {
   EXPECT_EQ(attribute2.number_minimum(), 5.0f);
   EXPECT_EQ(attribute2.number_maximum(), 100.0f);
   EXPECT_EQ(attribute2.value(), 5.0f);
+  EXPECT_TRUE(attribute2.enable_clamping());
   EXPECT_EQ(attribute_container.attribute("float_attribute"), &attribute);
   EXPECT_EQ(attribute_container2.attribute("float_attribute"), &attribute2);
   attribute.set_value(10.0f);
@@ -333,12 +383,14 @@ TEST(NumberAttributeTest, TestMoveConstruct) {
   falken::AttributeContainer attribute_container;
   falken::NumberAttribute<float> attribute(attribute_container,
                                            "float_attribute", 5.0f, 100.0f);
+  attribute.set_enable_clamping(true);
   falken::NumberAttribute<float> attribute2(std::move(attribute));
   EXPECT_THAT(attribute2.name(), StrEq("float_attribute"));
   EXPECT_EQ(attribute2.type(), falken::AttributeBase::kTypeFloat);
   EXPECT_EQ(attribute2.number_minimum(), 5.0f);
   EXPECT_EQ(attribute2.number_maximum(), 100.0f);
   EXPECT_EQ(attribute2.value(), 5.0f);
+  EXPECT_TRUE(attribute2.enable_clamping());
   EXPECT_EQ(attribute_container.attribute("float_attribute"), &attribute2);
 }
 
@@ -391,6 +443,32 @@ TEST(CategoricalAttributeTest, TestConstruct) {
               ElementsAreArray({"zero", "one", "two"}));
   EXPECT_EQ(attribute.value(), 0);
   EXPECT_FALSE(AttributeTest::GetModified(attribute_container));
+}
+
+TEST(CategoricalAttributeTest, TestClamping) {
+  falken::AttributeContainer attribute_container;
+  falken::CategoricalAttribute attribute(
+      attribute_container, "categorical_attribute", {"zero", "one", "two"});
+
+  auto logger = falken::SystemLogger::Get();
+  logger->set_abort_on_fatal_error(false);
+  falken::testing::StringLogger sink;
+  EXPECT_TRUE(logger->AddLogger(sink));
+  EXPECT_EQ(sink.last_log_level(), falken::kLogLevelFatal);
+  attribute.set_enable_clamping(true);
+  EXPECT_EQ(sink.last_message(),
+            absl::StrFormat(
+                "Attempted to set the clamping configuration of attribute "
+                "categorical_attribute, which is of type Categorical and "
+                "therefore it "
+                "does not support clamping"));
+  attribute.enable_clamping();
+  EXPECT_EQ(
+      sink.last_message(),
+      absl::StrFormat(
+          "Attempted to read the clamping configuration of attribute "
+          "categorical_attribute, which is of type Categorical and therefore "
+          "it does not support clamping"));
 }
 
 TEST(CategoricalAttributeTest, TestSetValue) {
@@ -510,6 +588,29 @@ TEST(BoolAttributeTest, TestConstruct) {
   EXPECT_EQ(attribute.type(), falken::AttributeBase::kTypeBool);
   EXPECT_FALSE(attribute.value());
   EXPECT_FALSE(AttributeTest::GetModified(attribute_container));
+}
+
+TEST(BoolAttributeTest, TestClamping) {
+  falken::AttributeContainer attribute_container;
+  falken::BoolAttribute attribute(attribute_container, "bool_attribute");
+
+  auto logger = falken::SystemLogger::Get();
+  logger->set_abort_on_fatal_error(false);
+  falken::testing::StringLogger sink;
+  EXPECT_TRUE(logger->AddLogger(sink));
+  EXPECT_EQ(sink.last_log_level(), falken::kLogLevelFatal);
+  attribute.set_enable_clamping(true);
+  EXPECT_EQ(sink.last_message(),
+            absl::StrFormat(
+                "Attempted to set the clamping configuration of attribute "
+                "bool_attribute, which is of type Bool and therefore it does "
+                "not support clamping"));
+  attribute.enable_clamping();
+  EXPECT_EQ(sink.last_message(),
+            absl::StrFormat(
+                "Attempted to read the clamping configuration of attribute "
+                "bool_attribute, which is of type Bool and therefore it does "
+                "not support clamping"));
 }
 
 TEST(BoolAttributeTest, TestSetValue) {
@@ -681,6 +782,110 @@ TEST(FeelerAttributeTest, TestSetDistances) {
                                   std::string(attribute.name()) + "/id_1",
                                   std::string(attribute.name()) + "/id_2"}),
         unmodified_attributes);
+  }
+}
+
+TEST(FeelerAttributeTest, TestClamping) {
+  falken::AttributeContainer attribute_container;
+  falken::FeelersAttribute attribute(attribute_container, "feeler_attribute", 3,
+                                     1.0f, 0.5f, 0.5f, {"zero", "one", "two"});
+  EXPECT_THAT(attribute.name(), StrEq("feeler_attribute"));
+  EXPECT_EQ(attribute.type(), falken::AttributeBase::kTypeFeelers);
+
+  auto logger = falken::SystemLogger::Get();
+  logger->set_abort_on_fatal_error(false);
+  falken::testing::StringLogger sink;
+  EXPECT_TRUE(logger->AddLogger(sink));
+  EXPECT_EQ(sink.last_log_level(), falken::kLogLevelFatal);
+
+  auto& distance = attribute.distances()[0];
+
+  const auto kTolerance = 1e-3f;
+  const auto kUnderMin = distance.number_minimum() - 1.0f;
+  const auto kMidRange =
+      (distance.number_maximum() + distance.number_maximum()) * 0.5f;
+  const auto kOverMax = distance.number_maximum() + 1.0f;
+
+  {
+    // default clamping value (off)
+    EXPECT_FALSE(distance.enable_clamping());
+    EXPECT_TRUE(distance.set_value(kMidRange));
+    EXPECT_NEAR(kMidRange, distance.value(), kTolerance);
+    EXPECT_FALSE(distance.set_value(kUnderMin));
+    EXPECT_FALSE(distance.set_value(kOverMax));
+  }
+  {
+    // with clamping on
+    distance.set_enable_clamping(true);
+    EXPECT_TRUE(distance.enable_clamping());
+    EXPECT_TRUE(distance.set_value(kMidRange));
+    EXPECT_NEAR(kMidRange, distance.value(), kTolerance);
+    EXPECT_TRUE(distance.set_value(kUnderMin));
+    EXPECT_NEAR(distance.number_minimum(), distance.value(), kTolerance);
+    EXPECT_TRUE(distance.set_value(kOverMax));
+    EXPECT_NEAR(distance.number_maximum(), distance.value(), kTolerance);
+  }
+  {
+    // with clamping off
+    distance.set_enable_clamping(false);
+    EXPECT_FALSE(distance.enable_clamping());
+    EXPECT_TRUE(distance.set_value(kMidRange));
+    EXPECT_NEAR(kMidRange, distance.value(), kTolerance);
+    EXPECT_FALSE(distance.set_value(kUnderMin));
+    EXPECT_FALSE(distance.set_value(kOverMax));
+  }
+
+  {
+    sink.clear();
+    EXPECT_EQ(0u, sink.logs().size());
+    // test per-feeler clamping management
+    attribute.set_enable_clamping(false);
+    EXPECT_FALSE(attribute.enable_clamping());
+    EXPECT_FALSE(attribute.distances()[0].enable_clamping());
+    EXPECT_FALSE(attribute.distances()[1].enable_clamping());
+    EXPECT_FALSE(attribute.distances()[2].enable_clamping());
+    // no warning should be logged if all distances clamp config match
+    EXPECT_EQ(0u, sink.logs().size());
+
+    sink.clear();
+    EXPECT_EQ(0u, sink.logs().size());
+    attribute.distances()[1].set_enable_clamping(true);
+    EXPECT_FALSE(attribute.enable_clamping());
+    EXPECT_FALSE(attribute.distances()[0].enable_clamping());
+    EXPECT_TRUE(attribute.distances()[1].enable_clamping());
+    EXPECT_FALSE(attribute.distances()[2].enable_clamping());
+    EXPECT_EQ(
+        sink.last_message(),
+        absl::StrFormat(
+            "The individual distances within attribute feeler_attribute of "
+            "type Feelers have been configured with clamping configurations "
+            "that differ from that of the parent attribute, please read the "
+            "individual clamping configurations for each distance"));
+
+    sink.clear();
+    EXPECT_EQ(0u, sink.logs().size());
+    attribute.set_enable_clamping(true);
+    EXPECT_TRUE(attribute.enable_clamping());
+    EXPECT_TRUE(attribute.distances()[0].enable_clamping());
+    EXPECT_TRUE(attribute.distances()[1].enable_clamping());
+    EXPECT_TRUE(attribute.distances()[2].enable_clamping());
+    // no warning should be logged if all distances clamp config match
+    EXPECT_EQ(0u, sink.logs().size());
+
+    sink.clear();
+    EXPECT_EQ(0u, sink.logs().size());
+    attribute.distances()[1].set_enable_clamping(false);
+    EXPECT_TRUE(attribute.enable_clamping());
+    EXPECT_TRUE(attribute.distances()[0].enable_clamping());
+    EXPECT_FALSE(attribute.distances()[1].enable_clamping());
+    EXPECT_TRUE(attribute.distances()[2].enable_clamping());
+    EXPECT_EQ(
+        sink.last_message(),
+        absl::StrFormat(
+            "The individual distances within attribute feeler_attribute of "
+            "type Feelers have been configured with clamping configurations "
+            "that differ from that of the parent attribute, please read the "
+            "individual clamping configurations for each distance"));
   }
 }
 
@@ -861,6 +1066,30 @@ TEST(PositionAttributeTest, TestConstruct) {
   EXPECT_EQ(attribute.value(), position);
 }
 
+TEST(PositionAttributeTest, TestClamping) {
+  falken::AttributeContainer attribute_container;
+  falken::PositionAttribute attribute(attribute_container,
+                                      "position_attribute");
+
+  auto logger = falken::SystemLogger::Get();
+  logger->set_abort_on_fatal_error(false);
+  falken::testing::StringLogger sink;
+  EXPECT_TRUE(logger->AddLogger(sink));
+  EXPECT_EQ(sink.last_log_level(), falken::kLogLevelFatal);
+  attribute.set_enable_clamping(true);
+  EXPECT_EQ(sink.last_message(),
+            absl::StrFormat(
+                "Attempted to set the clamping configuration of attribute "
+                "position_attribute, which is of type Position and therefore "
+                "it does not support clamping"));
+  attribute.enable_clamping();
+  EXPECT_EQ(sink.last_message(),
+            absl::StrFormat(
+                "Attempted to read the clamping configuration of attribute "
+                "position_attribute, which is of type Position and therefore "
+                "it does not support clamping"));
+}
+
 TEST(PositionAttributeTest, TesSetValue) {
   falken::AttributeContainer attribute_container;
   falken::PositionAttribute attribute(attribute_container,
@@ -963,6 +1192,30 @@ TEST(RotationAttributeTest, TestConstruct) {
   EXPECT_THAT(attribute.name(), StrEq("rotation_attribute"));
   EXPECT_EQ(attribute.type(), falken::AttributeBase::kTypeRotation);
   EXPECT_EQ(attribute.value(), rotation);
+}
+
+TEST(RotationAttributeTest, TestClamping) {
+  falken::AttributeContainer attribute_container;
+  falken::RotationAttribute attribute(attribute_container,
+                                      "rotation_attribute");
+
+  auto logger = falken::SystemLogger::Get();
+  logger->set_abort_on_fatal_error(false);
+  falken::testing::StringLogger sink;
+  EXPECT_TRUE(logger->AddLogger(sink));
+  EXPECT_EQ(sink.last_log_level(), falken::kLogLevelFatal);
+  attribute.set_enable_clamping(true);
+  EXPECT_EQ(sink.last_message(),
+            absl::StrFormat(
+                "Attempted to set the clamping configuration of attribute "
+                "rotation_attribute, which is of type Rotation and therefore "
+                "it does not support clamping"));
+  attribute.enable_clamping();
+  EXPECT_EQ(sink.last_message(),
+            absl::StrFormat(
+                "Attempted to read the clamping configuration of attribute "
+                "rotation_attribute, which is of type Rotation and therefore "
+                "it does not support clamping"));
 }
 
 TEST(RotationAttributeTest, TestSetValue) {
@@ -1229,6 +1482,84 @@ TEST(JoystickAttributeTest, TestGetSetAxes) {
 
   EXPECT_EQ(joystick.x_axis(), 0.5f);
   EXPECT_EQ(joystick.y_axis(), 0.25f);
+}
+
+TEST(JoystickAttributeTest, TestClamping) {
+  falken::AttributeContainer attribute_container;
+  falken::JoystickAttribute joystick(
+      attribute_container, "joystick_attribute", falken::kAxesModeDeltaPitchYaw,
+      falken::kControlledEntityPlayer, falken::kControlFrameCamera);
+  auto logger = falken::SystemLogger::Get();
+  logger->set_abort_on_fatal_error(false);
+
+  const auto kTolerance = 1e-3f;
+  const auto kUnderMin = -1.5f;
+  const auto kMidRange = 0.0f;
+  const auto kOverMax = 1.5f;
+
+  //
+  // x axis
+  //
+  {
+    // default clamping value (off)
+    EXPECT_FALSE(joystick.enable_clamping());
+    EXPECT_TRUE(joystick.set_x_axis(kMidRange));
+    EXPECT_NEAR(kMidRange, joystick.x_axis(), kTolerance);
+    EXPECT_FALSE(joystick.set_x_axis(kUnderMin));
+    EXPECT_FALSE(joystick.set_x_axis(kOverMax));
+  }
+  {
+    // with clamping on
+    joystick.set_enable_clamping(true);
+    EXPECT_TRUE(joystick.enable_clamping());
+    EXPECT_TRUE(joystick.set_x_axis(kMidRange));
+    EXPECT_NEAR(kMidRange, joystick.x_axis(), kTolerance);
+    EXPECT_TRUE(joystick.set_x_axis(kUnderMin));
+    EXPECT_NEAR(-1.0f, joystick.x_axis(), kTolerance);
+    EXPECT_TRUE(joystick.set_x_axis(kOverMax));
+    EXPECT_NEAR(1.0f, joystick.x_axis(), kTolerance);
+  }
+  {
+    // with clamping off
+    joystick.set_enable_clamping(false);
+    EXPECT_FALSE(joystick.enable_clamping());
+    EXPECT_TRUE(joystick.set_x_axis(kMidRange));
+    EXPECT_NEAR(kMidRange, joystick.x_axis(), kTolerance);
+    EXPECT_FALSE(joystick.set_x_axis(kUnderMin));
+    EXPECT_FALSE(joystick.set_x_axis(kOverMax));
+  }
+
+  //
+  // y axis
+  //
+  {
+    // default clamping value (off)
+    EXPECT_FALSE(joystick.enable_clamping());
+    EXPECT_TRUE(joystick.set_y_axis(kMidRange));
+    EXPECT_NEAR(kMidRange, joystick.y_axis(), kTolerance);
+    EXPECT_FALSE(joystick.set_y_axis(kUnderMin));
+    EXPECT_FALSE(joystick.set_y_axis(kOverMax));
+  }
+  {
+    // with clamping on
+    joystick.set_enable_clamping(true);
+    EXPECT_TRUE(joystick.enable_clamping());
+    EXPECT_TRUE(joystick.set_y_axis(kMidRange));
+    EXPECT_NEAR(kMidRange, joystick.y_axis(), kTolerance);
+    EXPECT_TRUE(joystick.set_y_axis(kUnderMin));
+    EXPECT_NEAR(-1.0f, joystick.y_axis(), kTolerance);
+    EXPECT_TRUE(joystick.set_y_axis(kOverMax));
+    EXPECT_NEAR(1.0f, joystick.y_axis(), kTolerance);
+  }
+  {
+    // with clamping off
+    joystick.set_enable_clamping(false);
+    EXPECT_FALSE(joystick.enable_clamping());
+    EXPECT_TRUE(joystick.set_y_axis(kMidRange));
+    EXPECT_NEAR(kMidRange, joystick.y_axis(), kTolerance);
+    EXPECT_FALSE(joystick.set_y_axis(kUnderMin));
+    EXPECT_FALSE(joystick.set_y_axis(kOverMax));
+  }
 }
 
 TEST(JoystickAttributeTest, TestConstruct) {

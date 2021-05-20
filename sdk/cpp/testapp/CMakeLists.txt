@@ -138,6 +138,19 @@ else()
   endif()
 endif()
 
+# Enable all warnings as errors.
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  target_compile_options(${target_name}
+    PRIVATE
+      /W4 /WX
+  )
+else()
+  target_compile_options(${target_name}
+    PRIVATE
+      -Wall -Werror
+  )
+endif()
+
 target_link_libraries(${target_name}
   PUBLIC
     falken_cpp_sdk

@@ -356,9 +356,10 @@ class StorageTest(parameterized.TestCase):
                        expected_assignment)
       mock_monitor.acquire_assignment.assert_called_once_with(
           test_assignment_id)
-      # Requesting the assignment again should yield the same result.
-      self.assertEqual(self.storage.receive_assignment(timeout=0.5),
-                       expected_assignment)
+      # Requesting the assignment again should yield the same result without
+      # waiting.
+      if expected_assignment:
+        self.assertEqual(self.storage.receive_assignment(), expected_assignment)
 
   def test_number_of_pending_assignments(self):
     """Get the number of pending / enqueued assignments."""

@@ -404,8 +404,8 @@ class Storage:
       deadline += timeout
       remaining = timeout
 
-    while (not self._in_progress_assignment and
-           remaining is None or remaining >= 0):
+    while (self._in_progress_assignment is None and
+           (remaining is None or remaining >= 0)):
       try:
         assignment_resource_id = self._pending_assignments.get(
             timeout=remaining)

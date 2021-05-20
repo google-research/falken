@@ -20,6 +20,9 @@ from unittest import mock
 from absl.testing import absltest
 from api import data_cache
 
+import common.generate_protos  # pylint: disable=unused-import
+import data_store_pb2
+
 
 class DataCacheTest(absltest.TestCase):
 
@@ -65,6 +68,44 @@ class DataCacheTest(absltest.TestCase):
     mock_ds.read_by_proto_ids.assert_called_once_with(
         project_id='test_project_id', brain_id='test_brain_id',
         session_id='test_session_id')
+
+  def test_get_starting_snapshot(self):
+    mock_ds = mock.Mock()
+    mock_session = data_store_pb2.Session(
+        session_id='s0', starting_snapshots=['ss0'])
+    mock_snapshot = mock.Mock()
+    mock_ds.read_by_proto_ids.side_effect = [mock_session, mock_snapshot]
+    # Call twice.
+    self.assertEqual(
+        data_cache.get_starting_snapshot(
+            mock_ds, 'test_project_id', 'test_brain_id', 's0'),
+        mock_snapshot)
+    self.assertEqual(
+        data_cache.get_starting_snapshot(
+            mock_ds, 'test_project_id', 'test_brain_id', 's0'),
+        mock_snapshot)
+    # Datastore read only called once.
+    mock_ds.read_by_proto_ids.assert_has_calls([
+        mock.call(
+            project_id='test_project_id',
+            brain_id='test_brain_id', session_id='s0'),
+        mock.call(
+            project_id='test_project_id', brain_id='test_brain_id',
+            session_id='s0', snapshot_id='ss0')])
+
+  def test_get_starting_snapshot_wrong_length(self):
+    mock_ds = mock.Mock()
+    mock_session = data_store_pb2.Session(
+        session_id='s0', starting_snapshots=[])
+    mock_snapshot = mock.Mock()
+    mock_ds.read_by_proto_ids.side_effect = [mock_session, mock_snapshot]
+    with self.assertRaisesWithLiteralMatch(
+        ValueError, 'Require exactly 1 starting snapshot, got 0 for session '
+        's0.'):
+      data_cache.get_starting_snapshot(
+          mock_ds, 'test_project_id', 'test_brain_id', 's0')
+    mock_ds.read_by_proto_ids.assert_called_once_with(
+        project_id='test_project_id', brain_id='test_brain_id', session_id='s0')
 
 
 if __name__ == '__main__':

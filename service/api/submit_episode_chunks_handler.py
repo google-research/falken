@@ -28,8 +28,9 @@ import action_pb2
 import data_store_pb2
 import episode_pb2
 import falken_service_pb2
-from google.rpc import code_pb2
 import session_pb2
+
+from google.rpc import code_pb2
 from learner.brains import specs
 
 FLAGS = flags.FLAGS
@@ -97,7 +98,18 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
         f'Starting assignment failed for episode {episode_resource_id.episode}.'
         f' {e}')
 
-  _get_training_state()
+  session_resource_id = data_store.resource_id_from_proto_ids(
+      project=request.project_id, brain=request.brain_id,
+      session=request.session_id)
+  selector = model_selector.ModelSelector(data_store, session_resource_id)
+
+  try:
+    training_state = selector.get_training_state()
+  except ValueError as e:
+    context.abort(code_pb2.INVALID_ARGUMENT,
+                  f'Getting training state failed. {e}')
+
+  logging.debug('Got training_state %s', str(training_state))
 
   _select_model()
 
@@ -456,10 +468,6 @@ def _try_start_assignments(
   assignment_notifier.trigger_assignment_notification(
       data_store.to_resource_id(assignment))
   return
-
-
-def _get_training_state():
-  raise NotImplementedError('Method not implemented!')
 
 
 def _select_model():

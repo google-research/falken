@@ -67,3 +67,29 @@ def get_session_type(data_store, project_id, brain_id, session_id):
       session_id=session_id).session_type
 
 
+@functools.lru_cache(maxsize=_MAX_CACHE)
+def get_starting_snapshot(data_store, project_id, brain_id, session_id):
+  """Returns a data_store_pb2.Snapshot of the starting snapshot for a session.
+
+  Args:
+    data_store: data_store.DataStore to read from if the snapshot is not cached.
+    project_id: Project ID associated with the requested session.
+    brain_id: Brain ID associated with the requested session.
+    session_id: Session ID associated with the requested session.
+
+  Returns:
+    data_store_pb2.Snapshot instance.
+
+  Raises:
+    ValueError if session doesn't have exactly one starting_snapshots.
+  """
+  session = data_store.read_by_proto_ids(
+      project_id=project_id, brain_id=brain_id,
+      session_id=session_id)
+  if len(session.starting_snapshots) != 1:
+    raise ValueError(
+        f'Require exactly 1 starting snapshot, got '
+        f'{len(session.starting_snapshots)} for session {session.session_id}.')
+  return data_store.read_by_proto_ids(
+      project_id=project_id, brain_id=brain_id,
+      session_id=session_id, snapshot_id=session.starting_snapshots[0])

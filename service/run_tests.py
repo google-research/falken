@@ -69,6 +69,8 @@ _DEFAULT_TEST_MODULES = [
     'api.data_cache_test',
     'api.get_handler_test',
     'api.get_session_count_handler_test',
+    'api.model_selector_test',
+    'api.model_selection_record_test',
     'api.list_handler_test',
     'api.stop_session_handler_test',
     'api.submit_episode_chunks_handler_test',

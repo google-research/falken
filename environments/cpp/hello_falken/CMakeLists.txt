@@ -92,7 +92,7 @@ else()
 
   # Add the C++ SDK cmake subdirectory to the list of directories to search for
   # packages to include when using find_package() for Find<PackageName>.cmake.
-  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../..")
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../sdk/cpp")
 
   find_package(falken REQUIRED)
   find_package(OpenGL REQUIRED)

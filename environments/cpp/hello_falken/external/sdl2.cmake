@@ -23,4 +23,22 @@ FetchContent_Declare(
   GIT_SHALLOW TRUE
   GIT_PROGRESS TRUE
 )
-FetchContent_MakeAvailable(SDL2)
+
+FetchContent_GetProperties(SDL2)
+if(NOT sdl2_POPULATED)
+  FetchContent_Populate(SDL2)
+endif()
+
+# Change the name of the "uninstall" target in sdl to avoid
+# a target name clash with a different target in Eigen
+set(SDL2_CMAKELISTS_FILE "${sdl2_SOURCE_DIR}/CMakeLists.txt")
+file(READ "${SDL2_CMAKELISTS_FILE}" SDL2_CMAKELISTS)
+string(REPLACE
+  "add_custom_target(uninstall"
+  "add_custom_target(sdl2_uninstall"
+  SDL2_CMAKELISTS
+  "${SDL2_CMAKELISTS}"
+)
+file(WRITE "${SDL2_CMAKELISTS_FILE}" "${SDL2_CMAKELISTS}")
+
+add_subdirectory(${sdl2_SOURCE_DIR} ${sdl2_BINARY_DIR})

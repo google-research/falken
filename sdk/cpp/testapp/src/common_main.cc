@@ -251,13 +251,13 @@ bool CheckFeelers(const falken::FeelersAttribute& submitted,
   if (submitted.feelers_ids().size() != received.feelers_ids().size()) {
     return false;
   }
-  for (int i = 0; i < submitted.feelers_distances().size(); ++i) {
+  for (size_t i = 0; i < submitted.feelers_distances().size(); ++i) {
     if (!AreEqualFloat(submitted.feelers_distances()[i],
                        received.feelers_distances()[i])) {
       return false;
     }
   }
-  for (int i = 0; i < submitted.feelers_ids().size(); ++i) {
+  for (size_t i = 0; i < submitted.feelers_ids().size(); ++i) {
     if (!AreEqualInt(submitted.feelers_ids()[i], received.feelers_ids()[i])) {
       return false;
     }
@@ -293,7 +293,7 @@ void FillStep(const falken::BrainSpec<TestObservation, TestAction>& spec,
       static_cast<float>(spec.observations.evil_guy.health);
   step.observation.evil_guy.evilness =
       static_cast<float>(spec.observations.evil_guy.evilness);
-  for (int i = 0; i < spec.observations.feelers.feelers_distances().size();
+  for (size_t i = 0; i < spec.observations.feelers.feelers_distances().size();
        ++i) {
     step.observation.feelers.feelers_distances()[i] =
         static_cast<float>(spec.observations.feelers.feelers_distances()[i]);
@@ -685,7 +685,7 @@ extern "C" int common_main(int argc, const char* argv[]) {
   // Configure the log verbosity.
   std::string log_level = absl::GetFlag(FLAGS_log_level);
   auto system_logger = falken::SystemLogger::Get();
-  for (int i = 0;
+  for (size_t i = 0;
        i < sizeof(kLogLevelNameToEnum) / sizeof(kLogLevelNameToEnum[0]); ++i) {
     if (log_level == kLogLevelNameToEnum[i].name) {
       system_logger->set_log_level(kLogLevelNameToEnum[i].log_level);

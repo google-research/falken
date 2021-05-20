@@ -16,6 +16,7 @@
 """Tests for submit_episode_chunks_handler."""
 from unittest import mock
 
+from absl import flags
 from absl.testing import absltest
 from absl.testing import parameterized
 from api import data_cache
@@ -33,6 +34,8 @@ import falken_service_pb2
 import session_pb2
 from google.rpc import code_pb2
 from learner.brains import specs
+
+FLAGS = flags.FLAGS
 
 
 class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
@@ -80,7 +83,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     with self.assertRaises(Exception):
       submit_episode_chunks_handler.submit_episode_chunks(
           falken_service_pb2.SubmitEpisodeChunksRequest(),
-          mock_context, None)
+          mock_context, None, None)
     mock_context.abort.assert_called_once_with(
         code_pb2.INVALID_ARGUMENT,
         'Episode data failed did not match the brain spec for the session. '
@@ -104,7 +107,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     mock_ds.resource_id_from_proto_ids.return_value = self._ep_resource_id
     with self.assertRaises(Exception):
       submit_episode_chunks_handler.submit_episode_chunks(
-          request, mock_context, mock_ds)
+          request, mock_context, mock_ds, mock.Mock())
     mock_context.abort.assert_called_once_with(
         code_pb2.INVALID_ARGUMENT,
         'Storing episode chunks failed for ep0. Value error.')
@@ -135,7 +138,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     mock_ds.resource_id_from_proto_ids.return_value = self._ep_resource_id
     with self.assertRaises(Exception):
       submit_episode_chunks_handler.submit_episode_chunks(
-          request, mock_context, mock_ds)
+          request, mock_context, mock_ds, mock.Mock())
     mock_context.abort.assert_called_once_with(
         code_pb2.NOT_FOUND,
         'Starting assignment failed for episode ep0. Assignment not found.')
@@ -144,7 +147,8 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     store_episode_chunks.assert_called_once_with(
         mock_ds, request.chunks, self._ep_resource_id)
     try_start_assignments.assert_called_once_with(
-        mock_ds, self._ep_resource_id, store_episode_chunks.return_value)
+        mock_ds, mock.ANY, self._ep_resource_id,
+        store_episode_chunks.return_value)
     mock_ds.resource_id_from_proto_ids.assert_called_once_with(
         project=request.project_id, brain=request.brain_id,
         session=request.session_id, episode=request.chunks[0].episode_id)
@@ -591,24 +595,36 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         SubmitEpisodeChunksHandlerTest.merge_step_map[type_left][type_right])
 
   @parameterized.named_parameters(
-      ('with_demo_data', data_store_pb2.MIXED, True),
-      ('no_demo_data', data_store_pb2.ONLY_DEMONSTRATIONS, False))
-  def test_try_start_assignments(self, merged_steps_type, expect_list_called):
+      ('session_type_training', session_pb2.INFERENCE,
+       data_store_pb2.MIXED, False),
+      ('with_demo_data', session_pb2.INTERACTIVE_TRAINING,
+       data_store_pb2.MIXED, True),
+      ('no_demo_data', session_pb2.INTERACTIVE_TRAINING,
+       data_store_pb2.ONLY_INFERENCES, False))
+  @mock.patch.object(data_cache, 'get_session_type')
+  def test_try_start_assignments(self, session_type, merged_steps_type,
+                                 expect_write, get_session_type):
     mock_ds = mock.Mock()
-    mock_ds.list_by_proto_ids.return_value = []
-    mock_ds.read_by_proto_ids.return_value = session_pb2.Session(
-        session_type=session_pb2.INTERACTIVE_TRAINING)
+    mock_ds.to_resource_id.return_value = mock.Mock()
+    mock_notifier = mock.Mock()
+    FLAGS.hyperparameters = 'assignment_id_0'
+    expected_assignment = data_store_pb2.Assignment(
+        project_id='p0', brain_id='b0', session_id='s0',
+        assignment_id='assignment_id_0')
+    get_session_type.return_value = session_type
 
     submit_episode_chunks_handler._try_start_assignments(
-        mock_ds, self._ep_resource_id, merged_steps_type)
+        mock_ds, mock_notifier, self._ep_resource_id, merged_steps_type)
 
-    mock_ds.read_by_proto_ids.assert_called_once_with(
-        project_id='p0', brain_id='b0', session_id='s0')
-    if expect_list_called:
-      mock_ds.list_by_proto_ids.assert_called_once_with(
-          project_id='p0', brain_id='b0', session_id='s0', assignment_id='*')
+    if expect_write:
+      mock_ds.write.assert_called_once_with(expected_assignment)
+      mock_ds.to_resource_id.assert_called_once_with(expected_assignment)
+      mock_notifier.trigger_assignment_notification.assert_called_once_with(
+          mock_ds.to_resource_id.return_value)
     else:
-      mock_ds.list.assert_not_called()
+      mock_ds.write.assert_not_called()
+      mock_notifier.trigger_assignment_notification.assert_not_called()
+
 
 if __name__ == '__main__':
   absltest.main()

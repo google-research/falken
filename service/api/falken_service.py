@@ -30,12 +30,15 @@ from api import stop_session_handler
 from api import submit_episode_chunks_handler
 from api import unique_id
 
+# pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
-from data_store import data_store
-from data_store import file_system
 import data_store_pb2
 import falken_service_pb2_grpc
 from google.rpc import code_pb2
+
+from data_store import assignment_monitor
+from data_store import data_store
+from data_store import file_system
 import grpc
 
 FLAGS = flags.FLAGS
@@ -61,8 +64,9 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
 
   def __init__(self):
     """Initializes datastore and sets up API keys."""
-    self.data_store = data_store.DataStore(
-        file_system.FileSystem(FLAGS.root_dir))
+    self._fs = file_system.FileSystem(FLAGS.root_dir)
+    self.data_store = data_store.DataStore(self._fs)
+    self.assignment_notifier = assignment_monitor.AssignmentNotifier(self._fs)
     self._create_api_keys(FLAGS.project_ids)
 
   def _create_api_keys(self, project_ids):
@@ -166,7 +170,7 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
     """Submits EpisodeChunks."""
     self._validate_project_and_api_key(request, context)
     return submit_episode_chunks_handler.submit_episode_chunks(
-        request, context, self.data_store)
+        request, context, self.data_store, self.assignment_notifier)
 
   def GetModel(self, request, context):
     """Returns a serialized model."""

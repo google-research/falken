@@ -15,6 +15,7 @@
 # Lint as: python3
 """Submit episode chunks and returns session info containing state and model."""
 
+from absl import flags
 from absl import logging
 from api import data_cache
 from api import model_selector
@@ -31,8 +32,16 @@ from google.rpc import code_pb2
 import session_pb2
 from learner.brains import specs
 
+FLAGS = flags.FLAGS
 
-def submit_episode_chunks(request, context, data_store):
+flags.DEFINE_string(
+    'hyperparameters',
+    r'{"fc_layers":[32], "learning_rate":1e-4, "continuous":false, '
+    r'"min_train_examples": 10000, "max_train_examples": 30000000}',
+    'Hyperparameters to train the models on.')
+
+
+def submit_episode_chunks(request, context, data_store, assignment_notifier):
   """Submits episode chunks to be trained on and returns session info.
 
   Args:
@@ -41,6 +50,8 @@ def submit_episode_chunks(request, context, data_store):
     context: grpc.ServicerContext containing context about the RPC.
     data_store: Falken data_store.DataStore object to write the chunks to and
       retrieve session info from.
+    assignment_notifier: Falken data_store.AssignmentNotifier object to notify
+      when an assignment needs to be processed.
 
   Returns:
     falken_service_pb2.SubmitEpisodeChunksResponse containing session info for
@@ -79,7 +90,7 @@ def submit_episode_chunks(request, context, data_store):
 
   try:
     _try_start_assignments(
-        data_store, episode_resource_id, chunks_steps_type)
+        data_store, assignment_notifier, episode_resource_id, chunks_steps_type)
   except (FileNotFoundError, data_store_module.InternalError) as e:
     context.abort(
         code_pb2.NOT_FOUND,
@@ -406,11 +417,13 @@ def _merge_steps_types(type_left, type_right):
 
 
 def _try_start_assignments(
-    data_store, episode_resource_id, chunks_steps_type):
+    data_store, assignment_notifier, episode_resource_id, chunks_steps_type):
   """Adds a new assignment to the data_store to start training a new model.
 
   Args:
     data_store: data_store.DataStore to read and write the new assignment to.
+    assignment_notifier: Falken data_store.AssignmentNotifier object to notify
+      if an assignment needs to be processed.
     episode_resource_id: data_store.resource_id.FalkenResourceID instance
       containing resource IDs for the episode.
     chunks_steps_type: Merged steps type of chunks submitted, to determine if
@@ -428,26 +441,20 @@ def _try_start_assignments(
     return
 
   if chunks_steps_type in [
-      data_store_pb2.UNKNOWN, data_store_pb2.ONLY_DEMONSTRATIONS]:
+      data_store_pb2.UNKNOWN, data_store_pb2.ONLY_INFERENCES]:
     logging.debug(
         'No HUMAN_DEMONSTRATION steps found for session %s. '
         'Skipping assignment creation.', episode_resource_id.session)
     return
 
-  assignment_ids = data_store.list_by_proto_ids(
+  assignment = data_store_pb2.Assignment(
       project_id=episode_resource_id.project,
       brain_id=episode_resource_id.brain,
-      session_id=episode_resource_id.session, assignment_id='*')
-
-  failed_assignments_count = 0
-  for assignment_id in assignment_ids:
-    raise NotImplementedError(
-        'Waiting on changes in data_store to implement assignment queue. '
-        f'{assignment_id}')
-
-  logging.debug('Newly created %d assignments (total assignments: %d).)',
-                len(assignment_ids) - failed_assignments_count,
-                len(assignment_ids))
+      session_id=episode_resource_id.session,
+      assignment_id=FLAGS.hyperparameters)
+  data_store.write(assignment)
+  assignment_notifier.trigger_assignment_notification(
+      data_store.to_resource_id(assignment))
   return
 
 

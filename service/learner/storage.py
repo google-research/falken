@@ -168,9 +168,9 @@ class Storage:
         the time of saving.
       max_training_examples: Maximum step * batch count allowed for training
         this model.
-      most_recent_demo_time_micros: Time for the most recent human demostration
-        used to train this model (the most recent chunk that doesn't contain
-        human data).
+      most_recent_demo_time_micros: Time for the most recent human demonstration
+        used to train this model (the most recent chunk that contains human
+        data).
       model_path: The path where the SavedModel is stored.
       compressed_model_path: The path where the compressed SavedModel is stored.
       model_id: Optional model_id. Will be autocreated if missing.

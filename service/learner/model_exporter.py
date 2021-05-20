@@ -115,9 +115,9 @@ class ModelExporter:
         the time of saving.
       max_training_examples: Maximum step * batch count allowed for training
         this model.
-      most_recent_demo_time_micros: Time for the most recent human demostration
-        used to train this model (the most recent chunk that doesn't contain
-        human data).
+      most_recent_demo_time_micros: Time for the most recent human demonstration
+        used to train this model (the most recent chunk that contains human
+        data).
 
     Raises:
       ValueError: When the checkpoint path is not provided.

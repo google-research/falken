@@ -135,7 +135,7 @@ message Model {
   string episode = 8;
   int64 episode_chunk = 9;
   // Time for the most recent human demonstration used to train this model
-  // (the most recent chunk that doesn't contain human data).
+  // (the most recent chunk that contains human data).
   uint64 most_recent_demo_time_micros = 14;
 
   // Latency stats for model-creating and recording events.

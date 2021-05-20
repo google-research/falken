@@ -30,10 +30,17 @@
 
 #include "main.h"  // OS abstraction layer.
 #include "falken/falken.h"
+#if defined(_MSC_VER)  // MSVC.
+// Disable warnings caused by third party headers.
+#pragma warning(push, 3)
+#endif  // defined(_MSC_VER)
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/strings/str_format.h"
 #include "absl/time/time.h"
+#if defined(_MSC_VER)  // MSVC.
+#pragma warning(pop)
+#endif  // defined(_MSC_VER)
 
 ABSL_FLAG(std::string, env, "local",
           "Flag to indicate which environment the SDK should try to connect "

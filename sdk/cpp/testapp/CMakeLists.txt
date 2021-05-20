@@ -129,12 +129,6 @@ else()
     ${SAMPLE_COMMON_SRCS}
   )
 
-  target_include_directories(${target_name}
-  PUBLIC
-    ${FALKEN_DIR}
-    ${FALKEN_ABSEIL_DIR}
-  )
-
   if(APPLE)
     set(ADDITIONAL_LIBS pthread)
   elseif(MSVC)

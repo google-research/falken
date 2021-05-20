@@ -401,22 +401,6 @@ class DataStoreTest(parameterized.TestCase):
     self.assertEqual(len(set(result)), len(result))
     self.assertLen(result, expected_results)
 
-  def test_assignment_callback(self):
-    """Tests assignment callback system."""
-    assignment_callback = mock.Mock()
-
-    self._data_store._fs = mock.Mock()
-    self._data_store.add_assignment_callback(assignment_callback)
-
-    self._data_store._fs.add_file_callback.assert_called_once_with(mock.ANY)
-    file_callback = self._data_store._fs.add_file_callback.call_args.args[0]
-    assignment_callback.assert_not_called()
-    file_callback('x')
-    assignment_callback.assert_called_once()
-
-    self._data_store.remove_assignment_callback(assignment_callback)
-    self._data_store._fs.remove_file_callback.assert_called_with(file_callback)
-
   def test_datastore_to_resource_id(self):
     proto = data_store_pb2.Session(
         project_id='p0',

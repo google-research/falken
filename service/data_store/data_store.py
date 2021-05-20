@@ -412,7 +412,6 @@ class DataStore(ResourceStore):
         _FalkenResourceEncoder(),
         _FalkenResourceResolver(),
         resource_id.FalkenResourceId)
-    self._callbacks = {}
 
   def read_by_proto_ids(
       self,
@@ -505,9 +504,6 @@ class DataStore(ResourceStore):
       accessor_map[resource_id.ATTRIBUTE] = attribute_name
     return resource_id.FalkenResourceId(**accessor_map)
 
-  def __del__(self):
-    self.remove_all_assignment_callbacks()
-
   def to_resource_id(self, resource: DatastoreProto) -> resource_id.ResourceId:
     return self._resolver.to_resource_id(resource)
 
@@ -524,35 +520,3 @@ class DataStore(ResourceStore):
     return self._get_most_recent(
         resource_id.FalkenResourceId(
             project=project_id, brain=brain_id, snapshot='*'))
-
-  def add_assignment_callback(self, callback):
-    """Adds a callback function for newly created assignments.
-
-    Args:
-      callback: A function that will be called with a single argument, an
-        assignment id.
-    """
-
-    def file_callback(file_name):
-      # TODO(b/185940506): check file matches assignment, read file,
-      # and return the parsed id.
-      callback(file_name)
-
-    if callback in self._callbacks:
-      raise ValueError('Added assignment callback twice.')
-
-    self._callbacks[callback] = file_callback
-    self._fs.add_file_callback(file_callback)
-
-  def remove_assignment_callback(self, callback):
-    """Removes a function from the assignment callbacks.
-
-    Args:
-      callback: The callback function to remove.
-    """
-    self._fs.remove_file_callback(self._callbacks.pop(callback))
-
-  def remove_all_assignment_callbacks(self):
-    """Removes all assignment callbacks."""
-    while self._callbacks:
-      self.remove_assignment_callback(next(iter(self._callbacks)))

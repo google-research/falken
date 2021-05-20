@@ -15,10 +15,82 @@
 # Lint as: python3
 """Algorithms to sample models for online evaluation."""
 
+import abc
 from typing import NamedTuple
+
+import numpy as np
 
 
 class ModelRecord(NamedTuple):
   """Represents a record of online model evaluations."""
   successes: int
   failures: int
+
+  @property
+  def total(self) -> int:
+    """Return the total number of evaluations."""
+    return self.successes + self.failures
+
+  @property
+  def success_rate(self) -> float:
+    """Return the empirical success rate or 0.0 if no evaluations."""
+    if self.total:
+      return self.successes / self.total
+    else:
+      return 0.0
+
+
+class SamplingStrategy(abc.ABC):
+  """Abstract base class for deciding which model to sample next."""
+
+  @abc.abstractmethod
+  def select_next(self, model_records: list[ModelRecord]) -> int:
+    """Select the next model to deploy for evaluation.
+
+    Args:
+      model_records: A list of model records.
+    Returns:
+      The index of the model that should be sampled next.
+    """
+    raise NotImplementedError()
+
+
+class UniformSampling(SamplingStrategy):
+  """Select the model with the least number of total evaluations."""
+
+  def select_next(self, model_records: list[ModelRecord]) -> int:
+    """Return the index of the model with the least number of evaluations."""
+    totals = [record.total for record in model_records]
+    return int(np.argmin(totals))  # Convert numpy int to python int.
+
+
+class UCBSampling(SamplingStrategy):
+  """Select the model highest upper confidence bound on quality."""
+
+  def select_next(self, model_records: list[ModelRecord]) -> int:
+    """Return the model with the highest upper confidence bound."""
+    raise NotImplementedError('Not yet implemented.')
+
+
+class SelectionStrategy(abc.ABC):
+  """Abstract base class for deciding which model to select as the winner."""
+
+  @abc.abstractmethod
+  def select_best(self, model_records: list[ModelRecord]) -> int:
+    """Select the winning model from evaluation data.
+
+    Args:
+      model_records: A list of model records.
+    Returns:
+      The index of the model determined to be the best.
+    """
+    raise NotImplementedError()
+
+
+class HighestAverageSelection(SelectionStrategy):
+  """Select the model with the best average score."""
+
+  def select_best(self, model_records: list[ModelRecord]) -> int:
+    """Return the index of the model with the least number of evaluations."""
+    success_rates = [record.success_rate for record in model_records]
+    return int(np.argmax(success_rates))  # Convert numpy int to python int.

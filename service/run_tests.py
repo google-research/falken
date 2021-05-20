@@ -75,6 +75,7 @@ _DEFAULT_TEST_MODULES = [
     'api.falken_service_test',
     'api.proto_conversion_test',
     'api.request_metadata_test',
+    'api.sampling.online_eval_sampling_test',
     'api.unique_id_test',
     'data_store.assignment_monitor_test',
     'data_store.data_store_test',

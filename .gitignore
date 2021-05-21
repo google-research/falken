@@ -12,12 +12,14 @@ environments/unity/*/Library/
 environments/unity/*/Logs/
 environments/unity/*/.vscode/
 environments/unity/*/*.sln
+environments/unity/*/*.csproj
 environments/unity/*/Assets/StreamingAssets/falken_config.json*
 environments/unity/*/Assets/Falken**
 sdk/unity/Library/
 sdk/unity/Logs/
 sdk/unity/.vscode/
 sdk/unity/*.sln
+sdk/unity/*.csproj
 sdk/unity/Assets/StreamingAssets/
 sdk/unity/Assets/StreamingAssets.meta
 sdk/unity/Assets/Falken/Editor/falken_*_manifest.txt*

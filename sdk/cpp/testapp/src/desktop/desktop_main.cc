@@ -107,7 +107,12 @@ void ChangeToFileDirectory(const char* file_path) {
   auto slash = path.rfind('/');
   if (slash != std::string::npos) {
     std::string directory = path.substr(0, slash);
-    if (!directory.empty()) chdir(directory.c_str());
+    if (!directory.empty()) {
+      // this is to get the compiler to ignore the return
+      // value even though chdir() is marked as warn_unused_result
+      auto retval = chdir(directory.c_str());
+      (void)retval;
+    }
   }
 }
 

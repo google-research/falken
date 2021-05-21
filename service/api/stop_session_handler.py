@@ -65,6 +65,7 @@ def stop_session(request, context, data_store):
       session_resource_id, session, model_resource_id, data_store, context)
 
   # Update session to be ended with snapshot ID.
+  session.snapshot = snapshot_id
   data_store.write_stopped_session(session)
 
   return falken_service_pb2.StopSessionResponse(snapshot_id=snapshot_id)

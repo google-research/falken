@@ -76,8 +76,8 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
         f'{e}')
 
   episode_resource_id = data_store.resource_id_from_proto_ids(
-      project=request.project_id, brain=request.brain_id,
-      session=request.session_id, episode=request.chunks[0].episode_id)
+      project_id=request.project_id, brain_id=request.brain_id,
+      session_id=request.session_id, episode_id=request.chunks[0].episode_id)
 
   try:
     chunks_steps_type = _store_episode_chunks(
@@ -90,7 +90,8 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
 
   try:
     _try_start_assignments(
-        data_store, assignment_notifier, episode_resource_id, chunks_steps_type)
+        data_store, assignment_notifier, episode_resource_id, chunks_steps_type,
+        request.chunks)
   except (FileNotFoundError, resource_store.InternalError) as e:
     context.abort(
         code_pb2.NOT_FOUND,
@@ -98,8 +99,8 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
         f' {e}')
 
   session_resource_id = data_store.resource_id_from_proto_ids(
-      project=request.project_id, brain=request.brain_id,
-      session=request.session_id)
+      project_id=request.project_id, brain_id=request.brain_id,
+      session_id=request.session_id)
   selector = model_selector.ModelSelector(data_store, session_resource_id)
 
   try:
@@ -114,7 +115,7 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
 
   _get_training_progress()
 
-  return falken_service_pb2.SubmitEpisodeChunksHandlerResponse()
+  return falken_service_pb2.SubmitEpisodeChunksResponse()
 
 
 def _check_episode_data_with_brain_spec(
@@ -428,7 +429,8 @@ def _merge_steps_types(type_left, type_right):
 
 
 def _try_start_assignments(
-    data_store, assignment_notifier, episode_resource_id, chunks_steps_type):
+    data_store, assignment_notifier, episode_resource_id, chunks_steps_type,
+    chunks):
   """Adds a new assignment to the data_store to start training a new model.
 
   Args:
@@ -439,6 +441,8 @@ def _try_start_assignments(
       containing resource IDs for the episode.
     chunks_steps_type: Merged steps type of chunks submitted, to determine if
       a new assignment should be started or not.
+    chunks: list of episode_pb2.EpisodeChunk instances for the new chunks that
+      were created.
 
   Raises:
     FileNotFoundError, data_store.InternalError if reading assignments or
@@ -464,8 +468,15 @@ def _try_start_assignments(
       session_id=episode_resource_id.session,
       assignment_id=FLAGS.hyperparameters)
   data_store.write(assignment)
-  assignment_notifier.trigger_assignment_notification(
-      data_store.to_resource_id(assignment))
+  for chunk in chunks:
+    assignment_notifier.trigger_assignment_notification(
+        data_store.to_resource_id(assignment),
+        data_store.resource_id_from_proto_ids(
+            project_id=episode_resource_id.project,
+            brain_id=episode_resource_id.brain,
+            session_id=episode_resource_id.session,
+            episode_id=chunk.episode_id,
+            chunk_id=chunk.chunk_id))
   return
 
 

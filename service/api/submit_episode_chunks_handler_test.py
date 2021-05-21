@@ -117,8 +117,8 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         mock_ds, request.chunks, resource_id.FalkenResourceId(
             'projects/p0/brains/b0/sessions/s0/episodes/ep0'))
     mock_ds.resource_id_from_proto_ids.assert_called_once_with(
-        project=request.project_id, brain=request.brain_id,
-        session=request.session_id, episode=request.chunks[0].episode_id)
+        project_id=request.project_id, brain_id=request.brain_id,
+        session_id=request.session_id, episode_id=request.chunks[0].episode_id)
 
   @mock.patch.object(submit_episode_chunks_handler,
                      '_check_episode_data_with_brain_spec')
@@ -148,10 +148,10 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         mock_ds, request.chunks, self._ep_resource_id)
     try_start_assignments.assert_called_once_with(
         mock_ds, mock.ANY, self._ep_resource_id,
-        store_episode_chunks.return_value)
+        store_episode_chunks.return_value, request.chunks)
     mock_ds.resource_id_from_proto_ids.assert_called_once_with(
-        project=request.project_id, brain=request.brain_id,
-        session=request.session_id, episode=request.chunks[0].episode_id)
+        project_id=request.project_id, brain_id=request.brain_id,
+        session_id=request.session_id, episode_id=request.chunks[0].episode_id)
 
   @mock.patch.object(data_cache, 'get_brain_spec')
   def test_check_episode_data_with_brain_spec_empty_in_progress(
@@ -606,6 +606,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
                                  expect_write, get_session_type):
     mock_ds = mock.Mock()
     mock_ds.to_resource_id.return_value = mock.Mock()
+    mock_ds.resource_id_from_proto_ids.return_value = mock.Mock()
     mock_notifier = mock.Mock()
     FLAGS.hyperparameters = 'assignment_id_0'
     expected_assignment = data_store_pb2.Assignment(
@@ -614,13 +615,18 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     get_session_type.return_value = session_type
 
     submit_episode_chunks_handler._try_start_assignments(
-        mock_ds, mock_notifier, self._ep_resource_id, merged_steps_type)
+        mock_ds, mock_notifier, self._ep_resource_id, merged_steps_type,
+        self._chunks())
 
     if expect_write:
       mock_ds.write.assert_called_once_with(expected_assignment)
       mock_ds.to_resource_id.assert_called_once_with(expected_assignment)
+      mock_ds.resource_id_from_proto_ids.assert_called_once_with(
+          project_id='p0', brain_id='b0', session_id='s0',
+          episode_id='ep0', chunk_id=0)
       mock_notifier.trigger_assignment_notification.assert_called_once_with(
-          mock_ds.to_resource_id.return_value)
+          mock_ds.to_resource_id.return_value,
+          mock_ds.resource_id_from_proto_ids.return_value)
     else:
       mock_ds.write.assert_not_called()
       mock_notifier.trigger_assignment_notification.assert_not_called()

@@ -243,5 +243,11 @@ class ResourceIdTest(parameterized.TestCase):
     self.assertEqual(parsed.episode, 'e0')
     self.assertEqual(parsed.chunk, '0')
 
+  def test_getattr_missing(self):
+    parsed = resource_id.FalkenResourceId('projects/p0/brains/b0')
+    with self.assertRaisesRegex(
+        KeyError, r'.* foo not found .* projects/p0/brains/b0'):
+      _ = parsed.foo
+
 if __name__ == '__main__':
   absltest.main()

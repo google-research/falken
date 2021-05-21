@@ -260,7 +260,10 @@ class ResourceId:
       else:
         collection_id = attr_name
     except KeyError:
-      return super().__getattr__(attr_name)
+      try:
+        return super().__getattr__(attr_name)
+      except:
+        raise KeyError(f'Field {attr_name} not found in resource {str(self)}')
     return self.collection_map[collection_id]
 
   def get_accessor_name(self, collection_id):

@@ -37,16 +37,15 @@ import data_store_pb2
 from learner.brains import specs
 
 
-PROJECT_ID = 'project_id_1'
-BRAIN_ID = 'brain_1'
-SESSION_ID = 'session_1'
-EPISODE_ID = 'episode_1'
+PROJECT_ID = 'project1'
+BRAIN_ID = 'brain1'
+SESSION_ID = 'session1'
+EPISODE_ID = 'episode1'
 ASSIGNMENT_ID = (
     # Choose settings that maximize speed and reduce non-determinism.
     '{"batch_size": 500, "training_examples": 500, "save_interval_batches": 5,'
     ' "synchronous_export": true, "use_xla_jit": false, '
     ' "num_batches_to_sample": 5}')
-SUBTASK_ID = 'subtask_1'
 
 
 def populate_data_store(data_store, assignment_id=None, episode_ids=None,
@@ -54,7 +53,7 @@ def populate_data_store(data_store, assignment_id=None, episode_ids=None,
   """Populate a datastore with an assignment.
 
   Args:
-    data_store: DataStore instance to populate.
+    data_store: data_store.DataStore instance to populate.
     assignment_id: Assignment ID to create or ASSIGNMENT_ID if this is None.
     episode_ids: IDs of episodes to create or a single episode with
       EPISODE_ID if this is None.

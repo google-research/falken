@@ -104,21 +104,22 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         project_id='p0', brain_id='b0', session_id='s0',
         chunks=[episode_pb2.EpisodeChunk(episode_id='ep0')])
     mock_ds = mock.Mock()
-    mock_ds.resource_id_from_proto_ids.return_value = self._ep_resource_id
+    mock_ds.resource_id_from_proto_ids.return_value = self._session_resource_id
     with self.assertRaises(Exception):
       submit_episode_chunks_handler.submit_episode_chunks(
           request, mock_context, mock_ds, mock.Mock())
     mock_context.abort.assert_called_once_with(
         code_pb2.INVALID_ARGUMENT,
-        'Storing episode chunks failed for ep0. Value error.')
+        f'Storing episode chunks failed for {self._session_resource_id}. ' +
+        'Value error.')
     check_episode_data.assert_called_once_with(mock_ds, 'p0', 'b0',
                                                request.chunks)
     store_episode_chunks.assert_called_once_with(
         mock_ds, request.chunks, resource_id.FalkenResourceId(
-            'projects/p0/brains/b0/sessions/s0/episodes/ep0'))
+            'projects/p0/brains/b0/sessions/s0'))
     mock_ds.resource_id_from_proto_ids.assert_called_once_with(
-        project_id=request.project_id, brain_id=request.brain_id,
-        session_id=request.session_id, episode_id=request.chunks[0].episode_id)
+        project=request.project_id, brain=request.brain_id,
+        session=request.session_id)
 
   @mock.patch.object(submit_episode_chunks_handler,
                      '_check_episode_data_with_brain_spec')
@@ -135,23 +136,24 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         project_id='p0', brain_id='b0', session_id='s0',
         chunks=[episode_pb2.EpisodeChunk(episode_id='ep0')])
     mock_ds = mock.Mock()
-    mock_ds.resource_id_from_proto_ids.return_value = self._ep_resource_id
+    mock_ds.resource_id_from_proto_ids.return_value = self._session_resource_id
     with self.assertRaises(Exception):
       submit_episode_chunks_handler.submit_episode_chunks(
           request, mock_context, mock_ds, mock.Mock())
     mock_context.abort.assert_called_once_with(
         code_pb2.NOT_FOUND,
-        'Starting assignment failed for episode ep0. Assignment not found.')
+        f'Starting assignment failed for {self._session_resource_id}. ' +
+        'Assignment not found.')
     check_episode_data.assert_called_once_with(
         mock_ds, 'p0', 'b0', request.chunks)
     store_episode_chunks.assert_called_once_with(
-        mock_ds, request.chunks, self._ep_resource_id)
+        mock_ds, request.chunks, self._session_resource_id)
     try_start_assignments.assert_called_once_with(
-        mock_ds, mock.ANY, self._ep_resource_id,
+        mock_ds, mock.ANY, self._session_resource_id,
         store_episode_chunks.return_value, request.chunks)
     mock_ds.resource_id_from_proto_ids.assert_called_once_with(
-        project_id=request.project_id, brain_id=request.brain_id,
-        session_id=request.session_id, episode_id=request.chunks[0].episode_id)
+        project=request.project_id, brain=request.brain_id,
+        session=request.session_id)
 
   @mock.patch.object(data_cache, 'get_brain_spec')
   def test_check_episode_data_with_brain_spec_empty_in_progress(
@@ -216,15 +218,20 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
   @mock.patch.object(submit_episode_chunks_handler, '_get_steps_type')
   @mock.patch.object(submit_episode_chunks_handler, '_merge_steps_types')
   def test_store_episode_chunks(
-      self, merge_steps_type, get_steps_type, record_online_evaluation):
+      self,
+      merge_steps_type,
+      get_steps_type,
+      record_online_evaluation):
     mock_ds = mock.Mock()
+    mock_ds.resource_id_from_proto_ids.return_value = (
+        self._ep_resource_id)
     chunks = self._chunks()
     merge_steps_type.return_value = data_store_pb2.ONLY_DEMONSTRATIONS
     get_steps_type.return_value = data_store_pb2.ONLY_DEMONSTRATIONS
 
     self.assertEqual(
         submit_episode_chunks_handler._store_episode_chunks(
-            mock_ds, chunks, self._ep_resource_id),
+            mock_ds, chunks, self._session_resource_id),
         merge_steps_type.return_value)
 
     mock_ds.write.assert_called_once_with(
@@ -261,6 +268,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
   def test_store_episode_chunks_failure_at_record_online_evaluation(
       self, get_steps_type, record_online_evaluation):
     mock_ds = mock.Mock()
+    mock_ds.resource_id_from_proto_ids.return_value = self._ep_resource_id
     chunks = self._chunks()
     get_steps_type.return_value = data_store_pb2.ONLY_DEMONSTRATIONS
     record_online_evaluation.side_effect = ValueError('Episode incomplete.')
@@ -270,7 +278,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         'Encountered error while recording online evaluation for episode ep0 '
         'chunk 0. Episode incomplete.'):
       submit_episode_chunks_handler._store_episode_chunks(
-          mock_ds, chunks, self._ep_resource_id)
+          mock_ds, chunks, self._session_resource_id)
 
     mock_ds.write.assert_called_once_with(
         data_store_pb2.EpisodeChunk(
@@ -615,7 +623,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     get_session_type.return_value = session_type
 
     submit_episode_chunks_handler._try_start_assignments(
-        mock_ds, mock_notifier, self._ep_resource_id, merged_steps_type,
+        mock_ds, mock_notifier, self._session_resource_id, merged_steps_type,
         self._chunks())
 
     if expect_write:

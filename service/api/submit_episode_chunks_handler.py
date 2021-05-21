@@ -75,32 +75,29 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
         'Episode data failed did not match the brain spec for the session. '
         f'{e}')
 
-  episode_resource_id = data_store.resource_id_from_proto_ids(
-      project_id=request.project_id, brain_id=request.brain_id,
-      session_id=request.session_id, episode_id=request.chunks[0].episode_id)
+  session_resource_id = data_store.resource_id_from_proto_ids(
+      project=request.project_id, brain=request.brain_id,
+      session=request.session_id)
 
   try:
     chunks_steps_type = _store_episode_chunks(
-        data_store, request.chunks, episode_resource_id)
+        data_store, request.chunks, session_resource_id)
   except (ValueError, resource_store.InternalError) as e:
     context.abort(
         code_pb2.INVALID_ARGUMENT,
-        f'Storing episode chunks failed for {episode_resource_id.episode}.'
+        f'Storing episode chunks failed for {session_resource_id}.'
         f' {e}')
 
   try:
     _try_start_assignments(
-        data_store, assignment_notifier, episode_resource_id, chunks_steps_type,
+        data_store, assignment_notifier, session_resource_id, chunks_steps_type,
         request.chunks)
   except (FileNotFoundError, resource_store.InternalError) as e:
     context.abort(
         code_pb2.NOT_FOUND,
-        f'Starting assignment failed for episode {episode_resource_id.episode}.'
+        f'Starting assignment failed for {session_resource_id}.'
         f' {e}')
 
-  session_resource_id = data_store.resource_id_from_proto_ids(
-      project_id=request.project_id, brain_id=request.brain_id,
-      session_id=request.session_id)
   selector = model_selector.ModelSelector(data_store, session_resource_id)
 
   try:
@@ -162,14 +159,14 @@ def _check_episode_data_with_brain_spec(
             f'Brainspec check failed in chunk {chunk_nr}, step {step_nr}: {e}')
 
 
-def _store_episode_chunks(data_store, chunks, episode_resource_id):
+def _store_episode_chunks(data_store, chunks, session_resource_id):
   """Stores episode chunks and online eval results in data_store.
 
   Args:
     data_store: data_store.DataStore instance to record episode chunks to.
     chunks: list of episode_pb2.EpisodeChunk instances to store.
-    episode_resource_id: data_store.resource_id.FalkenResourceID instance
-      containing resource IDs for the episode.
+    session_resource_id: data_store.resource_id.FalkenResourceID instance
+      representing the session associated with the chunks.
 
   Returns:
     The merged steps type of the chunks stored.
@@ -181,12 +178,13 @@ def _store_episode_chunks(data_store, chunks, episode_resource_id):
   chunks_steps_type = data_store_pb2.UNKNOWN
   write_episode_chunk = data_store_pb2.EpisodeChunk(
       # Set properties common to all chunks.
-      project_id=episode_resource_id.project,
-      brain_id=episode_resource_id.brain,
-      session_id=episode_resource_id.session)
+      project_id=session_resource_id.project,
+      brain_id=session_resource_id.brain,
+      session_id=session_resource_id.session)
 
   # Sort request chunks by chunk ID. This is to ensure the GetEpisodeSteps has
   # previous chunks accessible before querying later chunks.
+  chunks = sorted(chunks, key=lambda chunk: chunk.chunk_id)
   for chunk in chunks:
     try:
       steps_type = _get_steps_type(chunk)
@@ -199,6 +197,12 @@ def _store_episode_chunks(data_store, chunks, episode_resource_id):
     write_episode_chunk.steps_type = steps_type
     write_episode_chunk.data.CopyFrom(chunk)
     data_store.write(write_episode_chunk)
+
+    episode_resource_id = data_store.resource_id_from_proto_ids(
+        project_id=session_resource_id.project,
+        brain_id=session_resource_id.brain,
+        session_id=session_resource_id.session,
+        episode_id=chunk.episode_id)
 
     # Record online evaluation results.
     try:
@@ -254,8 +258,8 @@ def _record_online_evaluation(data_store, chunk, episode_resource_id):
     data_store: data_store.DataStore instance to record online evaluations to.
     chunk: data_store_pb2.EpisodeChunk instance containing data to extract score
       and state from.
-    episode_resource_id: resource_id.EpisodeResourceId instance containing
-      resource IDs for the episode.
+    episode_resource_id: resource_id.FalkenResourceId instance representing
+      the episode.
 
   Raises:
     ValueError if the episodes received has issues such as containing invalid
@@ -429,7 +433,7 @@ def _merge_steps_types(type_left, type_right):
 
 
 def _try_start_assignments(
-    data_store, assignment_notifier, episode_resource_id, chunks_steps_type,
+    data_store, assignment_notifier, session_resource_id, chunks_steps_type,
     chunks):
   """Adds a new assignment to the data_store to start training a new model.
 
@@ -437,8 +441,8 @@ def _try_start_assignments(
     data_store: data_store.DataStore to read and write the new assignment to.
     assignment_notifier: Falken data_store.AssignmentNotifier object to notify
       if an assignment needs to be processed.
-    episode_resource_id: data_store.resource_id.FalkenResourceID instance
-      containing resource IDs for the episode.
+    session_resource_id: data_store.resource_id.FalkenResourceID instance
+      representing the session in which assignments should be created.
     chunks_steps_type: Merged steps type of chunks submitted, to determine if
       a new assignment should be started or not.
     chunks: list of episode_pb2.EpisodeChunk instances for the new chunks that
@@ -449,32 +453,32 @@ def _try_start_assignments(
       writing assignments encounter issues.
   """
   if data_cache.get_session_type(
-      data_store, episode_resource_id.project, episode_resource_id.brain,
-      episode_resource_id.session) != session_pb2.INTERACTIVE_TRAINING:
+      data_store, session_resource_id.project, session_resource_id.brain,
+      session_resource_id.session) != session_pb2.INTERACTIVE_TRAINING:
     logging.debug('Skipping assignment creation on non-training session %s.',
-                  episode_resource_id.session)
+                  session_resource_id)
     return
 
   if chunks_steps_type in [
       data_store_pb2.UNKNOWN, data_store_pb2.ONLY_INFERENCES]:
     logging.debug(
         'No HUMAN_DEMONSTRATION steps found for session %s. '
-        'Skipping assignment creation.', episode_resource_id.session)
+        'Skipping assignment creation.', session_resource_id)
     return
 
   assignment = data_store_pb2.Assignment(
-      project_id=episode_resource_id.project,
-      brain_id=episode_resource_id.brain,
-      session_id=episode_resource_id.session,
+      project_id=session_resource_id.project,
+      brain_id=session_resource_id.brain,
+      session_id=session_resource_id.session,
       assignment_id=FLAGS.hyperparameters)
   data_store.write(assignment)
   for chunk in chunks:
     assignment_notifier.trigger_assignment_notification(
         data_store.to_resource_id(assignment),
         data_store.resource_id_from_proto_ids(
-            project_id=episode_resource_id.project,
-            brain_id=episode_resource_id.brain,
-            session_id=episode_resource_id.session,
+            project_id=session_resource_id.project,
+            brain_id=session_resource_id.brain,
+            session_id=session_resource_id.session,
             episode_id=chunk.episode_id,
             chunk_id=chunk.chunk_id))
   return

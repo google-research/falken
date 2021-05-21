@@ -55,15 +55,15 @@ class StopSessionHandlerTest(parameterized.TestCase):
   @mock.patch.object(
       stop_session_handler, '_get_final_model_from_model_selector')
   @mock.patch.object(stop_session_handler, '_get_snapshot_id')
-  @mock.patch.object(stop_session_handler, '_update_session_end')
-  def test_stop_session(
-      self, update_session_end, get_snapshot_id, get_final_model):
+  def test_stop_session(self, get_snapshot_id, get_final_model):
     get_snapshot_id.return_value = 'test_snapshot_id'
     request = falken_service_pb2.StopSessionRequest(
         project_id='p0',
         session=session_pb2.Session(project_id='p0', brain_id='b0', name='s0'))
+    read_session = data_store_pb2.Session(project_id='p0', brain_id='b0',
+                                          session_id='s0')
     mock_ds = mock.Mock()
-    mock_ds.read.return_value = data_store_pb2.Session()
+    mock_ds.read.return_value = read_session
     mock_context = mock.Mock()
 
     self.assertEqual(
@@ -74,7 +74,7 @@ class StopSessionHandlerTest(parameterized.TestCase):
     expected_session_resource_id = resource_id.FalkenResourceId(
         project=request.session.project_id, brain=request.session.brain_id,
         session=request.session.name)
-    update_session_end.assert_called_once()
+    mock_ds.write_stopped_session.assert_called_once_with(read_session)
     mock_ds.read.assert_called_once_with(expected_session_resource_id)
     get_snapshot_id.assert_called_once_with(
         expected_session_resource_id, mock_ds.read.return_value,

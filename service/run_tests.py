@@ -23,9 +23,10 @@ import re
 import subprocess
 import sys
 
-# We disable auto-generation of protos, since they will be manually generated
-# in the main function.
+# We disable auto-generation of protos and flatbuffers, since they will be
+# manually generated in the main function.
 os.environ['FALKEN_AUTO_GENERATE_PROTOS'] = '0'
+from common import generate_flatbuffers  # pylint: disable=g-import-not-at-top,unused-import
 from common import generate_protos  # pylint: disable=g-import-not-at-top
 from common import pip_installer  # pylint: disable=unused-import
 
@@ -83,6 +84,7 @@ _DEFAULT_TEST_MODULES = [
     'data_store.data_store_test',
     'data_store.file_system_test',
     'data_store.resource_id_test',
+    'data_store.resource_store_test',
     'learner.brains.action_postprocessor_test',
     'learner.brains.brain_cache_test',
     'learner.brains.continuous_imitation_brain_test',

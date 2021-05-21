@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for DataStore."""
+"""Tests for FileSystem."""
 
 import glob
 import os.path
@@ -21,13 +21,7 @@ import time
 
 from absl.testing import absltest
 from absl.testing import parameterized
-from data_store import data_store
 from data_store import file_system
-from data_store import resource_id
-
-import common.generate_protos  # pylint: disable=g-bad-import-order,unused-import
-
-import data_store_pb2
 
 
 class FileSystemTest(parameterized.TestCase):
@@ -88,36 +82,6 @@ class FileSystemTest(parameterized.TestCase):
       time.sleep(0.1)
     times = [self._fs.get_modification_time(path) for path in paths]
     self.assertLess(*times)
-
-  def test_list_by_globbing(self):
-    ds = data_store.DataStore(self._fs)
-    s0 = data_store_pb2.Session(
-        project_id='p0',
-        brain_id='b0',
-        session_id='s0')
-    s1 = data_store_pb2.Session(
-        project_id='p0',
-        brain_id='b0',
-        session_id='s1')
-    s2 = data_store_pb2.Session(
-        project_id='p1',
-        brain_id='b1',
-        session_id='s2')
-    s3 = data_store_pb2.Session(
-        project_id='p2',
-        brain_id='b2',
-        session_id='s3')
-    ds.write(s0)
-    ds.write(s1)
-    ds.write(s2)
-    ds.write(s3)
-    rids, _ = ds.list(resource_id.FalkenResourceId(
-        'projects/{p0,p2}/brains/*/sessions/*'))
-    self.assertEqual(
-        rids,
-        ['projects/p0/brains/b0/sessions/s0',
-         'projects/p0/brains/b0/sessions/s1',
-         'projects/p2/brains/b2/sessions/s3'])
 
   def test_lock(self):
     """Tests locking system."""

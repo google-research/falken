@@ -25,9 +25,12 @@ from absl.testing import parameterized
 from data_store import assignment_monitor
 from data_store import data_store as data_store_module
 from data_store import file_system as data_store_file_system
-import data_store_pb2
 from learner import storage as storage_module
 from learner import test_data
+
+# pylint: disable=g-bad-import-order
+import common.generate_protos  # pylint: disable=unused-import
+import data_store_pb2
 
 
 class StorageTest(parameterized.TestCase):

@@ -19,11 +19,10 @@ from absl import flags
 from absl import logging
 from api import data_cache
 from api import model_selector
-
-import common.generate_protos  # pylint: disable=unused-import
-from data_store import data_store as data_store_module
+from data_store import resource_store
 
 # pylint: disable=g-bad-import-order
+import common.generate_protos  # pylint: disable=unused-import
 import action_pb2
 import data_store_pb2
 import episode_pb2
@@ -49,7 +48,7 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
     request: falken_service_pb2.SubmitEpisodeChunksRequest containing info about
       the chunk and chunks itself that are submitted.
     context: grpc.ServicerContext containing context about the RPC.
-    data_store: Falken data_store.DataStore object to write the chunks to and
+    data_store: data_store.DataStore object to write the chunks to and
       retrieve session info from.
     assignment_notifier: Falken data_store.AssignmentNotifier object to notify
       when an assignment needs to be processed.
@@ -83,7 +82,7 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
   try:
     chunks_steps_type = _store_episode_chunks(
         data_store, request.chunks, episode_resource_id)
-  except (ValueError, data_store_module.InternalError) as e:
+  except (ValueError, resource_store.InternalError) as e:
     context.abort(
         code_pb2.INVALID_ARGUMENT,
         f'Storing episode chunks failed for {episode_resource_id.episode}.'
@@ -92,7 +91,7 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
   try:
     _try_start_assignments(
         data_store, assignment_notifier, episode_resource_id, chunks_steps_type)
-  except (FileNotFoundError, data_store_module.InternalError) as e:
+  except (FileNotFoundError, resource_store.InternalError) as e:
     context.abort(
         code_pb2.NOT_FOUND,
         f'Starting assignment failed for episode {episode_resource_id.episode}.'

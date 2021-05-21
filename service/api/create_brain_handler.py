@@ -43,7 +43,7 @@ def create_brain(request, context, data_store):
     request: falken_service_pb2.CreateBrainRequest containing information about
       the brain requested to be created.
     context: grpc.ServicerContext containing context about the RPC.
-    data_store: Falken data_store.DataStore object to write the brain.
+    data_store: data_store.DataStore object to write the brain.
 
   Returns:
     brain: brain_pb2.Brain proto object of the brain that was just created.

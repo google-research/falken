@@ -21,15 +21,17 @@ import time
 from typing import List, Optional
 import uuid
 
-# pylint: disable=g-bad-import-order
-import common.generate_protos  # pylint: disable=unused-import
 from data_store import assignment_monitor
 from data_store import data_store as data_store_module
 from data_store import file_system as data_store_file_system
 from data_store import resource_id
-import data_store_pb2
+from data_store import resource_store
 from google.rpc import code_pb2
 from log import falken_logging
+
+# pylint: disable=g-bad-import-order
+import common.generate_protos  # pylint: disable=unused-import
+import data_store_pb2
 
 
 _DEFAULT_STALE_SECONDS = 600
@@ -46,7 +48,7 @@ def wrap_data_store_exception(fun):
     """Executes fun and reraises data_store.NotFoundErrors as native errors."""
     try:
       return fun(*args, **kwargs)
-    except data_store_module.NotFoundError as e:
+    except resource_store.NotFoundError as e:
       raise NotFoundError(e)
   return wrapped_fun
 
@@ -77,7 +79,7 @@ class Storage:
     """Create a new Storage instance.
 
     Args:
-      data_store: A DataStore object to access the storage layer.
+      data_store: A data_store.DataStore object to access the storage layer.
       file_system: FileSystem instance to use to monitor assignments.
       stale_seconds: How many seconds need to elapse for an event on a session
         before it is considered stale.

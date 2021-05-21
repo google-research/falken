@@ -19,8 +19,8 @@ from absl import logging
 from api import unique_id
 
 import common.generate_protos  # pylint: disable=unused-import
-from data_store import data_store as data_store_module
 from data_store import resource_id
+from data_store import resource_store
 import data_store_pb2
 import falken_service_pb2
 from google.rpc import code_pb2
@@ -34,7 +34,7 @@ def stop_session(request, context, data_store):
     request: falken_service_pb2.StopSessionRequest containing information
       about the session requested to be stopped.
     context: grpc.ServicerContext containing context about the RPC.
-    data_store: Falken data_store.DataStore object to update the session.
+    data_store: data_store.DataStore object to update the session.
 
   Returns:
     falken_service_pb2.StopSessionResponse containing the snapshot_id for the
@@ -65,7 +65,7 @@ def stop_session(request, context, data_store):
       session_resource_id, session, model_resource_id, data_store, context)
 
   # Update session to be ended with snapshot ID.
-  _update_session_end()
+  data_store.write_stopped_session(session)
 
   return falken_service_pb2.StopSessionResponse(snapshot_id=snapshot_id)
 
@@ -112,7 +112,7 @@ def _get_snapshot_id(
       return _create_or_use_existing_snapshot(
           session_resource_id, session.starting_snapshots, model_resource_id,
           data_store, expect_starting_snapshot=False)
-    except (FileNotFoundError, data_store_module.InternalError,
+    except (FileNotFoundError, resource_store.InternalError,
             ValueError) as e:
       context.abort(
           code_pb2.NOT_FOUND, 'Failed to create snapshot for training session '
@@ -122,7 +122,7 @@ def _get_snapshot_id(
       return _create_or_use_existing_snapshot(
           session_resource_id, session.starting_snapshots, model_resource_id,
           data_store, expect_starting_snapshot=True)
-    except (FileNotFoundError, data_store_module.InternalError,
+    except (FileNotFoundError, resource_store.InternalError,
             ValueError) as e:
       context.abort(
           code_pb2.NOT_FOUND, 'Failed to create snapshot for evaluation session'
@@ -246,8 +246,3 @@ def _create_snapshot(session_resource_id, starting_snapshots,
 
   data_store.write(write_snapshot)
   return snapshot_resource_id.snapshot
-
-
-def _update_session_end():
-  raise NotImplementedError()
-

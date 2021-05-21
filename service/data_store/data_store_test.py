@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for DataStore."""
+# Lint as: python3
+"""Tests for data store mix-ins."""
 
 import time
 from unittest import mock
@@ -22,13 +23,75 @@ from absl.testing import parameterized
 from data_store import data_store
 from data_store import file_system
 from data_store import resource_id
+from data_store import resource_store
 
-import common.generate_protos  # pylint: disable=g-bad-import-order,unused-import
-
+# pylint: disable=g-bad-import-order
+import common.generate_protos  # pylint: disable=unused-import
 import data_store_pb2
 
 
+def create_data_store_mixin(mixin_class):
+  """Constructs a datastore class with a mix-in.
+
+  Args:
+    mixin_class: Mixin class to create a DataStore from.
+
+  Returns:
+    DataStore instance with a mocked FileSystem and the Mixin applied.
+  """
+
+  class MixinDataStore(resource_store.ResourceStore, mixin_class):
+
+    def __init__(self):
+      super().__init__(mock.Mock(), data_store._ResourceEncoder(),
+                       data_store._ResourceResolver(),
+                       resource_id.FalkenResourceId)
+
+  return MixinDataStore()
+
+
+class SnapshotDataStoreMixinTest(absltest.TestCase):
+  """Test SnapshotDataStoreMixin."""
+
+  def test_get_most_recent_snapshot(self):
+    data_store_mixin = create_data_store_mixin(
+        data_store.SnapshotDataStoreMixin)
+    with mock.patch.object(data_store_mixin, 'get_most_recent') as (
+        mock_get_most_recent):
+      expected_snapshot = data_store_pb2.Snapshot(project_id='p0',
+                                                  brain_id='b0')
+      mock_get_most_recent.return_value = expected_snapshot
+      self.assertEqual(
+          data_store_mixin.get_most_recent_snapshot(project_id='p0',
+                                                    brain_id='b0'),
+          expected_snapshot)
+      mock_get_most_recent.assert_called_once_with(
+          data_store_mixin.resource_id_from_proto_ids(
+              project_id='p0', brain_id='b0', snapshot_id='*'))
+
+
+class SessionDataStoreMixinTest(absltest.TestCase):
+  """Test SessionDataStoreMixin."""
+
+  @mock.patch.object(time, 'time')
+  def test_write_stopped_session(self, mock_time):
+    data_store_mixin = create_data_store_mixin(data_store.SessionDataStoreMixin)
+    with mock.patch.object(data_store_mixin, 'write') as mock_write:
+      session_resource_id = resource_id.FalkenResourceId(
+          project='p0', brain='b0', session='s0')
+      session_proto = data_store_pb2.Session(project_id='p0', brain_id='b0',
+                                             session_id='s0')
+      mock_time.return_value = 123
+      mock_write.return_value = session_resource_id
+      self.assertEqual(data_store_mixin.write_stopped_session(session_proto),
+                       session_resource_id)
+      mock_write.assert_called_once_with(
+          data_store_pb2.Session(project_id='p0', brain_id='b0',
+                                 session_id='s0', ended_micros=123000000))
+
+
 class DataStoreTest(parameterized.TestCase):
+  """Test DataStore."""
 
   def setUp(self):
     """Create a datastore object that uses a temporary directory."""
@@ -45,64 +108,61 @@ class DataStoreTest(parameterized.TestCase):
   def test_read_write_project(self):
     self._data_store.write(data_store_pb2.Project(project_id='p1'))
     self.assertEqual(
-        self._data_store.read(resource_id.FalkenResourceId(
-            project='p1')).project_id,
-        'p1')
+        self._data_store.read(self._data_store.resource_id_from_proto_ids(
+            project_id='p1')).project_id, 'p1')
 
   def test_read_write_brain(self):
     self._data_store.write(
         data_store_pb2.Brain(project_id='p1', brain_id='b1'))
     self.assertEqual(
-        self._data_store.read(resource_id.FalkenResourceId(
-            project='p1',
-            brain='b1')).brain_id,
-        'b1')
+        self._data_store.read(self._data_store.resource_id_from_proto_ids(
+            project_id='p1', brain_id='b1')).brain_id, 'b1')
 
   def test_read_write_snapshot(self):
     self._data_store.write(data_store_pb2.Snapshot(
         project_id='p1', brain_id='b1', snapshot_id='s1'))
     self.assertEqual(
-        self._data_store.read(resource_id.FalkenResourceId(
-            project='p1',
-            brain='b1',
-            snapshot='s1')).snapshot_id,
+        self._data_store.read(self._data_store.resource_id_from_proto_ids(
+            project_id='p1', brain_id='b1', snapshot_id='s1')).snapshot_id,
         's1')
 
   def test_read_write_session(self):
     self._data_store.write(data_store_pb2.Session(
         project_id='p1', brain_id='b1', session_id='s1'))
     self.assertEqual(
-        self._data_store.read(resource_id.FalkenResourceId(
-            project='p1',
-            brain='b1',
-            session='s1')).session_id,
-        's1')
+        self._data_store.read(self._data_store.resource_id_from_proto_ids(
+            project_id='p1', brain_id='b1', session_id='s1')).session_id, 's1')
 
   def test_read_write_episode_chunk(self):
     self._data_store.write(data_store_pb2.EpisodeChunk(
         project_id='p1', brain_id='b1', session_id='s1', episode_id='e1',
         chunk_id=3))
     self.assertEqual(
-        self._data_store.read(resource_id.FalkenResourceId(
-            project='p1',
-            brain='b1',
-            session='s1',
-            episode='e1',
-            chunk=3)).chunk_id,
-        3)
+        self._data_store.read(self._data_store.resource_id_from_proto_ids(
+            project_id='p1', brain_id='b1', session_id='s1', episode_id='e1',
+            chunk_id=3)).chunk_id, 3)
 
   def test_read_write_online_evaluation(self):
     self._data_store.write(
         data_store_pb2.OnlineEvaluation(
             project_id='p1', brain_id='b1', session_id='s1', episode_id='e1'))
     self.assertEqual(
-        self._data_store.read(resource_id.FalkenResourceId(
-            project='p1',
-            brain='b1',
-            session='s1',
-            episode='e1',
-            attribute='online_evaluation')).episode_id,
-        'e1')
+        self._data_store.read(self._data_store.resource_id_from_proto_ids(
+            data_store_pb2.OnlineEvaluation, project_id='p1', brain_id='b1',
+            session_id='s1', episode_id='e1')).episode_id, 'e1')
+
+  def test_list_online_evaluation_by_resource_id(self):
+    """List a resource with an attribute from the data store."""
+    id_dict = dict(project_id='p1', brain_id='b1',
+                   session_id='s1', episode_id='e1')
+    online_eval = data_store_pb2.OnlineEvaluation(**id_dict)
+    self._data_store.write(online_eval)
+    list_eval, _ = self._data_store.list_by_proto_ids(
+        attribute_type=data_store_pb2.OnlineEvaluation,
+        **id_dict)
+    self.assertEqual(
+        ['projects/p1/brains/b1/sessions/s1/episodes/e1/online_evaluation'],
+        list_eval)
 
   def test_read_write_assignment(self):
     rid = self._data_store.write(
@@ -115,180 +175,38 @@ class DataStoreTest(parameterized.TestCase):
     self._data_store.write(data_store_pb2.Model(
         project_id='p1', brain_id='b1', session_id='s1', model_id='m1'))
     self.assertEqual(
-        self._data_store.read(resource_id.FalkenResourceId(
-            project='p1',
-            brain='b1',
-            session='s1',
-            model='m1')).model_id,
-        'm1')
+        self._data_store.read(self._data_store.resource_id_from_proto_ids(
+            project_id='p1', brain_id='b1', session_id='s1',
+            model_id='m1')).model_id, 'm1')
 
   def test_read_write_serialized_model(self):
     self._data_store.write(data_store_pb2.SerializedModel(
         project_id='p1', brain_id='b1', session_id='s1', model_id='m1'))
     self.assertEqual(
-        self._data_store.read(resource_id.FalkenResourceId(
-            project='p1',
-            brain='b1',
-            session='s1',
-            model='m1',
-            attribute='serialized_model')).model_id,
-        'm1')
+        self._data_store.read(self._data_store.resource_id_from_proto_ids(
+            data_store_pb2.SerializedModel, project_id='p1', brain_id='b1',
+            session_id='s1', model_id='m1')).model_id, 'm1')
 
   def test_read_write_offline_evaluation(self):
     self._data_store.write(
         data_store_pb2.OfflineEvaluation(
-            project_id='p1',
-            brain_id='b1',
-            session_id='s1',
-            model_id='m1',
+            project_id='p1', brain_id='b1', session_id='s1', model_id='m1',
             offline_evaluation_id=2))
     self.assertEqual(
-        self._data_store.read(resource_id.FalkenResourceId(
-            project='p1',
-            brain='b1',
-            session='s1',
-            model='m1',
-            offline_evaluation=2)).offline_evaluation_id,
-        2)
+        self._data_store.read(self._data_store.resource_id_from_proto_ids(
+            project_id='p1', brain_id='b1', session_id='s1', model_id='m1',
+            offline_evaluation_id=2)).offline_evaluation_id, 2)
 
-  def test_resource_id_from_proto_id(self):
-    rid = self._data_store.resource_id_from_proto_ids(
+  def test_to_resource_id(self):
+    """Test the resolver's conversion from a proto to a resource ID."""
+    proto = data_store_pb2.Session(
         project_id='p0',
         brain_id='b0',
-        session_id='s0',
-        assignment_id='a0')
-    self.assertStartsWith(str(rid),
-                          'projects/p0/brains/b0/sessions/s0/assignments')
-
-    self.assertNotEmpty(rid.assignment)  # Check assignment_id encoding.
-    self.assertNotEqual(rid.assignment, 'a0')
-
-  def test_read_by_proto_id(self):
-    keys = dict(
-        project_id='p0', brain_id='b0', session_id='s0', assignment_id='a0')
-
-    assignment = data_store_pb2.Assignment(**keys)
-    self._data_store.write(assignment)
+        session_id='s0')
+    res_id = self._data_store.to_resource_id(proto)
     self.assertEqual(
-        self._data_store.read_by_proto_ids(**keys),
-        assignment)
-
-  @parameterized.named_parameters(
-      ('descending', True),
-      ('ascending', False))
-  def test_list_by_proto_ids(self, descending):
-    id_dict = dict(project_id='p1', brain_id='b1',
-                   session_id='s1')
-
-    res_ids = []
-    for i in range(10):
-      id_dict['assignment_id'] = f'a{i}'
-      proto = data_store_pb2.Assignment(**id_dict)
-      res_id = self._data_store.write(proto)
-      list_result, _ = self._data_store.list_by_proto_ids(
-          **id_dict, time_descending=descending)
-      self.assertEqual(list_result, [res_id])
-      res_ids.append(res_id)
-
-    id_dict['assignment_id'] = '*'
-    list_result, _ = self._data_store.list_by_proto_ids(
-        **id_dict, time_descending=descending)
-
-    if descending:
-      self.assertEqual(list_result, list(reversed(res_ids)))
-    else:
-      self.assertEqual(list_result, res_ids)
-
-  def test_get_attribute_by_resource_id(self):
-    id_dict = dict(project_id='p1', brain_id='b1',
-                   session_id='s1', episode_id='e1')
-
-    self.assertEqual(
-        self._data_store.resource_id_from_proto_ids(**id_dict),
-        'projects/p1/brains/b1/sessions/s1/episodes/e1')
-
-    self.assertEqual(
-        self._data_store.resource_id_from_proto_ids(
-            attribute_type=data_store_pb2.OnlineEvaluation,
-            **id_dict),
-        'projects/p1/brains/b1/sessions/s1/episodes/e1/online_evaluation')
-
-    online_eval = data_store_pb2.OnlineEvaluation(**id_dict)
-    self._data_store.write(online_eval)
-
-    read_eval = self._data_store.read_by_proto_ids(
-        attribute_type=data_store_pb2.OnlineEvaluation,
-        **id_dict)
-
-    self.assertEqual(online_eval, read_eval)
-
-    list_eval, _ = self._data_store.list_by_proto_ids(
-        attribute_type=data_store_pb2.OnlineEvaluation,
-        **id_dict)
-
-    self.assertEqual(
-        ['projects/p1/brains/b1/sessions/s1/episodes/e1/online_evaluation'],
-        list_eval)
-
-  @mock.patch.object(time, 'time', autospec=True)
-  def test_timestamp_logic(self, mock_time):
-    """Test read, writing, updating a proto."""
-    mock_time.return_value = 0.123
-
-    # Check auto timestamp creation.
-    self._data_store.write(data_store_pb2.Project(project_id='p1'))
-    self.assertEqual(
-        self._data_store.read(resource_id.FalkenResourceId(
-            project='p1')).created_micros,
-        123_000)
-    self.assertEqual(
-        self._data_store.read_timestamp_micros(
-            resource_id.FalkenResourceId(project='p1')),
-        123_000)
-
-    # Reriting with a different timestamp raises an error.
-    with self.assertRaises(ValueError):
-      self._data_store.write(data_store_pb2.Project(
-          project_id='p1',
-          created_micros=567))
-
-    mock_time.return_value = 0.456
-    # Writing with the same timestamp is fine.
-    self._data_store.write(data_store_pb2.Project(
-        project_id='p1',
-        created_micros=123_000))
-    self.assertEqual(
-        self._data_store.read_timestamp_micros(
-            resource_id.FalkenResourceId(project='p1')),
-        123_000)
-
-    # Writing with no timestamp will use the existing timestamp.
-    self._data_store.write(data_store_pb2.Project(project_id='p1'))
-    self.assertEqual(
-        self._data_store.read_timestamp_micros(
-            resource_id.FalkenResourceId(project='p1')),
-        123_000)
-    self.assertEqual(
-        self._data_store.read_timestamp_micros(
-            resource_id.FalkenResourceId(project='p1')),
-        123_000)
-
-  def test_get_most_recent_snapshot(self):
-    for i in range(10):
-      self._data_store.write(data_store_pb2.Snapshot(
-          project_id='p1',
-          brain_id='b1',
-          snapshot_id=f's{i}'))
-    self.assertEqual(
-        'projects/p1/brains/b1/snapshots/s9',
-        self._data_store.get_most_recent_snapshot('p1', 'b1'))
-
-  def test_decode_token(self):
-    self.assertEqual((12, 'ab'), self._data_store._decode_token('12:ab'))
-    self.assertEqual((-1, ''), self._data_store._decode_token(None))
-
-  def test_encode_token(self):
-    self.assertEqual('12:ab', self._data_store._encode_token(12, 'ab'))
+        res_id,
+        'projects/p0/brains/b0/sessions/s0')
 
   # pylint: disable=g-long-lambda
   @parameterized.named_parameters(
@@ -309,12 +227,12 @@ class DataStoreTest(parameterized.TestCase):
           episode_id=str(x)),
        'projects/p1/brains/b1/sessions/s1/episodes/*/online_evaluation'))
   @mock.patch.object(time, 'time', autospec=True)
-  def test_list(self, creation_fun, rid_glob, mock_time):
+  def test_list(self, creation_function, rid_glob, mock_time):
     rid_glob = resource_id.FalkenResourceId(rid_glob)
     rids = []
     for i in range(100):
       mock_time.return_value = i / 1e6
-      rids.append(self._data_store.write(creation_fun(i)))
+      rids.append(self._data_store.write(creation_function(i)))
 
     rid_strings = [str(rid) for rid in rids]
     result, _ = self._data_store.list(rid_glob)
@@ -342,6 +260,16 @@ class DataStoreTest(parameterized.TestCase):
         break
       self.assertEqual(page_token, want_token)
     self.assertEqual(result, rid_strings[5:])
+
+  @parameterized.named_parameters(
+      ('descending', True),
+      ('ascending', False))
+  def test_list_resource_with_subdirs(self, descending):
+    self._data_store.write(data_store_pb2.Project(project_id='p0'))
+    self._data_store.write(data_store_pb2.Brain(project_id='p0', brain_id='b0'))
+    result, _ = self._data_store.list_by_proto_ids(
+        project_id='*', time_descending=descending)
+    self.assertEqual(['projects/p0'], result)
 
   @parameterized.named_parameters(
       ('descending', True),
@@ -400,38 +328,6 @@ class DataStoreTest(parameterized.TestCase):
 
     self.assertEqual(len(set(result)), len(result))
     self.assertLen(result, expected_results)
-
-  def test_datastore_to_resource_id(self):
-    proto = data_store_pb2.Session(
-        project_id='p0',
-        brain_id='b0',
-        session_id='s0')
-    res_id = self._data_store.to_resource_id(proto)
-    self.assertEqual(
-        res_id,
-        'projects/p0/brains/b0/sessions/s0')
-
-  @parameterized.parameters(
-      ({'project_id': 'p0'}, 'projects/p0'),
-      ({'project_id': 'p0', 'brain_id': 'b0',
-        'session_id': 's0', 'assignment_id': 'a0'},
-       'projects/p0/brains/b0/sessions/s0/assignments/.+'),
-      ({'project_id': 'p0', 'brain_id': 'b0',
-        'session_id': 's0', 'assignment_id': '*'},
-       r'projects/p0/brains/b0/sessions/s0/assignments/\*'))
-  def test_resource_id_from_proto_ids(self, key_dict, want_regex):
-    res_id = self._data_store.resource_id_from_proto_ids(**key_dict)
-    self.assertRegex(str(res_id), want_regex)
-
-  @parameterized.named_parameters(
-      ('descending', True),
-      ('ascending', False))
-  def test_list_resource_with_subdirs(self, descending):
-    self._data_store.write(data_store_pb2.Project(project_id='p0'))
-    self._data_store.write(data_store_pb2.Brain(project_id='p0', brain_id='b0'))
-    result, _ = self._data_store.list_by_proto_ids(
-        project_id='*', time_descending=descending)
-    self.assertEqual(['projects/p0'], result)
 
 
 if __name__ == '__main__':

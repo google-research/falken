@@ -37,8 +37,7 @@ from data_store import resource_id
 class ModelSelectorTest(parameterized.TestCase):
 
   offline_summary = (
-      model_selection_record.OfflineEvaluationByAssignmentAndEvalId(
-          model_selection_record.ModelScores))
+      model_selection_record.OfflineEvaluationByAssignmentAndEvalId())
   offline_summary[model_selection_record.AssignmentEvalId('a1', 0)].add_score(
       'm1', 0.4)
   offline_summary[model_selection_record.AssignmentEvalId('a1', 1)].add_score(
@@ -54,10 +53,22 @@ class ModelSelectorTest(parameterized.TestCase):
   offline_summary[model_selection_record.AssignmentEvalId('a1', 0)].add_score(
       'm3', -4.0)
 
-  online_summary = collections.defaultdict(
-      list, {'m1': [-1.0, -1.0], 'm2': [1.0], 'm3': [-1.0, 1.0]})
+  online_summary = collections.defaultdict(list, {
+      'm1': [-1.0, -1.0],
+      'm2': [1.0],
+      'm3': [-1.0, 1.0]
+  })
 
-  summary_map = collections.defaultdict(list, {
+  summary_map = model_selection_record.SummaryMap({
+      'a2': [
+          model_selection_record.EvaluationSummary(
+              model_id='m2',
+              offline_scores={
+                  1: -0.5,
+                  0: 0.3
+              },
+              online_scores=online_summary['m2'])
+      ],
       'a1': [
           model_selection_record.EvaluationSummary(
               model_id='m1',
@@ -71,16 +82,9 @@ class ModelSelectorTest(parameterized.TestCase):
           model_selection_record.EvaluationSummary(
               model_id='m3',
               offline_scores={0: -4.0},
-              online_scores=online_summary['m3'])],
-      'a2':
-          [model_selection_record.EvaluationSummary(
-              model_id='m2',
-              offline_scores={
-                  1: -0.5,
-                  0: 0.3
-              },
-              online_scores=online_summary['m2'])
-           ]})
+              online_scores=online_summary['m3'])
+      ]
+  })
 
   def setUp(self):
     super().setUp()
@@ -165,7 +169,7 @@ class ModelSelectorTest(parameterized.TestCase):
   @mock.patch.object(data_cache, 'get_starting_snapshot')
   @mock.patch.object(model_selector.ModelSelector, '_get_offline_eval_summary')
   @mock.patch.object(model_selector.ModelSelector, '_get_online_eval_summary')
-  @mock.patch.object(model_selector.ModelSelector, '_get_assignment_summaries')
+  @mock.patch.object(model_selector.ModelSelector, '_generate_summary_map')
   def test_get_summary_map(
       self, get_assignment_summaries, get_online_eval_summary,
       get_offline_eval_summary, get_starting_snapshot):
@@ -320,22 +324,106 @@ class ModelSelectorTest(parameterized.TestCase):
         attribute_type=data_store_pb2.OnlineEvaluation,
         project_id='p0', brain_id='b0', session_id='s0', episode_id='*')
 
-  def test_get_assignment_summaries(self):
+  def test_generate_summary_map(self):
     self.assertEqual(
-        self._model_selector._get_assignment_summaries(
+        self._model_selector._generate_summary_map(
             ModelSelectorTest.offline_summary,
-            ModelSelectorTest.online_summary),
-        ModelSelectorTest.summary_map)
+            ModelSelectorTest.online_summary), ModelSelectorTest.summary_map)
+
+  def test_generate_summary_map_plenty_of_models(self):
+    offline_summary = (
+        model_selection_record.OfflineEvaluationByAssignmentAndEvalId())
+    # One model per assignment.
+    offline_summary[model_selection_record.AssignmentEvalId('a0', 0)].add_score(
+        'm1', 0.4)
+    offline_summary[model_selection_record.AssignmentEvalId('a0', 1)].add_score(
+        'm1', -64.0)
+    offline_summary[model_selection_record.AssignmentEvalId('a1', 0)].add_score(
+        'm2', 0.4)
+    offline_summary[model_selection_record.AssignmentEvalId('a1', 1)].add_score(
+        'm2', -20.0)
+    offline_summary[model_selection_record.AssignmentEvalId('a2', 0)].add_score(
+        'm3', 0.4)
+
+    online_summary = collections.defaultdict(list, {
+        'm1': [-1.0, -1.0],
+        'm2': [1.0],
+        'm3': [-1.0, 1.0]
+    })
+
+    summary_map = model_selection_record.SummaryMap({
+        'a2': [
+            model_selection_record.EvaluationSummary(
+                model_id='m3',
+                offline_scores={0: 0.4},
+                online_scores=[-1.0, 1.0])
+        ],
+        'a1': [
+            model_selection_record.EvaluationSummary(
+                model_id='m2',
+                offline_scores={
+                    1: -20.0,
+                    0: 0.4
+                },
+                online_scores=[1.0])
+        ],
+        'a0': [
+            model_selection_record.EvaluationSummary(
+                model_id='m1',
+                offline_scores={
+                    1: -64.0,
+                    0: 0.4
+                },
+                online_scores=[-1.0, -1.0])
+        ]
+    })
+    self.assertEqual(
+        self._model_selector._generate_summary_map(offline_summary,
+                                                   online_summary), summary_map)
+
+  def test_generate_summary_map_empty(self):
+    self.assertEqual(
+        self._model_selector._generate_summary_map(
+            model_selection_record.OfflineEvaluationByAssignmentAndEvalId(),
+            collections.defaultdict(list)), model_selection_record.SummaryMap())
+
+  def test_add_summary(self):
+    summary_map = model_selection_record.SummaryMap()
+    self._model_selector._add_summary(
+        'a0', 0, model_selection_record.ModelScore(model_id='m0', score=0.8),
+        [1.0, -1.0], summary_map)
+    self.assertSameElements(summary_map['a0'], [
+        model_selection_record.EvaluationSummary(
+            model_id='m0', offline_scores={0: 0.8}, online_scores=[1.0, -1.0])
+    ])
+
+  def test_add_summary_existing(self):
+    summary_map = model_selection_record.SummaryMap()
+    existing_summary = model_selection_record.EvaluationSummary(
+        model_id='m0', offline_scores={1: -6.0}, online_scores=[1.0, -1.0])
+    summary_map['a0'].append(existing_summary)
+    self._model_selector._add_summary(
+        'a0', 0, model_selection_record.ModelScore(model_id='m0', score=0.8),
+        [1.0, -1.0], summary_map)
+    self.assertSameElements(summary_map['a0'], [
+        model_selection_record.EvaluationSummary(
+            model_id='m0',
+            offline_scores={
+                1: -6.0,
+                0: 0.8
+            },
+            online_scores=[1.0, -1.0])
+    ])
 
   @mock.patch.object(model_selector.ModelSelector, '_get_summary_map')
   def test_create_model_records(self, get_summary_map):
     get_summary_map.return_value = ModelSelectorTest.summary_map
     self.assertEqual(
-        self._model_selector._create_model_records(),
-        (5, ['m1', 'm3', 'm2'],
-         [online_eval_sampling.ModelRecord(successes=0, failures=2),
-          online_eval_sampling.ModelRecord(successes=1, failures=1),
-          online_eval_sampling.ModelRecord(successes=1, failures=0)]))
+        self._model_selector._create_model_records(), (5, ['m2', 'm1', 'm3'], [
+            online_eval_sampling.ModelRecord(successes=1, failures=0),
+            online_eval_sampling.ModelRecord(successes=0, failures=2),
+            online_eval_sampling.ModelRecord(successes=1, failures=1),
+        ]))
     get_summary_map.assert_called_once_with()
 
 

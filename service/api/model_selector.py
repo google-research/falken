@@ -16,6 +16,7 @@
 """Selects model based on evaluation score."""
 
 import collections
+import copy
 import time
 import typing
 
@@ -108,8 +109,8 @@ class ModelSelector:
           self._session.session_id)
       offline_eval_summary = self._get_offline_eval_summary(starting_snapshot)
       online_eval_summary = self._get_online_eval_summary()
-      self._summary_map = self._get_assignment_summaries(
-          offline_eval_summary, online_eval_summary)
+      self._summary_map = self._generate_summary_map(offline_eval_summary,
+                                                     online_eval_summary)
       logging.info(
           'Generated summary map in %d seconds.', time.perf_counter() - before)
     return self._summary_map
@@ -143,8 +144,7 @@ class ModelSelector:
         [res_id.assignments for res_id in assignment_resource_ids])
 
     offline_eval_summary = (
-        model_selection_record.OfflineEvaluationByAssignmentAndEvalId(
-            model_selection_record.ModelScores))
+        model_selection_record.OfflineEvaluationByAssignmentAndEvalId())
 
     for offline_eval_resource_id in offline_eval_resource_ids:
       if min([len(offline_eval_summary.model_ids_for_assignment_id(a))
@@ -194,7 +194,7 @@ class ModelSelector:
 
     return online_summaries
 
-  def _get_assignment_summaries(
+  def _generate_summary_map(
       self, offline_eval_summary, online_eval_summary
   ) -> typing.DefaultDict[str, list[model_selection_record.EvaluationSummary]]:
     """Joins the summaries by corresponding assignment IDs and model IDs.
@@ -209,30 +209,64 @@ class ModelSelector:
       typing.DefaultDict[string, List[EvaluationSummary]] mapping assignment IDs
         to list of EvalutionSummary.
     """
-    assignment_summaries = collections.defaultdict(list)
-    model_ids_to_eval_summaries = {}
-    # TODO(b/185813920): Add round-robin selection to models distributed by
-    # assignment ID to fill budget of
-    # max(_MAXIMUM_NUMBER_OF_MODELS_TO_ONLINE_EVAL,
-    #     assignment ID count * _NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT).
+    summary_map = model_selection_record.SummaryMap()
+    # We're allowed the max of _MAXIMUM_NUMBER_OF_MODELS_TO_ONLINE_EVAL and
+    # number of assignments * _NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT.
+    models_budget = max(
+        _MAXIMUM_NUMBER_OF_MODELS_TO_ONLINE_EVAL,
+        len(offline_eval_summary) * _NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT)
+    offline_summary_copy = copy.copy(offline_eval_summary)
+
+    # First, populate with scores from top
+    # _NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT models for each assignment.
     for assignment_id in offline_eval_summary.assignment_ids:
-      top_models_for_assignment_id = (
+      top_model_scores_for_assignment_id = (
           offline_eval_summary.scores_by_offline_evaluation_id(
-              assignment_id)[:_MAXIMUM_NUMBER_OF_MODELS_TO_ONLINE_EVAL])
-      for eval_id, model_score in top_models_for_assignment_id:
-        if model_score.model_id in model_ids_to_eval_summaries.keys():
-          model_ids_to_eval_summaries[
-              model_score.model_id].offline_scores[eval_id] = model_score.score
-        else:
-          model_ids_to_eval_summaries[model_score.model_id] = (
-              model_selection_record.EvaluationSummary(
-                  model_id=model_score.model_id,
-                  offline_scores={eval_id: model_score.score},
-                  online_scores=online_eval_summary.get(
-                      model_score.model_id, [])))
-          assignment_summaries[assignment_id].append(
-              model_ids_to_eval_summaries[model_score.model_id])
-    return assignment_summaries
+              assignment_id,
+              models_limit=_NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT))
+      for eval_id, model_score in top_model_scores_for_assignment_id:
+        self._add_summary(assignment_id, eval_id, model_score,
+                          online_eval_summary.get(model_score.model_id, []),
+                          summary_map)
+        offline_summary_copy.remove_score(assignment_id, eval_id, model_score)
+
+    # If we can still add more models, populate by getting one from each
+    # assignment.
+    while (summary_map.models_count < models_budget and offline_summary_copy):
+      for assignment_id in offline_eval_summary.assignment_ids:
+        top_scores_for_assignment_id = (
+            offline_eval_summary.scores_by_offline_evaluation_id(
+                assignment_id, models_limit=1))  # Pick off one model at a time.
+        for eval_id, model_score in top_scores_for_assignment_id:
+          self._add_summary(assignment_id, eval_id, model_score,
+                            online_eval_summary.get(model_score.model_id, []),
+                            summary_map)
+          offline_summary_copy.remove_score(assignment_id, eval_id, model_score)
+    return summary_map
+
+  def _add_summary(self, assignment_id, eval_id, model_score, online_scores,
+                   summary_map):
+    """Add or update an existing EvaluationSummary in the SummaryMap.
+
+    Args:
+      assignment_id: Assignment ID of the score to update the SummaryMap with.
+      eval_id: Offline evaluation ID of the score to update the SummaryMap with.
+      model_score: ModelScore instance containing information about the score to
+        update the SummaryMap with.
+      online_scores: List of online scores to update the SummaryMap with.
+      summary_map: SummaryMap instance to update.
+    """
+    existing_eval_summary = (
+        summary_map.eval_summary_for_assignment_and_model(
+            assignment_id, model_score.model_id))
+    if existing_eval_summary:
+      existing_eval_summary.offline_scores[eval_id] = model_score.score
+    else:
+      summary_map[assignment_id].append(
+          model_selection_record.EvaluationSummary(
+              model_id=model_score.model_id,
+              offline_scores={eval_id: model_score.score},
+              online_scores=online_scores))
 
   def _create_model_records(self):
     """Creates ModelRecords for sampling and return number of total eval runs.

@@ -402,7 +402,6 @@ namespace FalkenTests
               "Attempted to read the clamping configuration of attribute" +
                 " position, which is of type Position and therefore it" +
                 " does not support clamping" };
-          Falken.Log.Level = Falken.LogLevel.Fatal;
           using (var ignoreErrorMessages = new IgnoreErrorMessages())
           {
             attribute.EnableClamping = true;

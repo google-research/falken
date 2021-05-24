@@ -174,7 +174,6 @@ namespace FalkenTests
       joystick.X = 0.0f;
       Assert.AreEqual(0.0, joystick.X);
 
-      Falken.Log.Level = Falken.LogLevel.Fatal;
       using (var ignoreErrorMessages = new IgnoreErrorMessages())
       {
         Assert.That(() => joystick.X = -2.0f,
@@ -203,7 +202,6 @@ namespace FalkenTests
       joystick.X = 0.0f;
       Assert.AreEqual(0.0f, joystick.X);
 
-      Falken.Log.Level = Falken.LogLevel.Fatal;
       using (var ignoreErrorMessages = new IgnoreErrorMessages())
       {
           Assert.That(() => joystick.X = -2.0f,
@@ -241,7 +239,6 @@ namespace FalkenTests
       joystick.Y = 0.0f;
       Assert.AreEqual(0.0, joystick.Y);
 
-      Falken.Log.Level = Falken.LogLevel.Fatal;
       using (var ignoreErrorMessages = new IgnoreErrorMessages())
       {
         Assert.That(() => joystick.Y = -2.0f,
@@ -270,7 +267,6 @@ namespace FalkenTests
       joystick.Y = 0.0f;
       Assert.AreEqual(0.0f, joystick.Y);
 
-      Falken.Log.Level = Falken.LogLevel.Fatal;
       using (var ignoreErrorMessages = new IgnoreErrorMessages())
       {
           Assert.That(() => joystick.Y = -2.0f,

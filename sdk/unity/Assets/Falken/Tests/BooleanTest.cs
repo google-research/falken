@@ -147,7 +147,6 @@ namespace FalkenTests
                   " jump, which is of type Bool and therefore it" +
                   " does not support clamping" };
 
-            Falken.Log.Level = Falken.LogLevel.Fatal;
             using (var ignoreErrorMessages = new IgnoreErrorMessages())
             {
                 attribute.EnableClamping = true;

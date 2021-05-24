@@ -100,8 +100,9 @@ namespace FalkenTests
             try
             {
                 Falken.Log.Filename = newLogFilename;
-                Assert.AreEqual(Falken.Log.Filename, newLogFilename);
-                Assert.AreEqual(Falken.Log.Level, Falken.LogLevel.Info);
+                Falken.Log.Level = Falken.LogLevel.Info;
+                Assert.AreEqual(newLogFilename, Falken.Log.Filename);
+                Assert.AreEqual(Falken.LogLevel.Info, Falken.Log.Level);
                 // Make sure everything is written to the log file regardless of Log.Level.
                 Falken.Log.Debug("Hello");
                 // Close the log file so it can be read.

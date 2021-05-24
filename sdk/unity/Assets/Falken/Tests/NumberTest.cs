@@ -354,7 +354,6 @@ namespace FalkenTests
             attribute.Value = 0.0f;
             Assert.AreEqual(0.0f, attribute.Value);
 
-            Falken.Log.Level = Falken.LogLevel.Fatal;
             using (var ignoreErrorMessages = new IgnoreErrorMessages())
             {
                 Assert.That(() => attribute.Value = -2.0f,
@@ -383,7 +382,6 @@ namespace FalkenTests
             attribute.Value = 0.0f;
             Assert.AreEqual(0.0f, attribute.Value);
 
-            Falken.Log.Level = Falken.LogLevel.Fatal;
             using (var ignoreErrorMessages = new IgnoreErrorMessages())
             {
                 Assert.That(() => attribute.Value = -2.0f,

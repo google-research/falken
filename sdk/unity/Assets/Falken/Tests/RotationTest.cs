@@ -468,7 +468,6 @@ namespace FalkenTests
               "Attempted to read the clamping configuration of attribute" +
                 " quaternion, which is of type Rotation and therefore it" +
                 " does not support clamping" };
-          Falken.Log.Level = Falken.LogLevel.Fatal;
           using (var ignoreErrorMessages = new IgnoreErrorMessages())
           {
             attribute.EnableClamping = true;

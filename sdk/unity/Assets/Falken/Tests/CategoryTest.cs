@@ -193,6 +193,37 @@ namespace FalkenTests
             category.InvalidateNonFalkenFieldValue();
             Assert.IsNull(category.ReadFieldIfValid());
         }
+
+        [Test]
+        public void CategoryClampingTest()
+        {
+          WeaponEnumContainer weaponContainer = new WeaponEnumContainer();
+          FieldInfo weaponField =
+              typeof(WeaponEnumContainer).GetField("weapon");
+          Falken.Category attribute = new Falken.Category();
+          attribute.BindAttribute(weaponField, weaponContainer, _falkenContainer);
+
+          var recovered_logs = new List<String>();
+          System.EventHandler<Falken.Log.MessageArgs> handler = (
+              object source, Falken.Log.MessageArgs args) =>
+          {
+              recovered_logs.Add(args.Message);
+          };
+          Falken.Log.OnMessage += handler;
+          var expected_logs = new List<String>() {
+              "Attempted to set the clamping configuration" +
+                " of attribute weapon, which is of type Categorical" +
+                " and therefore it does not support clamping",
+              "Attempted to read the clamping configuration of attribute" +
+                " weapon, which is of type Categorical and therefore it" +
+                " does not support clamping" };
+          using (var ignoreErrorMessages = new IgnoreErrorMessages())
+          {
+            attribute.EnableClamping = true;
+            Assert.IsTrue(attribute.EnableClamping);
+          }
+          Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+        }
     }
 
     public class CategoryContainerTest

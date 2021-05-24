@@ -166,6 +166,30 @@ namespace Falken
         }
 
         /// <summary>
+        /// Enable/disable clamping of out-of-range values for
+        /// attribute types that support it. When it's enabled
+        /// values will be clamped to the max or min value
+        /// of the range.
+        /// </summary>
+        public bool EnableClamping {
+            get
+            {
+                if (Bound)
+                {
+                    return _attribute.enable_clamping();
+                }
+                return false;
+            }
+            set
+            {
+                if (Bound)
+                {
+                    _attribute.set_enable_clamping(value);
+                }
+            }
+        }
+
+        /// <summary>
         /// Default attribute base constructor.
         /// </summary>
         protected AttributeBase()

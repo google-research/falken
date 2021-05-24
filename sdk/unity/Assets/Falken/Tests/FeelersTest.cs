@@ -153,6 +153,148 @@ namespace FalkenTests
             Assert.AreEqual(0, ids[2].Value);
         }
 
+
+        [Test]
+        public void FeelerClampingTest()
+        {
+            FalkenFeelerContainer feelerContainer = new FalkenFeelerContainer();
+            FieldInfo feelerField =
+              typeof(FalkenFeelerContainer).GetField("feeler");
+            Falken.Feelers feeler = new Falken.Feelers(
+              5.0f, 3.0f, 45.0f, 3,
+              new List<string>() { "zero", "one", "two" });
+            feeler.BindAttribute(feelerField, feelerContainer, _falkenContainer);
+
+            var recovered_logs = new List<String>();
+            System.EventHandler<Falken.Log.MessageArgs> handler = (
+                object source, Falken.Log.MessageArgs args) =>
+            {
+                recovered_logs.Add(args.Message);
+            };
+            Falken.Log.OnMessage += handler;
+
+            // default clamping value (off)
+            var expected_logs = new List<String>() {
+                  "Unable to set value of attribute 'distance_0' to -10" +
+                      " as it is out of the specified range 0 to 5.",
+                  "Unable to set value of attribute 'distance_0' to 10" +
+                      " as it is out of the specified range 0 to 5." };
+
+            List<Falken.Number> distances = feeler.Distances;
+            Assert.AreEqual(3, distances.Count);
+
+            var distance = distances[0];
+
+            // default clamping value (off)
+            recovered_logs.Clear();
+            Assert.IsFalse(feeler.EnableClamping);
+            distance.Value = 2.0f;
+            Assert.AreEqual(2.0f, distance.Value);
+            using (var ignoreErrorMessages = new IgnoreErrorMessages())
+            {
+                Assert.That(() => distance.Value = -10.0f,
+                    Throws.TypeOf<ApplicationException>());
+                Assert.That(() => distance.Value = 10.0f,
+                    Throws.TypeOf<ApplicationException>());
+            }
+            Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+
+            // with clamping on
+            recovered_logs.Clear();
+            feeler.EnableClamping = true;
+            Assert.IsTrue(feeler.EnableClamping);
+            distance.Value = 2.0f;
+            Assert.AreEqual(2.0f, distance.Value);
+            distance.Value = -10.0f;
+            Assert.AreEqual(0.0f, distance.Value);
+            distance.Value = 10.0f;
+            Assert.AreEqual(5.0f, distance.Value);
+            Assert.AreEqual(recovered_logs.Count, 0);
+
+            // with clamping off
+            recovered_logs.Clear();
+            feeler.EnableClamping = false;
+            Assert.IsFalse(feeler.EnableClamping);
+            distance.Value = 2.0f;
+            Assert.AreEqual(2.0f, distance.Value);
+            using (var ignoreErrorMessages = new IgnoreErrorMessages())
+            {
+                Assert.That(() => distance.Value = -10.0f,
+                    Throws.TypeOf<ApplicationException>());
+                Assert.That(() => distance.Value = 10.0f,
+                    Throws.TypeOf<ApplicationException>());
+            }
+            Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+
+            recovered_logs.Clear();
+            Assert.AreEqual(recovered_logs.Count, 0);
+            // test per-feeler clamping management
+            feeler.EnableClamping = false;
+            Assert.IsFalse(feeler.EnableClamping);
+            Assert.IsFalse(feeler.Distances[0].EnableClamping);
+            Assert.IsFalse(feeler.Distances[1].EnableClamping);
+            Assert.IsFalse(feeler.Distances[2].EnableClamping);
+            // no warning should be logged if all distances clamp config match
+            Assert.AreEqual(recovered_logs.Count, 0);
+
+            recovered_logs.Clear();
+            Assert.AreEqual(recovered_logs.Count, 0);
+            // test per-feeler clamping management
+            feeler.EnableClamping = false;
+            Assert.IsFalse(feeler.EnableClamping);
+            Assert.IsFalse(feeler.Distances[0].EnableClamping);
+            feeler.Distances[1].EnableClamping = true;
+            Assert.IsTrue(feeler.Distances[1].EnableClamping);
+            Assert.IsFalse(feeler.Distances[2].EnableClamping);
+            bool clamping_state = false;
+            using (var ignoreErrorMessages = new IgnoreErrorMessages())
+            {
+                clamping_state = feeler.EnableClamping;
+            }
+            Assert.IsFalse(clamping_state);
+            expected_logs = new List<String>() {
+                  "The individual distances within attribute feeler" +
+                      " of type Feelers have been configured with clamping" +
+                      " configurations that differ from that of the parent" +
+                      " attribute, please read the individual clamping" +
+                      " configurations for each distance"};
+            Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+
+            recovered_logs.Clear();
+            Assert.AreEqual(recovered_logs.Count, 0);
+            // test per-feeler clamping management
+            feeler.EnableClamping = true;
+            Assert.IsTrue(feeler.EnableClamping);
+            Assert.IsTrue(feeler.Distances[0].EnableClamping);
+            Assert.IsTrue(feeler.Distances[1].EnableClamping);
+            Assert.IsTrue(feeler.Distances[2].EnableClamping);
+            // no warning should be logged if all distances clamp config match
+            Assert.AreEqual(recovered_logs.Count, 0);
+
+            recovered_logs.Clear();
+            Assert.AreEqual(recovered_logs.Count, 0);
+            // test per-feeler clamping management
+            feeler.EnableClamping = true;
+            Assert.IsTrue(feeler.EnableClamping);
+            Assert.IsTrue(feeler.Distances[0].EnableClamping);
+            feeler.Distances[1].EnableClamping = false;
+            Assert.IsFalse(feeler.Distances[1].EnableClamping);
+            Assert.IsTrue(feeler.Distances[2].EnableClamping);
+            using (var ignoreErrorMessages = new IgnoreErrorMessages())
+            {
+                clamping_state = feeler.EnableClamping;
+            }
+            Assert.IsTrue(clamping_state);
+            expected_logs = new List<String>() {
+                  "The individual distances within attribute feeler" +
+                      " of type Feelers have been configured with clamping" +
+                      " configurations that differ from that of the parent" +
+                      " attribute, please read the individual clamping" +
+                      " configurations for each distance"};
+            Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+        }
+
+
         [Test]
         public void BindFeelerNoIds()
         {

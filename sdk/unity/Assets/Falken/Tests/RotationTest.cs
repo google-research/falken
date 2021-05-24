@@ -442,6 +442,40 @@ namespace FalkenTests
           rotation.InvalidateNonFalkenFieldValue();
           Assert.IsNull(rotation.ReadFieldIfValid());
         }
+
+        [Test]
+        public void RotationClampingTest()
+        {
+          CustomQuaternionContainer rotationContainer =
+              new CustomQuaternionContainer();
+          FieldInfo quaternionField =
+            typeof(CustomQuaternionContainer).GetField("quaternion");
+          Falken.Rotation attribute = new Falken.Rotation();
+          attribute.BindAttribute(quaternionField, rotationContainer, _falkenContainer);
+
+          var recovered_logs = new List<String>();
+          System.EventHandler<Falken.Log.MessageArgs> handler = (
+              object source, Falken.Log.MessageArgs args) =>
+          {
+              recovered_logs.Add(args.Message);
+          };
+          Falken.Log.OnMessage += handler;
+           // default clamping value (off)
+          var expected_logs = new List<String>() {
+              "Attempted to set the clamping configuration" +
+                " of attribute quaternion, which is of type Rotation" +
+                " and therefore it does not support clamping",
+              "Attempted to read the clamping configuration of attribute" +
+                " quaternion, which is of type Rotation and therefore it" +
+                " does not support clamping" };
+          Falken.Log.Level = Falken.LogLevel.Fatal;
+          using (var ignoreErrorMessages = new IgnoreErrorMessages())
+          {
+            attribute.EnableClamping = true;
+              Assert.IsTrue(attribute.EnableClamping);
+          }
+          Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+        }
     }
 
     public class RotationContainerTest

@@ -19,7 +19,6 @@ from absl import logging
 from api import unique_id
 
 import common.generate_protos  # pylint: disable=unused-import
-from data_store import resource_id
 from data_store import resource_store
 import data_store_pb2
 import falken_service_pb2
@@ -47,10 +46,10 @@ def stop_session(request, context, data_store):
   logging.debug('StopSession called for project_id %s with session %s.',
                 request.project_id, request.session.name)
   session = None
-  session_resource_id = resource_id.FalkenResourceId(
-      project=request.session.project_id,
-      brain=request.session.brain_id,
-      session=request.session.name)
+  session_resource_id = data_store.resource_id_from_proto_ids(
+      project_id=request.session.project_id,
+      brain_id=request.session.brain_id,
+      session_id=request.session.name)
   try:
     session = data_store.read(session_resource_id)
   except FileNotFoundError as e:
@@ -221,9 +220,10 @@ def _create_snapshot(session_resource_id, starting_snapshots,
     InternalError if something goes wrong with writing the snapshot on
       data_store.
   """
-  snapshot_resource_id = resource_id.FalkenResourceId(
-      project=session_resource_id.project, brain=session_resource_id.brain,
-      snapshot=unique_id.generate_unique_id())
+  snapshot_resource_id = data_store.resource_id_from_proto_ids(
+      project_id=session_resource_id.project,
+      brain_id=session_resource_id.brain,
+      snapshot_id=unique_id.generate_unique_id())
   write_snapshot = data_store_pb2.Snapshot(
       project_id=snapshot_resource_id.project,
       brain_id=snapshot_resource_id.brain,
@@ -232,9 +232,10 @@ def _create_snapshot(session_resource_id, starting_snapshots,
   write_snapshot.model_path = model_path
 
   for starting_snapshot_id in starting_snapshots:
-    starting_snapshot_resource_id = resource_id.FalkenResourceId(
-        str(snapshot_resource_id))
-    starting_snapshot_resource_id.snapshot = starting_snapshot_id
+    starting_snapshot_resource_id = data_store.resource_id_from_proto_ids(
+        project_id=snapshot_resource_id.project,
+        brain_id=snapshot_resource_id.brain,
+        snapshot_id=starting_snapshot_id)
     starting_snapshot = data_store.read(starting_snapshot_resource_id)
 
     # Add parent snapshot to the graph and copy the ancestors.

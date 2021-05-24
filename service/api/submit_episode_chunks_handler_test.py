@@ -118,8 +118,8 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         mock_ds, request.chunks, resource_id.FalkenResourceId(
             'projects/p0/brains/b0/sessions/s0'))
     mock_ds.resource_id_from_proto_ids.assert_called_once_with(
-        project=request.project_id, brain=request.brain_id,
-        session=request.session_id)
+        project_id=request.project_id, brain_id=request.brain_id,
+        session_id=request.session_id)
 
   @mock.patch.object(submit_episode_chunks_handler,
                      '_check_episode_data_with_brain_spec')
@@ -152,8 +152,8 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         mock_ds, mock.ANY, self._session_resource_id,
         store_episode_chunks.return_value, request.chunks)
     mock_ds.resource_id_from_proto_ids.assert_called_once_with(
-        project=request.project_id, brain=request.brain_id,
-        session=request.session_id)
+        project_id=request.project_id, brain_id=request.brain_id,
+        session_id=request.session_id)
 
   @mock.patch.object(data_cache, 'get_brain_spec')
   def test_check_episode_data_with_brain_spec_empty_in_progress(

@@ -76,8 +76,8 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
         f'{e}')
 
   session_resource_id = data_store.resource_id_from_proto_ids(
-      project=request.project_id, brain=request.brain_id,
-      session=request.session_id)
+      project_id=request.project_id, brain_id=request.brain_id,
+      session_id=request.session_id)
 
   try:
     chunks_steps_type = _store_episode_chunks(

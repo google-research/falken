@@ -23,6 +23,8 @@ from api import stop_session_handler
 from api import unique_id
 
 import common.generate_protos  # pylint: disable=unused-import
+from data_store import data_store
+from data_store import file_system
 from data_store import resource_id
 import data_store_pb2
 import falken_service_pb2
@@ -32,58 +34,73 @@ import session_pb2
 
 class StopSessionHandlerTest(parameterized.TestCase):
 
+  def setUp(self):
+    """Create a data store."""
+    super().setUp()
+    self._data_store = data_store.DataStore(file_system.FakeFileSystem())
+
   def test_stop_session_not_found(self):
-    mock_ds = mock.Mock()
-    mock_ds.read.side_effect = FileNotFoundError('Session not found.')
-    mock_context = mock.Mock()
-    mock_context.abort.side_effect = Exception()
-    request = falken_service_pb2.StopSessionRequest(
-        project_id='p0',
-        session=session_pb2.Session(project_id='p0', brain_id='b0', name='s0'))
+    with mock.patch.object(self._data_store, 'read', autospec=True) as (
+        mock_ds_read):
+      request = falken_service_pb2.StopSessionRequest(
+          project_id='p0',
+          session=session_pb2.Session(project_id='p0', brain_id='b0',
+                                      name='s0'))
 
-    with self.assertRaises(Exception):
-      stop_session_handler.stop_session(request, mock_context, mock_ds)
+      mock_ds_read.side_effect = FileNotFoundError('Session not found.')
+      mock_context = mock.Mock()
+      mock_context.abort.side_effect = Exception()
 
-    mock_context.abort.assert_called_once_with(
-        code_pb2.NOT_FOUND,
-        'Failed to find session s0 in data_store. Session not found.')
-    mock_ds.read.called_once_with(
-        resource_id.FalkenResourceId(
-            project=request.session.project_id, brain=request.session.brain_id,
-            session=request.session.name))
+      with self.assertRaises(Exception):
+        stop_session_handler.stop_session(request, mock_context,
+                                          self._data_store)
+
+      mock_context.abort.assert_called_once_with(
+          code_pb2.NOT_FOUND,
+          'Failed to find session s0 in data_store. Session not found.')
+      mock_ds_read.assert_called_once_with(
+          resource_id.FalkenResourceId(
+              project=request.session.project_id,
+              brain=request.session.brain_id,
+              session=request.session.name))
 
   @mock.patch.object(
       stop_session_handler, '_get_final_model_from_model_selector')
   @mock.patch.object(stop_session_handler, '_get_snapshot_id')
   def test_stop_session(self, get_snapshot_id, get_final_model):
-    get_snapshot_id.return_value = 'test_snapshot_id'
-    request = falken_service_pb2.StopSessionRequest(
-        project_id='p0',
-        session=session_pb2.Session(project_id='p0', brain_id='b0', name='s0'))
-    read_session = data_store_pb2.Session(project_id='p0', brain_id='b0',
-                                          session_id='s0')
-    mock_ds = mock.Mock()
-    mock_ds.read.return_value = read_session
-    mock_context = mock.Mock()
+    with mock.patch.object(self._data_store, 'read', autospec=True) as (
+        mock_ds_read):
+      with mock.patch.object(self._data_store, 'write_stopped_session',
+                             autospec=True) as mock_ds_write_stopped_session:
+        get_snapshot_id.return_value = 'test_snapshot_id'
+        request = falken_service_pb2.StopSessionRequest(
+            project_id='p0',
+            session=session_pb2.Session(project_id='p0', brain_id='b0',
+                                        name='s0'))
+        read_session = data_store_pb2.Session(project_id='p0', brain_id='b0',
+                                              session_id='s0')
+        mock_ds_read.return_value = read_session
+        mock_context = mock.Mock()
 
-    self.assertEqual(
-        stop_session_handler.stop_session(request, mock_context, mock_ds),
-        falken_service_pb2.StopSessionResponse(
-            snapshot_id=get_snapshot_id.return_value))
+        self.assertEqual(
+            stop_session_handler.stop_session(request, mock_context,
+                                              self._data_store),
+            falken_service_pb2.StopSessionResponse(
+                snapshot_id=get_snapshot_id.return_value))
 
-    expected_session_resource_id = resource_id.FalkenResourceId(
-        project=request.session.project_id, brain=request.session.brain_id,
-        session=request.session.name)
-    read_session_with_snapshot_updated = data_store_pb2.Session(
-        project_id='p0', brain_id='b0', session_id='s0',
-        snapshot=get_snapshot_id.return_value)
-    mock_ds.write_stopped_session.assert_called_once_with(
-        read_session_with_snapshot_updated)
-    mock_ds.read.assert_called_once_with(expected_session_resource_id)
-    get_snapshot_id.assert_called_once_with(
-        expected_session_resource_id, mock_ds.read.return_value,
-        get_final_model.return_value, mock_ds, mock_context)
-    get_final_model.assert_called_once()
+        expected_session_resource_id = resource_id.FalkenResourceId(
+            project=request.session.project_id, brain=request.session.brain_id,
+            session=request.session.name)
+        read_session_with_snapshot_updated = data_store_pb2.Session(
+            project_id='p0', brain_id='b0', session_id='s0',
+            snapshot=get_snapshot_id.return_value)
+        mock_ds_write_stopped_session.assert_called_once_with(
+            read_session_with_snapshot_updated)
+        mock_ds_read.assert_called_once_with(expected_session_resource_id)
+        get_snapshot_id.assert_called_once_with(
+            expected_session_resource_id, mock_ds_read.return_value,
+            get_final_model.return_value, self._data_store, mock_context)
+        get_final_model.assert_called_once()
 
   @mock.patch.object(stop_session_handler, '_single_starting_snapshot')
   def test_get_snapshot_id_inference(self, single_starting_snapshot):
@@ -217,63 +234,68 @@ class StopSessionHandlerTest(parameterized.TestCase):
   def test_create_or_use_existing_snapshot(
       self, model_resource_id, model_exists, expect_starting_snapshot,
       starting_snapshot_ids, single_starting_snapshot, create_snapshot):
-    result_snapshot_id = 'ss1'
-    create_snapshot.return_value = result_snapshot_id
-    single_starting_snapshot.return_value = result_snapshot_id
-    if len(starting_snapshot_ids) != 1:
-      result_snapshot_id = ''
-    mock_ds = mock.Mock()
-    mock_ds.read.return_value = data_store_pb2.Model(model_path='model_path')
-    session_resource_id = mock.Mock()
+    with mock.patch.object(self._data_store, 'read', autospec=True) as (
+        mock_ds_read):
+      result_snapshot_id = 'ss1'
+      create_snapshot.return_value = result_snapshot_id
+      single_starting_snapshot.return_value = result_snapshot_id
+      if len(starting_snapshot_ids) != 1:
+        result_snapshot_id = ''
+      mock_ds_read.return_value = data_store_pb2.Model(model_path='model_path')
+      session_resource_id = mock.Mock()
 
-    self.assertEqual(
-        stop_session_handler._create_or_use_existing_snapshot(
+      self.assertEqual(
+          stop_session_handler._create_or_use_existing_snapshot(
+              session_resource_id, starting_snapshot_ids, model_resource_id,
+              self._data_store, expect_starting_snapshot),
+          result_snapshot_id)
+
+      if model_exists:
+        mock_ds_read.assert_called_once_with(model_resource_id)
+        create_snapshot.assert_called_once_with(
             session_resource_id, starting_snapshot_ids, model_resource_id,
-            mock_ds, expect_starting_snapshot),
-        result_snapshot_id)
-
-    if model_exists:
-      mock_ds.read.assert_called_once_with(model_resource_id)
-      create_snapshot.assert_called_once_with(
-          session_resource_id, starting_snapshot_ids, model_resource_id,
-          mock_ds.read.return_value.model_path, mock_ds)
-    elif starting_snapshot_ids:
-      single_starting_snapshot.assert_called_once_with(
-          session_resource_id, starting_snapshot_ids)
+            mock_ds_read.return_value.model_path, self._data_store)
+      elif starting_snapshot_ids:
+        single_starting_snapshot.assert_called_once_with(
+            session_resource_id, starting_snapshot_ids)
 
   @mock.patch.object(unique_id, 'generate_unique_id')
   def test_create_snapshot(self, uid):
-    uid.return_value = 'ss2'
-    session_resource_id = resource_id.FalkenResourceId(
-        'projects/p0/brains/b0/sessions/s0')
-    model_resource_id = resource_id.FalkenResourceId(
-        'projects/p0/brains/b0/sessions/s0/models/m0')
-    mock_ds = mock.Mock()
-    mock_ds.read.return_value = data_store_pb2.Snapshot(
-        project_id='p0',
-        brain_id='b0',
-        snapshot_id='ss1',
-        ancestor_snapshots=[
-            data_store_pb2.SnapshotParents(
-                snapshot='ss0', parent_snapshots=['ss-1', 'ss-2'])
-        ])
-
-    self.assertEqual(
-        stop_session_handler._create_snapshot(
-            session_resource_id, ['ss1'], model_resource_id, 'test_model_path',
-            mock_ds),
-        'ss2')
-
-    mock_ds.write.called_once_with(
-        data_store_pb2.Snapshot(
-            project_id='p0', brain_id='b0', snapshot_id='ss2', model='m0',
-            model_path='test_model_path',
+    with mock.patch.object(self._data_store, 'read', autospec=True) as (
+        mock_ds_read):
+      with mock.patch.object(self._data_store, 'write', autospec=True) as (
+          mock_ds_write):
+        uid.return_value = 'ss2'
+        session_resource_id = resource_id.FalkenResourceId(
+            'projects/p0/brains/b0/sessions/s0')
+        model_resource_id = resource_id.FalkenResourceId(
+            'projects/p0/brains/b0/sessions/s0/models/m0')
+        mock_ds_read.return_value = data_store_pb2.Snapshot(
+            project_id='p0',
+            brain_id='b0',
+            snapshot_id='ss1',
             ancestor_snapshots=[
                 data_store_pb2.SnapshotParents(
-                    snapshot='ss1', parent_snapshots=['ss0']),
-                data_store_pb2.SnapshotParents(
                     snapshot='ss0', parent_snapshots=['ss-1', 'ss-2'])
-            ]))
+            ])
+
+        self.assertEqual(
+            stop_session_handler._create_snapshot(
+                session_resource_id, ['ss1'], model_resource_id,
+                'test_model_path',
+                self._data_store),
+            'ss2')
+
+        mock_ds_write.assert_called_once_with(
+            data_store_pb2.Snapshot(
+                project_id='p0', brain_id='b0', snapshot_id='ss2', model='m0',
+                model_path='test_model_path',
+                ancestor_snapshots=[
+                    data_store_pb2.SnapshotParents(
+                        snapshot='ss2', parent_snapshots=['ss1']),
+                    data_store_pb2.SnapshotParents(
+                        snapshot='ss0', parent_snapshots=['ss-1', 'ss-2'])
+                ]))
 
 
 if __name__ == '__main__':

@@ -376,6 +376,40 @@ namespace FalkenTests
           position.InvalidateNonFalkenFieldValue();
           Assert.IsNull(position.ReadFieldIfValid());
         }
+
+        [Test]
+        public void PositionClampingTest()
+        {
+          PositionVectorContainer positionContainer =
+            new PositionVectorContainer();
+          FieldInfo vectorField =
+            typeof(PositionVectorContainer).GetField("position");
+          Falken.Position attribute = new Falken.Position();
+          attribute.BindAttribute(vectorField, positionContainer, _falkenContainer);
+
+          var recovered_logs = new List<String>();
+          System.EventHandler<Falken.Log.MessageArgs> handler = (
+              object source, Falken.Log.MessageArgs args) =>
+          {
+              recovered_logs.Add(args.Message);
+          };
+          Falken.Log.OnMessage += handler;
+           // default clamping value (off)
+          var expected_logs = new List<String>() {
+              "Attempted to set the clamping configuration" +
+                " of attribute position, which is of type Position" +
+                " and therefore it does not support clamping",
+              "Attempted to read the clamping configuration of attribute" +
+                " position, which is of type Position and therefore it" +
+                " does not support clamping" };
+          Falken.Log.Level = Falken.LogLevel.Fatal;
+          using (var ignoreErrorMessages = new IgnoreErrorMessages())
+          {
+            attribute.EnableClamping = true;
+              Assert.IsTrue(attribute.EnableClamping);
+          }
+          Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+        }
     }
 
     public class PositionContainerTest

@@ -123,6 +123,40 @@ namespace FalkenTests
         }
 
         [Test]
+        public void BooleanClampingTest()
+        {
+            BooleanContainer booleanContainer = new BooleanContainer();
+            FieldInfo jumpField = typeof(BooleanContainer).GetField("jump");
+            Falken.Boolean attribute = new Falken.Boolean();
+            attribute.BindAttribute(jumpField, booleanContainer, _falkenContainer);
+
+            var recovered_logs = new List<String>();
+            System.EventHandler<Falken.Log.MessageArgs> handler = (
+                object source, Falken.Log.MessageArgs args) =>
+            {
+                recovered_logs.Add(args.Message);
+            };
+            Falken.Log.OnMessage += handler;
+
+            // default clamping value (off)
+            var expected_logs = new List<String>() {
+                "Attempted to set the clamping configuration" +
+                  " of attribute jump, which is of type Bool" +
+                  " and therefore it does not support clamping",
+                "Attempted to read the clamping configuration of attribute" +
+                  " jump, which is of type Bool and therefore it" +
+                  " does not support clamping" };
+
+            Falken.Log.Level = Falken.LogLevel.Fatal;
+            using (var ignoreErrorMessages = new IgnoreErrorMessages())
+            {
+                attribute.EnableClamping = true;
+                Assert.IsTrue(attribute.EnableClamping);
+            }
+            Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+        }
+
+        [Test]
         public void BindCustomBool()
         {
             CustomBooleanContainer booleanContainer =

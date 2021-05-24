@@ -148,6 +148,141 @@ namespace FalkenTests
     }
 
     [Test]
+    public void JoystickXAxisClampingTest()
+    {
+      FalkenJoystickContainer JoystickContainer =
+        new FalkenJoystickContainer();
+      JoystickContainer.BindAttributes(_falkenContainer);
+      Falken.Joystick joystick = (Falken.Joystick)JoystickContainer["joystick"];
+
+      var recovered_logs = new List<String>();
+      System.EventHandler<Falken.Log.MessageArgs> handler = (
+          object source, Falken.Log.MessageArgs args) =>
+      {
+          recovered_logs.Add(args.Message);
+      };
+      Falken.Log.OnMessage += handler;
+
+      var expected_logs = new List<String>() {
+          "Unable to set value of attribute 'x_axis' to -2 as it is out" +
+              " of the specified range -1 to 1.",
+         "Unable to set value of attribute 'x_axis' to 2 as it is out" +
+              " of the specified range -1 to 1." };
+
+      // default clamping value (off)
+      Assert.IsFalse(joystick.EnableClamping);
+      joystick.X = 0.0f;
+      Assert.AreEqual(0.0, joystick.X);
+
+      Falken.Log.Level = Falken.LogLevel.Fatal;
+      using (var ignoreErrorMessages = new IgnoreErrorMessages())
+      {
+        Assert.That(() => joystick.X = -2.0f,
+            Throws.TypeOf<ApplicationException>());
+        Assert.That(() => joystick.X = 2.0f,
+            Throws.TypeOf<ApplicationException>());
+      }
+      Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+
+      // with clamping on
+      recovered_logs.Clear();
+      joystick.EnableClamping = true;
+      Assert.IsTrue(joystick.EnableClamping);
+      joystick.X = 0.0f;
+      Assert.AreEqual(0.0f, joystick.X);
+      joystick.X = -2.0f;
+      Assert.AreEqual(-1.0f, joystick.X);
+      joystick.X = 2.0f;
+      Assert.AreEqual(1.0f, joystick.X);
+      Assert.AreEqual(0, recovered_logs.Count);
+
+      // with clamping off
+      recovered_logs.Clear();
+      joystick.EnableClamping = false;
+      Assert.IsFalse(joystick.EnableClamping);
+      joystick.X = 0.0f;
+      Assert.AreEqual(0.0f, joystick.X);
+
+      Falken.Log.Level = Falken.LogLevel.Fatal;
+      using (var ignoreErrorMessages = new IgnoreErrorMessages())
+      {
+          Assert.That(() => joystick.X = -2.0f,
+              Throws.TypeOf<ApplicationException>());
+          Assert.That(() => joystick.X = 2.0f,
+              Throws.TypeOf<ApplicationException>());
+      }
+      Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+    }
+
+    [Test]
+    public void JoystickYAxisClampingTest()
+    {
+      FalkenJoystickContainer JoystickContainer =
+        new FalkenJoystickContainer();
+      JoystickContainer.BindAttributes(_falkenContainer);
+      Falken.Joystick joystick = (Falken.Joystick)JoystickContainer["joystick"];
+
+      var recovered_logs = new List<String>();
+      System.EventHandler<Falken.Log.MessageArgs> handler = (
+          object source, Falken.Log.MessageArgs args) =>
+      {
+          recovered_logs.Add(args.Message);
+      };
+      Falken.Log.OnMessage += handler;
+
+      var expected_logs = new List<String>() {
+          "Unable to set value of attribute 'y_axis' to -2 as it is out" +
+              " of the specified range -1 to 1.",
+         "Unable to set value of attribute 'y_axis' to 2 as it is out" +
+              " of the specified range -1 to 1." };
+
+      // default clamping value (off)
+      Assert.IsFalse(joystick.EnableClamping);
+      joystick.Y = 0.0f;
+      Assert.AreEqual(0.0, joystick.Y);
+
+      Falken.Log.Level = Falken.LogLevel.Fatal;
+      using (var ignoreErrorMessages = new IgnoreErrorMessages())
+      {
+        Assert.That(() => joystick.Y = -2.0f,
+            Throws.TypeOf<ApplicationException>());
+        Assert.That(() => joystick.Y = 2.0f,
+            Throws.TypeOf<ApplicationException>());
+      }
+      Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+
+      // with clamping on
+      recovered_logs.Clear();
+      joystick.EnableClamping = true;
+      Assert.IsTrue(joystick.EnableClamping);
+      joystick.Y = 0.0f;
+      Assert.AreEqual(0.0f, joystick.Y);
+      joystick.Y = -2.0f;
+      Assert.AreEqual(-1.0f, joystick.Y);
+      joystick.Y = 2.0f;
+      Assert.AreEqual(1.0f, joystick.Y);
+      Assert.AreEqual(0, recovered_logs.Count);
+
+      // with clamping off
+      recovered_logs.Clear();
+      joystick.EnableClamping = false;
+      Assert.IsFalse(joystick.EnableClamping);
+      joystick.Y = 0.0f;
+      Assert.AreEqual(0.0f, joystick.Y);
+
+      Falken.Log.Level = Falken.LogLevel.Fatal;
+      using (var ignoreErrorMessages = new IgnoreErrorMessages())
+      {
+          Assert.That(() => joystick.Y = -2.0f,
+              Throws.TypeOf<ApplicationException>());
+          Assert.That(() => joystick.Y = 2.0f,
+              Throws.TypeOf<ApplicationException>());
+      }
+      Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+    }
+
+
+    [Test]
     public void GetandSetUnboundJoystickAttribute()
     {
       Falken.Joystick joystick = new Falken.Joystick("Stick2", Falken.AxesMode.DeltaPitchYaw,

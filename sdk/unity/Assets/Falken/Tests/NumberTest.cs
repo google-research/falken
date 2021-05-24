@@ -326,6 +326,73 @@ namespace FalkenTests
             number.InvalidateNonFalkenFieldValue();
             Assert.IsNull(number.ReadFieldIfValid());
         }
+
+        [Test]
+        public void NumberClampingSettings()
+        {
+            var numberContainer = new FloatNumberContainerFalkenRange();
+            FieldInfo lookUpAngleField =
+              typeof(FloatNumberContainerFalkenRange).GetField("lookUpAngle");
+            Falken.Number attribute = new Falken.Number();
+            attribute.BindAttribute(lookUpAngleField, numberContainer, _falkenContainer);
+
+            var recovered_logs = new List<String>();
+            System.EventHandler<Falken.Log.MessageArgs> handler = (
+                object source, Falken.Log.MessageArgs args) =>
+            {
+                recovered_logs.Add(args.Message);
+            };
+            Falken.Log.OnMessage += handler;
+
+            // default clamping value (off)
+            var expected_logs = new List<String>() {
+                "Unable to set value of attribute 'lookUpAngle' to -2 as it is out" +
+                    " of the specified range -1 to 1.",
+                "Unable to set value of attribute 'lookUpAngle' to 2 as it is out" +
+                    " of the specified range -1 to 1." };
+            Assert.IsFalse(attribute.EnableClamping);
+            attribute.Value = 0.0f;
+            Assert.AreEqual(0.0f, attribute.Value);
+
+            Falken.Log.Level = Falken.LogLevel.Fatal;
+            using (var ignoreErrorMessages = new IgnoreErrorMessages())
+            {
+                Assert.That(() => attribute.Value = -2.0f,
+                            Throws.TypeOf<ApplicationException>());
+                Assert.That(() => attribute.Value = 2.0f,
+                            Throws.TypeOf<ApplicationException>());
+            }
+            Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+
+            // with clamping on
+            recovered_logs.Clear();
+            attribute.EnableClamping = true;
+            Assert.IsTrue(attribute.EnableClamping);
+            attribute.Value = 0.0f;
+            Assert.AreEqual(0.0f, attribute.Value);
+            attribute.Value = -2.0f;
+            Assert.AreEqual(-1.0f, attribute.Value);
+            attribute.Value = 2.0f;
+            Assert.AreEqual(1.0f, attribute.Value);
+            Assert.AreEqual(0, recovered_logs.Count);
+
+            // with clamping off
+            recovered_logs.Clear();
+            attribute.EnableClamping = false;
+            Assert.IsFalse(attribute.EnableClamping);
+            attribute.Value = 0.0f;
+            Assert.AreEqual(0.0f, attribute.Value);
+
+            Falken.Log.Level = Falken.LogLevel.Fatal;
+            using (var ignoreErrorMessages = new IgnoreErrorMessages())
+            {
+                Assert.That(() => attribute.Value = -2.0f,
+                            Throws.TypeOf<ApplicationException>());
+                Assert.That(() => attribute.Value = 2.0f,
+                            Throws.TypeOf<ApplicationException>());
+            }
+            Assert.That(recovered_logs, Is.EquivalentTo(expected_logs));
+        }
     }
 
     public class NumberContainerTest

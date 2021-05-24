@@ -57,10 +57,12 @@ sys.path.extend(
 )
 
 _DEFAULT_SUBPROCESS_TESTS = [
-    'launcher_test',
+    'api.falken_service_test',
     'common.generate_flatbuffers_test',
     'common.generate_protos_test',
     'common.pip_installer_test',
+    'launcher_test',
+    'learner.learner_service_test',
     'tools.generate_sdk_configuration_test',
 ]
 
@@ -75,7 +77,6 @@ _DEFAULT_TEST_MODULES = [
     'api.list_handler_test',
     'api.stop_session_handler_test',
     'api.submit_episode_chunks_handler_test',
-    'api.falken_service_test',
     'api.proto_conversion_test',
     'api.request_metadata_test',
     'api.sampling.online_eval_sampling_test',
@@ -105,6 +106,7 @@ _DEFAULT_TEST_MODULES = [
     'learner.assignment_processor_test',
     'learner.data_fetcher_test',
     'learner.file_system_test',
+    'learner.learner_test',
     'learner.model_exporter_test',
     'learner.model_manager_test',
     'learner.stats_collector_test',
@@ -153,9 +155,10 @@ def run_absltests(shard_index=None):
   # affect the other tests' environments.
   for i, subprocess_test in enumerate(subprocess_tests):
     if shard_index is None or i % FLAGS.num_shards == shard_index:
+      logging.info('Running subprocess test %s', subprocess_test)
       subprocess.check_call(
           [sys.executable, '-m', subprocess_test],
-          cwd=os.path.dirname(__file__))
+          cwd=os.path.dirname(__file__), env=os.environ)
 
   # Import test modules.
   for module_name in test_modules:
@@ -181,6 +184,8 @@ def main(unused_argv):
   # Regenerate protos to ensure the tests start with a clean environment.
   generate_protos.clean_up()
   generate_protos.generate()
+  # Allow auto-generation and sys.path modification for protos in subprocesses.
+  os.environ['FALKEN_AUTO_GENERATE_PROTOS'] = '1'
   if not FLAGS.num_shards:
     sys.exit(run_absltests())
   else:

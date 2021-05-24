@@ -109,8 +109,9 @@ def run_learner(current_path):
     Popen instance where the learner service is running.
   """
   return subprocess.Popen(
-      [sys.executable, '-m', 'learner.learner_service', '--verbosity',
-       str(FLAGS.verbosity), '--alsologtostderr'],
+      [sys.executable, '-m', 'learner.learner_service',
+       '--root_dir', current_path, '--verbosity', str(FLAGS.verbosity),
+       '--alsologtostderr'],
       env=os.environ, cwd=current_path)
 
 

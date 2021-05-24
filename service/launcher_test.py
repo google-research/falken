@@ -70,6 +70,14 @@ class LauncherTest(absltest.TestCase):
          fake_key_file, '-out', fake_cert_file, '-days', '365', '-nodes',
          '-subj', '/CN=localhost'], check=True)
 
+  @mock.patch.object(subprocess, 'Popen', autospec=True)
+  def test_run_learner_test(self, popen):
+    launcher.run_learner('mock_path')
+    popen.assert_called_once_with(
+        [sys.executable, '-m', 'learner.learner_service',
+         '--root_dir', 'mock_path', '--verbosity', '0', '--alsologtostderr'],
+        env=os.environ, cwd='mock_path')
+
 
 if __name__ == '__main__':
   absltest.main()

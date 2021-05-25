@@ -29,6 +29,9 @@ set(FALKEN_SDK_VERSION "0.0.1" CACHE STRING
 set(FALKEN_LOCAL_CERT "" CACHE STRING
   "Path to cert to use for connection to the local service."
 )
+set(FALKEN_JSON_CONFIG_FILE "" CACHE STRING
+  "JSON configuration file for integration tests."
+)
 
 # NOTE: FALKEN_SDK_TARGET is a cache variable so that it can be accessed
 # by cpack.

@@ -233,6 +233,48 @@ class DataStoreTest(parameterized.TestCase):
         self._data_store.read(res_id).last_demo_data_received_micros,
         3_000_000)
 
+  def test_calculate_assignment_progress(self):
+    session = data_store_pb2.Session(
+        project_id='p0',
+        brain_id='b0',
+        session_id='s0',
+        last_data_received_micros=2_000_000,
+        last_demo_data_received_micros=1_000_000)
+    self._data_store.write(session)
+
+    model_counter = 0
+    def _create_model(assignment, demo_timestamp_micros, progress_percent):
+      """Create a model for assignment with indicated timestamp and progress."""
+      nonlocal model_counter
+      model_counter += 1
+      return data_store_pb2.Model(
+          project_id='p0',
+          brain_id='b0',
+          session_id='s0',
+          model_id=str(model_counter),
+          assignment=assignment,
+          # Set created timestamp to be some time after demo timestamp.
+          created_micros=demo_timestamp_micros + model_counter * 1000,
+          most_recent_demo_time_micros=demo_timestamp_micros,
+          training_examples_completed=int(progress_percent),
+          max_training_examples=100)
+
+    for assignment, demo_timestamp_micros, progress_percent in [
+        ('a0', 0, 90),           # Ignored because not recent enough.
+        ('a0', 1_000_000, 50),
+        ('a0', 2_000_000, 100),  # Ignored because too recent.
+        ('a1', 1_000_000, 50),   # Ignored because not highest progress.
+        ('a1', 1_000_000, 100),
+        ('a2', 1_000_000, 0),
+        ('a3', 999_999, 80),     # Ignored because not recent enough.
+        ('a4', 1_000_001, 80)]:  # Ignored because too recent.
+      self._data_store.write(_create_model(
+          assignment, demo_timestamp_micros, progress_percent))
+
+    got = self._data_store.calculate_assignment_progress(
+        resource_id.FalkenResourceId('projects/p0/brains/b0/sessions/s0'))
+    self.assertEqual(got, {'a0': 0.5, 'a1': 1.0, 'a2': 0.0})
+
   def test_to_resource_id(self):
     """Test the resolver's conversion from a proto to a resource ID."""
     proto = data_store_pb2.Session(

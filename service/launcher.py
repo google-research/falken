@@ -66,9 +66,9 @@ def check_ssl():
         ['openssl', 'req', '-x509', '-newkey', 'rsa:4096', '-keyout', key_file,
          '-out', cert_file, '-days', '365', '-nodes', '-subj',
          '/CN=localhost'], check=True)
-  except subprocess.CalledProcessError:
-    logging.exception()
+  except (subprocess.CalledProcessError, FileNotFoundError) as e:
     logging.error('Please install openssl at openssl.org.')
+    raise e
 
   if not os.path.isfile(key_file):
     raise FileNotFoundError('Key was not created.')

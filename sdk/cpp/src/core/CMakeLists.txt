@@ -24,6 +24,10 @@ option(FALKEN_CPP_SDK_CSHARP OFF "Generate C# bindings.")
 #
 set(FALKEN_PROJECT_ID "" CACHE STRING "Project ID for integration tests.")
 set(FALKEN_API_KEY "" CACHE STRING "API Key for integration tests.")
+set(FALKEN_JSON_CONFIG_FILE "" CACHE STRING
+  "JSON configuration file for integration tests. This can be used instead of
+  FALKEN_PROJECT_ID and FALKEN_API_KEY."
+)
 
 # Whether to enable tests.
 if(CMAKE_SYSTEM_NAME MATCHES "Android")
@@ -964,10 +968,19 @@ if(FALKEN_ENABLE_CPP_UNIT_TESTS)
   cpp_build_tests("${CORE_SOURCE_DIR}/scheduler_test.cc")
   cpp_build_tests("${CORE_SOURCE_DIR}/semaphore_test.cc")
   cpp_build_tests("${CORE_SOURCE_DIR}/resource_id_test.cc")
-  cpp_build_tests("${CORE_SOURCE_DIR}/service_test.cc"
-    --env dev --api_key "${FALKEN_API_KEY}"
-    --project_id "${FALKEN_PROJECT_ID}"
-  )
+
+  set(FLAGS "")
+  #
+  if(NOT "${FALKEN_PROJECT_ID}" STREQUAL "")
+    list(APPEND FLAGS "--project_id" "${FALKEN_PROJECT_ID}")
+  endif()
+  if(NOT "${FALKEN_API_KEY}" STREQUAL "")
+    list(APPEND FLAGS "--api_key" "${FALKEN_API_KEY}")
+  endif()
+  if(NOT "${FALKEN_JSON_CONFIG_FILE}" STREQUAL "")
+    list(APPEND FLAGS "--json_config_file" "${FALKEN_JSON_CONFIG_FILE}")
+  endif()
+  cpp_build_tests("${CORE_SOURCE_DIR}/service_test.cc" ${FLAGS})
   cpp_build_tests("${CORE_SOURCE_DIR}/specs_test.cc")
   cpp_build_tests("${CORE_SOURCE_DIR}/status_converter_test.cc")
   cpp_build_tests("${CORE_SOURCE_DIR}/status_macros_test.cc")

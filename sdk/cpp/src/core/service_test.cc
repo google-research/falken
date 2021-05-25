@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -53,6 +54,11 @@ ABSL_FLAG(std::string, api_key, "",
 
 ABSL_FLAG(std::string, project_id, "",
           "The API key used to authorize access to the Falken API.");
+
+ABSL_FLAG(std::string, json_config_file, "",
+          "JSON configuration file used to configure the SDK. "
+          "If this is specified, env is ignored. api_key and project_id "
+          "override values specified in the config file.");
 
 using ::testing::AllOf;
 using ::testing::Eq;
@@ -94,20 +100,35 @@ constexpr uint64_t kStepsPerEpisode = 10;
 constexpr float kDeltaMaxAverageError = 0.02f;
 const char* kBrainDisplayName = "test_brain";
 
-std::string GetJSONConfig(const std::string& project_id = "",
-                          const std::string& api_key = "",
-                          const std::string& env = "") {
-  return absl::StrFormat(
-      "{\n"
-      "  \"project_id\": \"%s\",\n"
-      "  \"api_key\": \"%s\",\n"
-      "  \"api_call_timeout_milliseconds\": 120000,\n"
-      "  \"service\": { \"environment\": \"%s\" }\n"
-      "}\n",
-      !project_id.empty() ? project_id
-                          : absl::GetFlag(FLAGS_project_id).c_str(),
-      !api_key.empty() ? api_key : absl::GetFlag(FLAGS_api_key).c_str(),
-      !env.empty() ? env : absl::GetFlag(FLAGS_env));
+std::string GetJSONConfig() {
+  std::string json_config;
+  std::string json_config_file = absl::GetFlag(FLAGS_json_config_file);
+  if (!json_config_file.empty()) {
+    std::ifstream stream(json_config_file, std::ifstream::in);
+    if (stream.is_open()) {
+      stream.seekg(0, stream.end);
+      auto size = stream.tellg();
+      stream.seekg(0, stream.beg);
+      json_config.resize(size, '\0');
+      stream.read(&json_config[0], size);
+      stream.close();
+    } else {
+      // Return an invalid JSON string which will cause an error when it's
+      // parsed.
+      return absl::StrFormat("%s not found", json_config_file);
+    }
+  }
+  if (json_config.empty()) {
+    json_config = absl::StrFormat(
+        "{\n"
+        "  \"project_id\": \"%s\",\n"
+        "  \"api_key\": \"%s\",\n"
+        "  \"api_call_timeout_milliseconds\": 120000,\n"
+        "  \"service\": { \"environment\": \"%s\" }\n"
+        "}\n", absl::GetFlag(FLAGS_project_id), absl::GetFlag(FLAGS_api_key),
+        absl::GetFlag(FLAGS_env));
+  }
+  return json_config;
 }
 
 struct TestObservations : public falken::ObservationsBase {

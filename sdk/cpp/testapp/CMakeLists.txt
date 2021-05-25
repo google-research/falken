@@ -19,6 +19,10 @@ set(FALKEN_API_KEY "" CACHE STRING "API Key for integration tests.")
 set(FALKEN_TESTAPP_ENABLE_TEST ON CACHE BOOL
   "Whether to add testapp as a ctest target."
 )
+set(FALKEN_JSON_CONFIG_FILE "" CACHE STRING
+  "JSON configuration file for integration tests. This can be used instead of
+  FALKEN_PROJECT_ID and FALKEN_API_KEY."
+)
 
 # Windows runtime mode, either MD or MT depending on whether you are using
 # /MD or /MT. For more information see:
@@ -163,14 +167,21 @@ target_link_libraries(${target_name}
 
 if(NOT ANDROID)
   # If the API project ID and API key are specified add the test target.
-  if(FALKEN_TESTAPP_ENABLE_TEST AND FALKEN_PROJECT_ID AND FALKEN_API_KEY)
+  set(FLAGS --milliseconds_between_steps 0)
+  if(NOT "${FALKEN_PROJECT_ID}" STREQUAL "")
+    list(APPEND FLAGS "--project_id" "${FALKEN_PROJECT_ID}")
+  endif()
+  if(NOT "${FALKEN_API_KEY}" STREQUAL "")
+    list(APPEND FLAGS "--api_key" "${FALKEN_API_KEY}")
+  endif()
+  if(NOT "${FALKEN_JSON_CONFIG_FILE}" STREQUAL "")
+    list(APPEND FLAGS "--json_config_file" "${FALKEN_JSON_CONFIG_FILE}")
+  endif()
+  if(FALKEN_TESTAPP_ENABLE_TEST)
     add_test(
       NAME falken_cpp_sdk_test_app
       COMMAND "${target_name}"
-        --env prod
-        --api_key "${FALKEN_API_KEY}"
-        --project_id "${FALKEN_PROJECT_ID}"
-        --milliseconds_between_steps 0
+        ${FLAGS}
     )
   endif()
 endif()

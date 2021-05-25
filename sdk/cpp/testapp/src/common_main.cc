@@ -42,7 +42,7 @@
 #pragma warning(pop)
 #endif  // defined(_MSC_VER)
 
-ABSL_FLAG(std::string, env, "local",
+ABSL_FLAG(std::string, env, "prod",
           "Flag to indicate which environment the SDK should try to connect "
           "to. Choices are 'local', 'dev', 'prod' or 'sandbox'.");
 

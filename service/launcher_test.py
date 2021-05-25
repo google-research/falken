@@ -31,6 +31,7 @@ class LauncherTest(absltest.TestCase):
 
   def setUp(self):
     super(LauncherTest, self).setUp()
+    self._hyperparameters = launcher.FLAGS.hyperparameters
     self.temp_dir = tempfile.TemporaryDirectory()
     launcher.FLAGS.ssl_dir = os.path.join(self.temp_dir.name, 'ssl_dir')
     os.makedirs(launcher.FLAGS.ssl_dir)
@@ -41,21 +42,22 @@ class LauncherTest(absltest.TestCase):
     """Tear down the testing environment."""
     self.temp_dir.cleanup()
     self.temp_dir = None
+    launcher.FLAGS.hyperparameters = self._hyperparameters
     super(LauncherTest, self).tearDown()
 
   @mock.patch.object(subprocess, 'Popen', autospec=True)
   def test_run_api_test(self, popen):
     """Call the run_api() method and verify the correct calls."""
+    launcher.FLAGS.hyperparameters = ['{"foo": 1}', '{"bar": 1000}']
     launcher.run_api('mock_path')
-    popen.assert_called_once_with([
-        sys.executable, '-m', 'api.falken_service',
-        '--root_dir', launcher.FLAGS.root_dir, '--port', '50051',
-        '--ssl_dir', launcher.FLAGS.ssl_dir,
-        '--hyperparameters', launcher.FLAGS.hyperparameters,
-        '--verbosity', '0', '--alsologtostderr'
-    ],
-                                  env=os.environ,
-                                  cwd='mock_path')
+    popen.assert_called_once_with(
+        [sys.executable, '-m', 'api.falken_service',
+         '--root_dir', launcher.FLAGS.root_dir, '--port', '50051',
+         '--ssl_dir', launcher.FLAGS.ssl_dir,
+         '--verbosity', '0', '--alsologtostderr',
+         '--hyperparameters', '{"foo": 1}',
+         '--hyperparameters', '{"bar": 1000}'],
+        env=os.environ, cwd='mock_path')
 
   @mock.patch.object(subprocess, 'run', autospec=True)
   def test_check_ssl(self, run):

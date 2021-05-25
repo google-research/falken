@@ -15,6 +15,8 @@
 # Lint as: python3
 """Submit episode chunks and returns session info containing state and model."""
 
+import json
+
 from absl import flags
 from absl import logging
 from api import data_cache
@@ -34,11 +36,45 @@ from learner.brains import specs
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string(
+flags.DEFINE_multi_string(
     'hyperparameters',
     r'{"fc_layers":[32], "learning_rate":1e-4, "continuous":false, '
     r'"min_train_examples": 10000, "max_train_examples": 30000000}',
     'Hyperparameters to train the models on.')
+
+
+class HyperparametersError(Exception):
+  """Raised if hyperparameters are invalid."""
+  pass
+
+
+def _validate_hyperparameters(hyperparameters_list):
+  """Validate a hyperparameters string.
+
+  Args:
+    hyperparameters_list: List of hyperparameters to validate.
+
+  Returns:
+    True.
+
+  Raises:
+    HyperparametersError: If hyperparameters are invalid.
+  """
+  invalid = []
+  for hyperparameters in hyperparameters_list:
+    try:
+      _ = json.loads(hyperparameters)
+    except json.decoder.JSONDecodeError as error:
+      invalid.append('\n'.join([str(error), hyperparameters]))
+  if invalid:
+    raise HyperparametersError('\n'.join(invalid))
+  return True
+
+
+flags.register_validator(
+    'hyperparameters',
+    _validate_hyperparameters,
+    message='--hyperparameters must be a valid JSON string.')
 
 
 def submit_episode_chunks(request, context, data_store, assignment_notifier):
@@ -477,22 +513,22 @@ def _try_start_assignments(
         'Skipping assignment creation.', session_resource_id)
     return
 
-  assignment = data_store_pb2.Assignment(
-      project_id=session_resource_id.project,
-      brain_id=session_resource_id.brain,
-      session_id=session_resource_id.session,
-      assignment_id=FLAGS.hyperparameters)
-  data_store.write(assignment)
-  for chunk in chunks:
-    assignment_notifier.trigger_assignment_notification(
-        data_store.to_resource_id(assignment),
-        data_store.resource_id_from_proto_ids(
-            project_id=session_resource_id.project,
-            brain_id=session_resource_id.brain,
-            session_id=session_resource_id.session,
-            episode_id=chunk.episode_id,
-            chunk_id=chunk.chunk_id))
-  return
+  for assignment_id in FLAGS.hyperparameters:
+    assignment = data_store_pb2.Assignment(
+        project_id=session_resource_id.project,
+        brain_id=session_resource_id.brain,
+        session_id=session_resource_id.session,
+        assignment_id=assignment_id)
+    data_store.write(assignment)
+    for chunk in chunks:
+      assignment_notifier.trigger_assignment_notification(
+          data_store.to_resource_id(assignment),
+          data_store.resource_id_from_proto_ids(
+              project_id=session_resource_id.project,
+              brain_id=session_resource_id.brain,
+              session_id=session_resource_id.session,
+              episode_id=chunk.episode_id,
+              chunk_id=chunk.chunk_id))
 
 
 def _get_training_progress():

@@ -16,12 +16,14 @@
 """Tests for submit_episode_chunks_handler."""
 from unittest import mock
 
-from absl import flags
 from absl.testing import absltest
 from absl.testing import parameterized
 from api import data_cache
 from api import model_selector
 from api import submit_episode_chunks_handler
+from data_store import assignment_monitor
+from data_store import data_store
+from data_store import file_system
 from data_store import resource_id
 
 # pylint: disable=g-bad-import-order
@@ -35,17 +37,24 @@ import session_pb2
 from google.rpc import code_pb2
 from learner.brains import specs
 
-FLAGS = flags.FLAGS
-
 
 class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
+    self._file_system = file_system.FakeFileSystem()
+    self._data_store = data_store.DataStore(self._file_system)
+    self._default_hyperparameters = (
+        submit_episode_chunks_handler.FLAGS.hyperparameters)
     self._ep_resource_id = resource_id.FalkenResourceId(
         'projects/p0/brains/b0/sessions/s0/episodes/ep0')
     self._session_resource_id = resource_id.FalkenResourceId(
         'projects/p0/brains/b0/sessions/s0')
+
+  def tearDown(self):
+    submit_episode_chunks_handler.FLAGS.hyperparameters = (
+        self._default_hyperparameters)
+    super().tearDown()
 
   def _chunks(self, include_steps=True):
     steps = []
@@ -682,34 +691,54 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
       ('no_demo_data', session_pb2.INTERACTIVE_TRAINING,
        data_store_pb2.ONLY_INFERENCES, False))
   @mock.patch.object(data_cache, 'get_session_type')
+  @mock.patch.object(assignment_monitor, 'AssignmentNotifier')
   def test_try_start_assignments(self, session_type, merged_steps_type,
-                                 expect_write, get_session_type):
-    mock_ds = mock.Mock()
-    mock_ds.to_resource_id.return_value = mock.Mock()
-    mock_ds.resource_id_from_proto_ids.return_value = mock.Mock()
-    mock_notifier = mock.Mock()
-    FLAGS.hyperparameters = 'assignment_id_0'
-    expected_assignment = data_store_pb2.Assignment(
-        project_id='p0', brain_id='b0', session_id='s0',
-        assignment_id='assignment_id_0')
-    get_session_type.return_value = session_type
+                                 expect_write, mock_notifier_class,
+                                 mock_get_session_type):
+    with mock.patch.object(self._data_store, 'write') as mock_data_store_write:
+      submit_episode_chunks_handler.FLAGS.hyperparameters = [
+          '{"assignment_id_0": 0}', '{"assignment_id_1": 1}']
+      expected_assignments = [
+          data_store_pb2.Assignment(
+              project_id='p0', brain_id='b0', session_id='s0',
+              assignment_id='{"assignment_id_0": 0}'),
+          data_store_pb2.Assignment(
+              project_id='p0', brain_id='b0', session_id='s0',
+              assignment_id='{"assignment_id_1": 1}')
+      ]
+      mock_get_session_type.return_value = session_type
+      mock_notifier = mock_notifier_class(self._file_system)
 
-    submit_episode_chunks_handler._try_start_assignments(
-        mock_ds, mock_notifier, self._session_resource_id, merged_steps_type,
-        self._chunks())
+      submit_episode_chunks_handler._try_start_assignments(
+          self._data_store, mock_notifier, self._session_resource_id,
+          merged_steps_type, self._chunks())
 
     if expect_write:
-      mock_ds.write.assert_called_once_with(expected_assignment)
-      mock_ds.to_resource_id.assert_called_once_with(expected_assignment)
-      mock_ds.resource_id_from_proto_ids.assert_called_once_with(
-          project_id='p0', brain_id='b0', session_id='s0',
-          episode_id='ep0', chunk_id=0)
-      mock_notifier.trigger_assignment_notification.assert_called_once_with(
-          mock_ds.to_resource_id.return_value,
-          mock_ds.resource_id_from_proto_ids.return_value)
+      mock_data_store_write.assert_has_calls(
+          [mock.call(expected_assignments[0]),
+           mock.call(expected_assignments[1])])
+
+      expected_notifications = []
+      for assignment in expected_assignments:
+        for _ in self._chunks():
+          expected_notifications.append(mock.call(
+              self._data_store.to_resource_id(assignment),
+              self._data_store.to_resource_id(self._data_store_chunk())))
+      mock_notifier.trigger_assignment_notification.assert_has_calls(
+          expected_notifications)
     else:
-      mock_ds.write.assert_not_called()
+      mock_data_store_write.assert_not_called()
       mock_notifier.trigger_assignment_notification.assert_not_called()
+
+  def test_set_hyperparameters_valid(self):
+    submit_episode_chunks_handler.FLAGS.hyperparameters = [
+        '{"valid": "hparams"}']
+    self.assertEqual(submit_episode_chunks_handler.FLAGS.hyperparameters,
+                     ['{"valid": "hparams"}'])
+
+  def test_set_hyperparameters_invalid(self):
+    with self.assertRaises(submit_episode_chunks_handler.HyperparametersError):
+      submit_episode_chunks_handler.FLAGS.hyperparameters = 'not json'
 
 if __name__ == '__main__':
   absltest.main()

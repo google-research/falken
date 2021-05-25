@@ -39,10 +39,10 @@ flags.DEFINE_bool('clean_up_protos', False,
 flags.DEFINE_multi_string(
     'project_ids', [],
     'Project IDs to create API keys for and use with Falken.')
-flags.DEFINE_string(
+flags.DEFINE_multi_string(
     'hyperparameters',
     r'{"fc_layers":[32], "learning_rate":1e-4, "continuous":false, '
-    r'min_train_examples": 10000, "max_train_examples": 30000000}',
+    r'"min_train_examples": 10000, "max_train_examples": 30000000}',
     'Hyperparameters to train the models on.')
 
 
@@ -89,9 +89,10 @@ def run_api(current_path: str):
   args = [
       sys.executable, '-m', 'api.falken_service', '--root_dir', FLAGS.root_dir,
       '--port', str(FLAGS.port), '--ssl_dir', FLAGS.ssl_dir,
-      '--hyperparameters', FLAGS.hyperparameters,
       '--verbosity', str(FLAGS.verbosity), '--alsologtostderr'
   ]
+  for hyperparameters in FLAGS.hyperparameters:
+    args.extend(['--hyperparameters', hyperparameters])
   for project_id in FLAGS.project_ids:
     args.append('--project_ids')
     args.append(project_id)

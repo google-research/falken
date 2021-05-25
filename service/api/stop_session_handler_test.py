@@ -19,6 +19,7 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+from api import model_selector
 from api import stop_session_handler
 from api import unique_id
 
@@ -64,10 +65,9 @@ class StopSessionHandlerTest(parameterized.TestCase):
               brain=request.session.brain_id,
               session=request.session.name))
 
-  @mock.patch.object(
-      stop_session_handler, '_get_final_model_from_model_selector')
+  @mock.patch.object(model_selector, 'ModelSelector')
   @mock.patch.object(stop_session_handler, '_get_snapshot_id')
-  def test_stop_session(self, get_snapshot_id, get_final_model):
+  def test_stop_session(self, get_snapshot_id, selector):
     with mock.patch.object(self._data_store, 'read', autospec=True) as (
         mock_ds_read):
       with mock.patch.object(self._data_store, 'write_stopped_session',
@@ -75,12 +75,14 @@ class StopSessionHandlerTest(parameterized.TestCase):
         get_snapshot_id.return_value = 'test_snapshot_id'
         request = falken_service_pb2.StopSessionRequest(
             project_id='p0',
-            session=session_pb2.Session(project_id='p0', brain_id='b0',
-                                        name='s0'))
+            session=session_pb2.Session(
+                project_id='p0', brain_id='b0', name='s0'))
         read_session = data_store_pb2.Session(project_id='p0', brain_id='b0',
                                               session_id='s0')
         mock_ds_read.return_value = read_session
         mock_context = mock.Mock()
+        mock_selector = selector.return_value
+        mock_selector.select_final_model.return_value = 'm0'
 
         self.assertEqual(
             stop_session_handler.stop_session(request, mock_context,
@@ -97,10 +99,12 @@ class StopSessionHandlerTest(parameterized.TestCase):
         mock_ds_write_stopped_session.assert_called_once_with(
             read_session_with_snapshot_updated)
         mock_ds_read.assert_called_once_with(expected_session_resource_id)
-        get_snapshot_id.assert_called_once_with(
-            expected_session_resource_id, mock_ds_read.return_value,
-            get_final_model.return_value, self._data_store, mock_context)
-        get_final_model.assert_called_once()
+        get_snapshot_id.assert_called_once_with(expected_session_resource_id,
+                                                mock_ds_read.return_value, 'm0',
+                                                self._data_store, mock_context)
+        selector.assert_called_once_with(self._data_store,
+                                         expected_session_resource_id)
+        mock_selector.select_final_model.assert_called_once()
 
   @mock.patch.object(stop_session_handler, '_single_starting_snapshot')
   def test_get_snapshot_id_inference(self, single_starting_snapshot):

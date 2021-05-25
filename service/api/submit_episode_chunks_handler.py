@@ -99,20 +99,26 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
         f' {e}')
 
   selector = model_selector.ModelSelector(data_store, session_resource_id)
+  session_info = session_pb2.SessionInfo()
 
   try:
-    training_state = selector.get_training_state()
-  except ValueError as e:
+    session_info.state = selector.get_training_state()
+  except (ValueError) as e:
     context.abort(code_pb2.INVALID_ARGUMENT,
                   f'Getting training state failed. {e}')
 
-  logging.debug('Got training_state %s', str(training_state))
-
-  _select_model()
+  try:
+    session_info.model_id = selector.select_next_model()
+  except (FileNotFoundError, resource_store.InternalError, ValueError) as e:
+    context.abort(
+        code_pb2.INVALID_ARGUMENT,
+        f'Failed to select model for session {session_resource_id}. '
+        f'{e}')
 
   _get_training_progress()
 
-  return falken_service_pb2.SubmitEpisodeChunksResponse()
+  return falken_service_pb2.SubmitEpisodeChunksResponse(
+      session_info=session_info)
 
 
 def _check_episode_data_with_brain_spec(
@@ -386,7 +392,12 @@ def _get_episode_steps_type(data_store, current_chunk, episode_resource_id):
     return current_chunk.steps_type, model_ids
 
   # Read episode chunks from data_store for the same episode.
-  read_chunk_ids, _ = data_store.list(episode_resource_id)
+  read_chunk_ids, _ = data_store.list_by_proto_ids(
+      project_id=episode_resource_id.project,
+      brain_id=episode_resource_id.brain,
+      session_id=episode_resource_id.session,
+      episode_id=episode_resource_id.episode,
+      chunk_id='*')
 
   count = 0
   steps_type = data_store_pb2.UNKNOWN
@@ -398,7 +409,7 @@ def _get_episode_steps_type(data_store, current_chunk, episode_resource_id):
       model_ids.add(chunk.data.model_id)
     count += 1
 
-  if count != current_chunk.chunk_id:
+  if count <= current_chunk.chunk_id:
     raise FileNotFoundError(
         'Did not find all previous chunks for chunk id '
         f'{current_chunk.chunk_id}, only got {count} chunks.')
@@ -482,10 +493,6 @@ def _try_start_assignments(
             episode_id=chunk.episode_id,
             chunk_id=chunk.chunk_id))
   return
-
-
-def _select_model():
-  raise NotImplementedError('Method not implemented!')
 
 
 def _get_training_progress():

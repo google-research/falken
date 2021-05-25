@@ -16,6 +16,7 @@
 """Handles stopping of an active session."""
 
 from absl import logging
+from api import model_selector
 from api import unique_id
 
 import common.generate_protos  # pylint: disable=unused-import
@@ -58,7 +59,8 @@ def stop_session(request, context, data_store):
         f'Failed to find session {session_resource_id.session} in data_store. '
         f'{e}')
 
-  model_resource_id = _get_final_model_from_model_selector()
+  selector = model_selector.ModelSelector(data_store, session_resource_id)
+  model_resource_id = selector.select_final_model()
 
   snapshot_id = _get_snapshot_id(
       session_resource_id, session, model_resource_id, data_store, context)
@@ -68,10 +70,6 @@ def stop_session(request, context, data_store):
   data_store.write_stopped_session(session)
 
   return falken_service_pb2.StopSessionResponse(snapshot_id=snapshot_id)
-
-
-def _get_final_model_from_model_selector():
-  raise NotImplementedError('Model selector code is still in progress.')
 
 
 def _get_snapshot_id(

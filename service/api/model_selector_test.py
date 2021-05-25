@@ -179,15 +179,22 @@ class ModelSelectorTest(parameterized.TestCase):
     get_assignment_summaries.return_value = mock.Mock()
     self._ds.read.return_value = data_store_pb2.Session(
         project_id='p0', brain_id='b0', session_id='s0')
+    # Snapshot session resource ID.
+    self._ds.resource_id_from_proto_ids.return_value = (
+        resource_id.FalkenResourceId('projects/p1/brains/b1/sessions/s1'))
     self._model_selector = model_selector.ModelSelector(
         data_store=self._ds, session_resource_id=self._session_resource_id)
 
     self.assertEqual(self._model_selector._get_summary_map(),
                      get_assignment_summaries.return_value)
     get_starting_snapshot.assert_called_once_with(self._ds, 'p0', 'b0', 's0')
+    self._ds.resource_id_from_proto_ids.assert_called_once_with(
+        project_id=get_starting_snapshot.return_value.project_id,
+        brain_id=get_starting_snapshot.return_value.brain_id,
+        session_id=get_starting_snapshot.return_value.session)
     get_online_eval_summary.assert_called_once_with()
     get_offline_eval_summary.assert_called_once_with(
-        get_starting_snapshot.return_value)
+        self._ds.resource_id_from_proto_ids.return_value)
     get_assignment_summaries.assert_called_once_with(
         get_offline_eval_summary.return_value,
         get_online_eval_summary.return_value)
@@ -195,24 +202,29 @@ class ModelSelectorTest(parameterized.TestCase):
   def test_get_offline_eval_summary(self):
     self._ds.list_by_proto_ids.side_effect = [
         ([
-            resource_id.ResourceId(
-                None, 'projects/p1/brains/b1/sessions/s1/offline_evaluation/1'),
-            resource_id.ResourceId(
-                None, 'projects/p1/brains/b1/sessions/s1/offline_evaluation/0'),
-            resource_id.ResourceId(
-                None, 'projects/p1/brains/b1/sessions/s1/offline_evaluation/2'),
-            resource_id.ResourceId(
-                None, 'projects/p1/brains/b1/sessions/s1/offline_evaluation/2'),
-            resource_id.ResourceId(
-                None, 'projects/p1/brains/b1/sessions/s1/offline_evaluation/3')
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/models/m1/'
+                'offline_evaluations/1'),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/models/m1/'
+                'offline_evaluations/0'),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/models/m0/'
+                'offline_evaluations/2'),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/models/m0/'
+                'offline_evaluations/2'),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/models/m0/'
+                'offline_evaluations/3')
         ], None),
         ([
-            resource_id.ResourceId(
-                None, 'projects/p1/brains/b1/sessions/s1/assignments/a1'),
-            resource_id.ResourceId(
-                None, 'projects/p1/brains/b1/sessions/s1/assignments/a2'),
-            resource_id.ResourceId(
-                None, 'projects/p1/brains/b1/sessions/s1/assignments/a3')
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/assignments/a1'),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/assignments/a2'),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/assignments/a3')
         ], None)
     ]
     self._ds.read.side_effect = [
@@ -234,7 +246,11 @@ class ModelSelectorTest(parameterized.TestCase):
     ]
     starting_snapshot = data_store_pb2.Snapshot(
         project_id='p1', brain_id='b1', session='s1', snapshot_id='ss0')
-    summary = self._model_selector._get_offline_eval_summary(starting_snapshot)
+    session_resource_id = resource_id.FalkenResourceId(
+        f'projects/{starting_snapshot.project_id}/brains/'
+        f'{starting_snapshot.brain_id}/sessions/{starting_snapshot.session}')
+    summary = self._model_selector._get_offline_eval_summary(
+        session_resource_id)
     key_1 = model_selection_record.AssignmentEvalId('a1', 1)
     key_2 = model_selection_record.AssignmentEvalId('a2', 2)
     key_3 = model_selection_record.AssignmentEvalId('a2', 0)
@@ -261,38 +277,39 @@ class ModelSelectorTest(parameterized.TestCase):
     ])
     self._ds.read.assert_has_calls([
         mock.call(
-            resource_id.ResourceId(
-                None,
-                'projects/p1/brains/b1/sessions/s1/offline_evaluation/1')),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/models/m1/'
+                'offline_evaluations/1')),
         mock.call(
-            resource_id.ResourceId(
-                None,
-                'projects/p1/brains/b1/sessions/s1/offline_evaluation/0')),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/models/m1/'
+                'offline_evaluations/0')),
         mock.call(
-            resource_id.ResourceId(
-                None,
-                'projects/p1/brains/b1/sessions/s1/offline_evaluation/2')),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/models/m0/'
+                'offline_evaluations/2')),
         mock.call(
-            resource_id.ResourceId(
-                None,
-                'projects/p1/brains/b1/sessions/s1/offline_evaluation/2')),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/models/m0/'
+                'offline_evaluations/2')),
         mock.call(
-            resource_id.ResourceId(
-                None, 'projects/p1/brains/b1/sessions/s1/offline_evaluation/3'))
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/models/m0/'
+                'offline_evaluations/3'))
     ])
 
   def test_get_offline_eval_summary_assignment_not_matching(self):
     self._ds.list_by_proto_ids.side_effect = [
         ([
-            resource_id.ResourceId(
-                None, 'projects/p1/brains/b1/sessions/s1/offline_evaluation/1'),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/models/m1/'
+                'offline_evaluations/1'),
         ], None),
         ([
-            resource_id.ResourceId(
-                None, 'projects/p1/brains/b1/sessions/s1/assignments/a1'),
+            resource_id.FalkenResourceId(
+                'projects/p1/brains/b1/sessions/s1/assignments/a1'),
         ], None)
     ]
-
     # Reading offline eval results in different assignment from what we expect.
     self._ds.read.side_effect = [
         data_store_pb2.OfflineEvaluation(
@@ -304,7 +321,11 @@ class ModelSelectorTest(parameterized.TestCase):
     with self.assertRaisesWithLiteralMatch(
         ValueError,
         'Assignment ID a2 not found in assignments for session s1.'):
-      self._model_selector._get_offline_eval_summary(starting_snapshot)
+      self._model_selector._get_offline_eval_summary(
+          resource_id.FalkenResourceId(
+              f'projects/{starting_snapshot.project_id}/brains/'
+              f'{starting_snapshot.brain_id}/sessions/'
+              f'{starting_snapshot.session}'))
 
   def test_get_online_eval_summary(self):
     self._ds.list_by_proto_ids.return_value = (
@@ -425,6 +446,151 @@ class ModelSelectorTest(parameterized.TestCase):
             online_eval_sampling.ModelRecord(successes=1, failures=1),
         ]))
     get_summary_map.assert_called_once_with()
+
+  @parameterized.named_parameters(
+      ('interactive_training', session_pb2.INTERACTIVE_TRAINING),
+      ('evaluation', session_pb2.EVALUATION),
+      ('inference', session_pb2.INFERENCE))
+  @mock.patch.object(model_selector.ModelSelector, '_get_session_type')
+  @mock.patch.object(model_selector.ModelSelector,
+                     '_best_offline_or_starting_snapshot_model')
+  @mock.patch.object(model_selector.ModelSelector, '_next_online_eval_model')
+  @mock.patch.object(model_selector.ModelSelector, 'select_final_model')
+  def test_select_next_model(self, session_type, select_final_model,
+                             next_online_eval_model,
+                             best_offline_or_starting_snapshot_model,
+                             get_session_type):
+    get_session_type.return_value = session_type
+    select_final_model.return_value = 'm0'
+    next_online_eval_model.return_value = 'm0'
+    best_offline_or_starting_snapshot_model.return_value = 'm0'
+    self.assertEqual(self._model_selector.select_next_model(), 'm0')
+
+  @mock.patch.object(model_selector.ModelSelector, '_get_session_type')
+  def test_select_next_model_invalid_session_type(self, get_session_type):
+    get_session_type.return_value = 20
+    with self.assertRaisesWithLiteralMatch(
+        ValueError, 'Unsupported session type: 20 found for session s0.'):
+      self._model_selector.select_next_model()
+
+  @mock.patch.object(model_selector.ModelSelector, '_next_online_eval_model')
+  @mock.patch.object(model_selector.ModelSelector, '_get_session_type')
+  def test_select_next_model_empty_model_returned(self, get_session_type,
+                                                  next_online_eval_model):
+    get_session_type.return_value = session_pb2.EVALUATION
+    next_online_eval_model.return_value = ''
+    with self.assertRaisesWithLiteralMatch(
+        ValueError,
+        'Empty model returned by online eval sampling for session s0'):
+      self._model_selector.select_next_model()
+
+  @mock.patch.object(model_selector.ModelSelector, '_best_offline_model')
+  def test_best_offline_or_starting_snapshot_model(self, best_offline_model):
+    best_offline_model.return_value = 'm0'
+    self.assertEqual(
+        self._model_selector._best_offline_or_starting_snapshot_model(),
+        best_offline_model.return_value)
+    best_offline_model.assert_called_once_with()
+
+  @mock.patch.object(model_selector.ModelSelector, '_best_offline_model')
+  @mock.patch.object(data_cache, 'get_starting_snapshot')
+  def test_best_offline_or_starting_snapshot_model_starting_snapshot(
+      self, get_starting_snapshot, best_offline_model):
+    best_offline_model.side_effect = FileNotFoundError()
+    get_starting_snapshot.return_value = data_store_pb2.Snapshot(model='m0')
+    self.assertEqual(
+        self._model_selector._best_offline_or_starting_snapshot_model(),
+        get_starting_snapshot.return_value.model)
+    best_offline_model.assert_called_once_with()
+    get_starting_snapshot.assert_called_once_with(
+        self._ds, self._ds.read.return_value.project_id,
+        self._ds.read.return_value.brain_id,
+        self._ds.read.return_value.session_id)
+
+  @mock.patch.object(model_selector.ModelSelector, '_best_offline_model')
+  @mock.patch.object(data_cache, 'get_starting_snapshot')
+  def test_best_offline_or_starting_snapshot_model_not_found(
+      self, get_starting_snapshot, best_offline_model):
+    best_offline_model.side_effect = FileNotFoundError()
+    get_starting_snapshot.side_effect = FileNotFoundError()
+    self.assertEmpty(
+        self._model_selector._best_offline_or_starting_snapshot_model())
+
+  @mock.patch.object(model_selector.ModelSelector, '_get_offline_eval_summary')
+  def test_best_offline_model(self, get_offline_eval_summary):
+    get_offline_eval_summary.return_value = ModelSelectorTest.offline_summary
+    self.assertEqual(self._model_selector._best_offline_model(), 'm1')
+
+  @mock.patch.object(model_selector.ModelSelector, '_get_offline_eval_summary')
+  def test_best_offline_model_empty_summary(self, get_offline_eval_summary):
+    get_offline_eval_summary.return_value = (
+        model_selection_record.OfflineEvaluationByAssignmentAndEvalId())
+    with self.assertRaisesWithLiteralMatch(
+        FileNotFoundError, 'No offline eval found for session s0.'):
+      self._model_selector._best_offline_model()
+
+  @mock.patch.object(online_eval_sampling.UCBSampling, 'select_next')
+  @mock.patch.object(model_selector.ModelSelector, '_create_model_records')
+  @mock.patch.object(model_selector.ModelSelector, '_get_summary_map')
+  def test_next_online_eval_model(self, get_summary_map, create_model_records,
+                                  select_next):
+    get_summary_map.return_value = ModelSelectorTest.summary_map
+    create_model_records.return_value = (1, ['m0'], [
+        online_eval_sampling.ModelRecord(successes=10, failures=2)
+    ])
+    select_next.return_value = 0
+    self.assertEqual(self._model_selector._next_online_eval_model(), 'm0')
+
+  @mock.patch.object(model_selector.ModelSelector, '_get_summary_map')
+  def test_next_online_eval_model_no_summary_map(self, get_summary_map):
+    get_summary_map.return_value = model_selection_record.SummaryMap()
+    with self.assertRaisesWithLiteralMatch(
+        FileNotFoundError, 'No models found for evaluation session s0.'):
+      self._model_selector._next_online_eval_model()
+
+  @parameterized.named_parameters(
+      ('interactive_training', session_pb2.INTERACTIVE_TRAINING),
+      ('evaluation', session_pb2.EVALUATION),
+      ('inference', session_pb2.INFERENCE))
+  @mock.patch.object(model_selector.ModelSelector, '_get_session_type')
+  @mock.patch.object(model_selector.ModelSelector, '_best_offline_model')
+  @mock.patch.object(model_selector.ModelSelector, '_best_online_model')
+  @mock.patch.object(data_cache, 'get_starting_snapshot')
+  def test_select_final_model(self, session_type, get_starting_snapshot,
+                              best_online_model, best_offline_model,
+                              get_session_type):
+    get_session_type.return_value = session_type
+    best_online_model.return_value = 'm0'
+    best_offline_model.return_value = 'm0'
+    get_starting_snapshot.return_value = data_store_pb2.Snapshot(model='m0')
+    self.assertEqual(self._model_selector.select_final_model(), 'm0')
+
+  @mock.patch.object(model_selector.ModelSelector, '_get_session_type')
+  def test_select_final_model_invalid_session_type(self, get_session_type):
+    get_session_type.return_value = 20
+    with self.assertRaisesWithLiteralMatch(
+        ValueError, 'Unsupported session type: 20 found for session s0.'):
+      self._model_selector.select_next_model()
+
+  @mock.patch.object(online_eval_sampling.HighestAverageSelection,
+                     'select_best')
+  @mock.patch.object(model_selector.ModelSelector, '_create_model_records')
+  @mock.patch.object(model_selector.ModelSelector, '_get_summary_map')
+  def test_best_online_eval_model(self, get_summary_map, create_model_records,
+                                  select_best):
+    get_summary_map.return_value = ModelSelectorTest.summary_map
+    create_model_records.return_value = (1, ['m0'], [
+        online_eval_sampling.ModelRecord(successes=10, failures=2)
+    ])
+    select_best.return_value = 0
+    self.assertEqual(self._model_selector._best_online_model(), 'm0')
+
+  @mock.patch.object(model_selector.ModelSelector, '_get_summary_map')
+  def test_best_online_eval_model_no_summary_map(self, get_summary_map):
+    get_summary_map.return_value = model_selection_record.SummaryMap()
+    with self.assertRaisesWithLiteralMatch(
+        ValueError, 'No models found for session s0. Cannot compute best.'):
+      self._model_selector._best_online_model()
 
 
 if __name__ == '__main__':

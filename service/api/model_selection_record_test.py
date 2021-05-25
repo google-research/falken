@@ -81,6 +81,12 @@ class OfflineEvaluationByAssignmentAndEvalIdTest(absltest.TestCase):
          (1, model_selection_record.ModelScore(
              model_id='model_id_3', score=-0.2))])
 
+    # Limit number of model IDs.
+    self.assertEqual(
+        scores.scores_by_offline_evaluation_id('a2', 1),
+        [(2, model_selection_record.ModelScore(
+            model_id='model_id_2', score=-0.2))])
+
   def test_model_ids_for_assignment_id(self):
     scores = model_selection_record.OfflineEvaluationByAssignmentAndEvalId()
     scores[model_selection_record.AssignmentEvalId('a0', 0)].add_score(
@@ -146,7 +152,6 @@ class SummaryMapTest(absltest.TestCase):
         summary_map.eval_summary_for_assignment_and_model('a0', 'm1'),
         model_selection_record.EvaluationSummary(
             model_id='m1', offline_scores={1: -22.0}, online_scores=[1.0]))
-
 
 if __name__ == '__main__':
   absltest.main()

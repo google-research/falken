@@ -80,15 +80,15 @@ class OfflineEvaluationByAssignmentAndEvalId(collections.defaultdict):
   def __copy__(self):
     return type(self)(self.items())
 
-  def scores_by_offline_evaluation_id(self,
-                                      assignment_id: str,
-                                      models_limit: typing.Optional[int] = None
-                                     ):
+  def scores_by_offline_evaluation_id(
+      self,
+      assignment_id: typing.Optional[str] = None,
+      models_limit: typing.Optional[int] = None):
     """Returns a list of eval_id to ModelScore ordered by eval ID and score.
 
     Args:
-      assignment_id: The assignment ID of the scores that need to be returned.
-        Used to filter the items in the dictionary.
+      assignment_id: Optional assignment ID of the scores that need to be
+        returned. Used to filter the items in the dictionary.
       models_limit: Optional number to limit to the results to a certain number
         of unique models.
 
@@ -97,11 +97,12 @@ class OfflineEvaluationByAssignmentAndEvalId(collections.defaultdict):
         offline evaluation ID and ascending score in ModelScore.
     """
     # Filter by assignment ID and order by descending evaluation ID.
-    scores_ordered_by_eval = sorted(
-        [item for item in self.items()
-         if item[0].assignment_id == assignment_id],
-        key=lambda x: x[0].offline_evaluation_id,
-        reverse=True)
+    scores_ordered_by_eval = sorted([
+        item for item in self.items()
+        if not assignment_id or item[0].assignment_id == assignment_id
+    ],
+                                    key=lambda x: x[0].offline_evaluation_id,
+                                    reverse=True)
 
     # Flatten into a list.
     result = []

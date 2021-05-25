@@ -156,10 +156,28 @@ def _step_generator(episode_chunks):
 
 
 def _get_hparams(assignment_id):
+  """Parse a hyperparemeters dictionary from an assignment ID.
+
+  Args:
+    assignment_id: Assignment ID to parse. If this is "default" an empty
+      dictionary is returned.
+
+  Returns:
+    Dictionary containing the parsed hyperparameters.
+
+  Raises:
+    HParamError: If the assignment is malformed.
+  """
   falken_logging.info(f'GetHParams got assignment_id {assignment_id}')
   if assignment_id == 'default':
     return {}
-  return json.loads(assignment_id)
+  try:
+    return json.loads(assignment_id)
+  except json.decoder.JSONDecodeError as error:
+    error_message = (f'Failed to parse assignment ID: {error}\n' +
+                     assignment_id)
+    falken_logging.error(error_message)
+    raise HParamError(error_message)
 
 
 def populate_hparams_with_defaults_and_validate(hparams):

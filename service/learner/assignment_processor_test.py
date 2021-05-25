@@ -49,6 +49,18 @@ class AssignmentProcessorTest(parameterized.TestCase):
     self._mock_storage.get_assignment.return_value = self._assignment
     self._mock_fs = mock.Mock()
 
+  def test_get_hparams_default(self):
+    self.assertEqual(assignment_processor._get_hparams('default'), {})
+
+  def test_get_hparams_valid(self):
+    self.assertEqual(assignment_processor._get_hparams('{"foo": 1}'),
+                     {'foo': 1})
+
+  def test_get_hparams_invalid(self):
+    with self.assertRaisesRegex(assignment_processor.HParamError,
+                                '.*{"foo:.*stuff"}.*'):
+      assignment_processor._get_hparams('{"foo: 1, "bar": "stuff"}')
+
   @mock.patch.object(continuous_imitation_brain, 'ContinuousImitationBrain',
                      autospec=True)
   def test_process_already_closed(self, mock_continuous_imitation_brain):

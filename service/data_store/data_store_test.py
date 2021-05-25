@@ -197,6 +197,42 @@ class DataStoreTest(parameterized.TestCase):
             project_id='p1', brain_id='b1', session_id='s1', model_id='m1',
             offline_evaluation_id=2)).offline_evaluation_id, 2)
 
+  def test_update_session_data_timestamps(self):
+    res_id = self._data_store.write(data_store_pb2.Session(
+        project_id='p1', brain_id='b1', session_id='s1'))
+
+    # Update only session data timestamp.
+    self._data_store.update_session_data_timestamps(
+        res_id,
+        2_000_000,
+        False)
+    self.assertEqual(
+        self._data_store.read(res_id).last_data_received_micros, 2_000_000)
+    self.assertEqual(
+        self._data_store.read(res_id).last_demo_data_received_micros, 0)
+
+    # Update only session data and demo data timestamps.
+    self._data_store.update_session_data_timestamps(
+        res_id,
+        3_000_000,
+        True)
+    self.assertEqual(
+        self._data_store.read(res_id).last_data_received_micros, 3_000_000)
+    self.assertEqual(
+        self._data_store.read(res_id).last_demo_data_received_micros,
+        3_000_000)
+
+    # Update with lower values.
+    self._data_store.update_session_data_timestamps(
+        res_id,
+        1_000_000,
+        True)
+    self.assertEqual(
+        self._data_store.read(res_id).last_data_received_micros, 3_000_000)
+    self.assertEqual(
+        self._data_store.read(res_id).last_demo_data_received_micros,
+        3_000_000)
+
   def test_to_resource_id(self):
     """Test the resolver's conversion from a proto to a resource ID."""
     proto = data_store_pb2.Session(

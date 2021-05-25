@@ -239,6 +239,34 @@ class SessionDataStoreMixin:
     falken_logging.info(f'Stopped session {resource}.')
     return resource
 
+  def update_session_data_timestamps(
+      self,
+      session_resource_id: resource_id.FalkenResourceId,
+      timestamp_micros: int,
+      has_demo_data: bool):
+    """Updates data received timestamps in a session.
+
+    Sessions have two timestamp fields that record the timestmap of the last
+    chunk of data received and the timestamp of the last chunk of data received
+    that contained demo data. This function updates one or both of those fields
+    to the indicated value.
+
+    Args:
+      session_resource_id: Resource ID of the session to update.
+      timestamp_micros: A microsecond timestamp.
+      has_demo_data: Whether the last_demo_data_received_micros timestamp should
+          be updated.
+    """
+    session = self.read(session_resource_id)
+    session.last_data_received_micros = (
+        max(timestamp_micros, session.last_data_received_micros))
+
+    if has_demo_data:
+      session.last_demo_data_received_micros = (
+          max(timestamp_micros, session.last_demo_data_received_micros))
+    write_resource_id = self.write(session)
+    assert session_resource_id == write_resource_id
+
 
 class DataStore(resource_store.ResourceStore,
                 SnapshotDataStoreMixin,

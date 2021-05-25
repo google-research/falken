@@ -64,18 +64,24 @@ message Session {
 
   uint64 created_micros = 4;
   uint64 ended_micros = 5;
+
+  // Most recent timestamp of any data added to this session.
   uint64 last_data_received_micros = 6;
-  google.rpc.Status status = 7;
+  // Most recent timestamp of demo data added to this session.
+  uint64 last_demo_data_received_micros = 7;
+
+  google.rpc.Status status = 8;
 
   // Snapshot used to start the session.
-  repeated string starting_snapshots = 8;
+  repeated string starting_snapshots = 9;
   // Populated when the session is complete.
-  string snapshot = 9;
+  string snapshot = 10;
 
-  falken.proto.SessionType session_type = 10;
+  falken.proto.SessionType session_type = 11;
 
   // User agent of the client that created this session.
-  string user_agent = 11;
+  string user_agent = 12;
+
 }
 
 message TrainingInfo {

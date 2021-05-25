@@ -16,6 +16,7 @@
 """Submit episode chunks and returns session info containing state and model."""
 
 import json
+import time
 
 from absl import flags
 from absl import logging
@@ -224,12 +225,18 @@ def _store_episode_chunks(data_store, chunks, session_resource_id):
       brain_id=session_resource_id.brain,
       session_id=session_resource_id.session)
 
+  has_demo_data = False
+  timestamp_micros = int(time.time() * 1_000_000)
+
   # Sort request chunks by chunk ID. This is to ensure the GetEpisodeSteps has
   # previous chunks accessible before querying later chunks.
   chunks = sorted(chunks, key=lambda chunk: chunk.chunk_id)
   for chunk in chunks:
     try:
       steps_type = _get_steps_type(chunk)
+      if steps_type in (data_store_pb2.ONLY_DEMONSTRATIONS,
+                        data_store_pb2.MIXED):
+        has_demo_data = True
       chunks_steps_type = _merge_steps_types(chunks_steps_type, steps_type)
     except ValueError as e:
       raise ValueError('Encountered error while getting steps type for episode '
@@ -238,6 +245,7 @@ def _store_episode_chunks(data_store, chunks, session_resource_id):
     write_episode_chunk.episode_id = chunk.episode_id
     write_episode_chunk.steps_type = steps_type
     write_episode_chunk.data.CopyFrom(chunk)
+    write_episode_chunk.created_micros = timestamp_micros
     data_store.write(write_episode_chunk)
 
     episode_resource_id = data_store.resource_id_from_proto_ids(
@@ -245,6 +253,12 @@ def _store_episode_chunks(data_store, chunks, session_resource_id):
         brain_id=session_resource_id.brain,
         session_id=session_resource_id.session,
         episode_id=chunk.episode_id)
+
+    # Update datastore timestamps.
+    data_store.update_session_data_timestamps(
+        session_resource_id,
+        timestamp_micros,
+        has_demo_data)
 
     # Record online evaluation results.
     try:

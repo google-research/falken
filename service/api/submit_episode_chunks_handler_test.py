@@ -14,6 +14,7 @@
 
 # Lint as: python3
 """Tests for submit_episode_chunks_handler."""
+import time
 from unittest import mock
 
 from absl.testing import absltest
@@ -74,13 +75,14 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
             model_id='m0')
     ]
 
-  def _data_store_chunk(self):
+  def _data_store_chunk(self, created_micros=0):
     return data_store_pb2.EpisodeChunk(
         project_id='p0',
         brain_id='b0',
         session_id='s0',
         episode_id='ep0',
         data=self._chunks()[0],
+        created_micros=created_micros,
         steps_type=data_store_pb2.ONLY_DEMONSTRATIONS)
 
   @mock.patch.object(submit_episode_chunks_handler, '_get_training_progress')
@@ -291,14 +293,19 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
   @mock.patch.object(submit_episode_chunks_handler, '_record_online_evaluation')
   @mock.patch.object(submit_episode_chunks_handler, '_get_steps_type')
   @mock.patch.object(submit_episode_chunks_handler, '_merge_steps_types')
+  @mock.patch.object(time, 'time')
   def test_store_episode_chunks(
       self,
+      mock_time,
       merge_steps_type,
       get_steps_type,
       record_online_evaluation):
     mock_ds = mock.Mock()
     mock_ds.resource_id_from_proto_ids.return_value = (
         self._ep_resource_id)
+
+    mock_time.return_value = 1
+
     chunks = self._chunks()
     merge_steps_type.return_value = data_store_pb2.ONLY_DEMONSTRATIONS
     get_steps_type.return_value = data_store_pb2.ONLY_DEMONSTRATIONS
@@ -315,10 +322,17 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
             session_id='s0',
             episode_id='ep0',
             chunk_id=0,
+            created_micros=1_000_000,
             data=chunks[0],
             steps_type=get_steps_type.return_value))
+
+    mock_ds.update_session_data_timestamps.assert_called_once_with(
+        self._session_resource_id,
+        1_000_000,
+        True)
+
     record_online_evaluation.assert_called_once_with(
-        mock_ds, self._data_store_chunk(), self._ep_resource_id)
+        mock_ds, self._data_store_chunk(1_000_000), self._ep_resource_id)
     get_steps_type.assert_called_once_with(chunks[0])
 
   @mock.patch.object(submit_episode_chunks_handler, '_get_steps_type')
@@ -339,13 +353,16 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
 
   @mock.patch.object(submit_episode_chunks_handler, '_record_online_evaluation')
   @mock.patch.object(submit_episode_chunks_handler, '_get_steps_type')
+  @mock.patch.object(time, 'time')
   def test_store_episode_chunks_failure_at_record_online_evaluation(
-      self, get_steps_type, record_online_evaluation):
+      self, mock_time, get_steps_type, record_online_evaluation):
     mock_ds = mock.Mock()
     mock_ds.resource_id_from_proto_ids.return_value = self._ep_resource_id
     chunks = self._chunks()
     get_steps_type.return_value = data_store_pb2.ONLY_DEMONSTRATIONS
     record_online_evaluation.side_effect = ValueError('Episode incomplete.')
+
+    mock_time.return_value = 1
 
     with self.assertRaisesWithLiteralMatch(
         ValueError,
@@ -361,10 +378,17 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
             session_id='s0',
             episode_id='ep0',
             chunk_id=0,
+            created_micros=1_000_000,
             data=chunks[0],
             steps_type=get_steps_type.return_value))
+
+    mock_ds.update_session_data_timestamps.assert_called_once_with(
+        self._session_resource_id,
+        1_000_000,
+        True)
+
     record_online_evaluation.assert_called_once_with(
-        mock_ds, self._data_store_chunk(), self._ep_resource_id)
+        mock_ds, self._data_store_chunk(1_000_000), self._ep_resource_id)
     get_steps_type.assert_called_once_with(chunks[0])
 
   def test_get_steps_type_mixed(self):

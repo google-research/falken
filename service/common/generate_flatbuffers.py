@@ -131,10 +131,10 @@ def generate():
   if not os.path.exists(generated_fbs_dir):
     temp_dir = tempfile.mkdtemp()
     flatc = os.path.normpath(
-        os.path.join(install_flatc(temp_dir),
-                     'Debug' if platform.system() == 'Windows' else ''
-                     'flatc',
-                     '.exe' if platform.system() == 'Windows' else ''))
+        os.path.join(
+            install_flatc(temp_dir),
+            'Debug' if platform.system() == 'Windows' else '',
+            'flatc.exe' if platform.system() == 'Windows' else 'flatc'))
     generated_fbs_dir = get_generated_flatbuffers_dir()
     if not os.path.exists(generated_fbs_dir):
       os.makedirs(generated_fbs_dir)

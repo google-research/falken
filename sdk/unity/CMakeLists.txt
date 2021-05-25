@@ -33,6 +33,10 @@ set(FALKEN_COMPILE_UNITY OFF CACHE BOOL "Compile C# assembly for Unity.")
 set(FALKEN_COMPILE_CSHARP ON CACHE BOOL "Compile C# assembly for Mono / .NET.")
 set(FALKEN_PROJECT_ID "" CACHE STRING "Project ID for integration tests.")
 set(FALKEN_API_KEY "" CACHE STRING "API Key for integration tests.")
+set(FALKEN_JSON_CONFIG_FILE "" CACHE STRING
+    "JSON configuration file for integration tests. This can be used instead of
+  FALKEN_PROJECT_ID and FALKEN_API_KEY."
+)
 set(FALKEN_RUN_CSHARP_TESTS ON CACHE BOOL "Whether to run C# tests.")
 set(FALKEN_TESTAPP_ENABLE_TEST OFF CACHE BOOL "Disable C++ testapp" FORCE)
 set(FALKEN_ENABLE_CPP_UNIT_TESTS OFF CACHE BOOL "Disable C++ SDK unit tests" FORCE)
@@ -260,21 +264,28 @@ if(FALKEN_COMPILE_UNITY OR FALKEN_COMPILE_CSHARP)
   set(DOTNET_FRAMEWORK_VERSION 4.5)
 
   # Generate a Falken configuration file for tests.
-  if("${FALKEN_PROJECT_ID}" STREQUAL "" OR
-     "${FALKEN_API_KEY}" STREQUAL "")
+  if(("${FALKEN_PROJECT_ID}" STREQUAL "" OR "${FALKEN_API_KEY}" STREQUAL "") AND
+     ("${FALKEN_JSON_CONFIG_FILE}" STREQUAL ""))
     message(WARNING
-      "FALKEN_PROJECT_ID and FALKEN_API_KEY must be set to run tests."
+      "FALKEN_PROJECT_ID and FALKEN_API_KEY or FALKEN_JSON_CONFIG_FILE must "
+      "be set to run tests."
     )
   endif()
   set(FALKEN_TEST_CONFIG "${INTERMEDIATES_DIR}/falken_config.json")
-  set(VAR_PROJECT_ID "${FALKEN_PROJECT_ID}")
-  set(VAR_API_KEY "${FALKEN_API_KEY}")
-  configure_file(csharp/falken_config_json.template "${FALKEN_TEST_CONFIG}"
-    @ONLY
-    NEWLINE_STYLE CRLF
-  )
-  unset(VAR_PROJECT_ID)
-  unset(VAR_API_KEY)
+  if(NOT "${FALKEN_JSON_CONFIG_FILE}" STREQUAL "")
+    configure_file("${FALKEN_JSON_CONFIG_FILE}" "${FALKEN_TEST_CONFIG}"
+      COPYONLY
+    )
+  else()
+    set(VAR_PROJECT_ID "${FALKEN_PROJECT_ID}")
+    set(VAR_API_KEY "${FALKEN_API_KEY}")
+    configure_file(csharp/falken_config_json.template "${FALKEN_TEST_CONFIG}"
+      @ONLY
+      NEWLINE_STYLE CRLF
+    )
+    unset(VAR_PROJECT_ID)
+    unset(VAR_API_KEY)
+  endif()
 endif()
 
 # Build Unity C# DLL.

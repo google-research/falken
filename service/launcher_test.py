@@ -16,17 +16,14 @@
 """Tests for falken.service.launcher."""
 
 import os
-import shutil
 import subprocess
 import sys
+import tempfile
 from unittest import mock
 
-from absl import flags
 from absl.testing import absltest
 import common.generate_protos  # pylint: disable=unused-import
 import launcher
-
-FLAGS = flags.FLAGS
 
 
 class LauncherTest(absltest.TestCase):
@@ -34,21 +31,27 @@ class LauncherTest(absltest.TestCase):
 
   def setUp(self):
     super(LauncherTest, self).setUp()
-    FLAGS.ssl_dir = os.path.join(FLAGS.test_tmpdir, 'ssl_dir')
-    os.makedirs(FLAGS.ssl_dir)
+    self.temp_dir = tempfile.TemporaryDirectory()
+    launcher.FLAGS.ssl_dir = os.path.join(self.temp_dir.name, 'ssl_dir')
+    os.makedirs(launcher.FLAGS.ssl_dir)
+    launcher.FLAGS.root_dir = os.path.join(self.temp_dir.name, 'root_dir')
+    os.makedirs(launcher.FLAGS.root_dir)
 
   def tearDown(self):
     """Tear down the testing environment."""
+    self.temp_dir.cleanup()
+    self.temp_dir = None
     super(LauncherTest, self).tearDown()
-    shutil.rmtree(FLAGS.ssl_dir)
 
   @mock.patch.object(subprocess, 'Popen', autospec=True)
   def test_run_api_test(self, popen):
     """Call the run_api() method and verify the correct calls."""
     launcher.run_api('mock_path')
     popen.assert_called_once_with([
-        sys.executable, '-m', 'api.falken_service', '--port', '50051',
-        '--ssl_dir', FLAGS.ssl_dir, '--hyperparameters', FLAGS.hyperparameters,
+        sys.executable, '-m', 'api.falken_service',
+        '--root_dir', launcher.FLAGS.root_dir, '--port', '50051',
+        '--ssl_dir', launcher.FLAGS.ssl_dir,
+        '--hyperparameters', launcher.FLAGS.hyperparameters,
         '--verbosity', '0', '--alsologtostderr'
     ],
                                   env=os.environ,
@@ -56,8 +59,8 @@ class LauncherTest(absltest.TestCase):
 
   @mock.patch.object(subprocess, 'run', autospec=True)
   def test_check_ssl(self, run):
-    fake_key_file = os.path.join(FLAGS.ssl_dir, 'key.pem')
-    fake_cert_file = os.path.join(FLAGS.ssl_dir, 'cert.pem')
+    fake_key_file = os.path.join(launcher.FLAGS.ssl_dir, 'key.pem')
+    fake_cert_file = os.path.join(launcher.FLAGS.ssl_dir, 'cert.pem')
     def _generate_fake_files(*unused_args, **unused_kwargs):
       with open(fake_key_file, 'w') as f:
         f.write('fake key')
@@ -75,7 +78,8 @@ class LauncherTest(absltest.TestCase):
     launcher.run_learner('mock_path')
     popen.assert_called_once_with(
         [sys.executable, '-m', 'learner.learner_service',
-         '--root_dir', 'mock_path', '--verbosity', '0', '--alsologtostderr'],
+         '--root_dir', launcher.FLAGS.root_dir, '--verbosity', '0',
+         '--alsologtostderr'],
         env=os.environ, cwd='mock_path')
 
 

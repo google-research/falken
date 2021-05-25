@@ -76,7 +76,7 @@ def check_ssl():
     raise FileNotFoundError('Cert were not created.')
 
 
-def run_api(current_path):
+def run_api(current_path: str):
   """Start the API in a subprocess.
 
   Args:
@@ -87,8 +87,8 @@ def run_api(current_path):
     Popen instance where the API service is running.
   """
   args = [
-      sys.executable, '-m', 'api.falken_service', '--port',
-      str(FLAGS.port), '--ssl_dir', FLAGS.ssl_dir,
+      sys.executable, '-m', 'api.falken_service', '--root_dir', FLAGS.root_dir,
+      '--port', str(FLAGS.port), '--ssl_dir', FLAGS.ssl_dir,
       '--hyperparameters', FLAGS.hyperparameters,
       '--verbosity', str(FLAGS.verbosity), '--alsologtostderr'
   ]
@@ -98,7 +98,7 @@ def run_api(current_path):
   return subprocess.Popen(args, env=os.environ, cwd=current_path)
 
 
-def run_learner(current_path):
+def run_learner(current_path: str):
   """Start the learner in a subprocess.
 
   Args:
@@ -110,7 +110,7 @@ def run_learner(current_path):
   """
   return subprocess.Popen(
       [sys.executable, '-m', 'learner.learner_service',
-       '--root_dir', current_path, '--verbosity', str(FLAGS.verbosity),
+       '--root_dir', FLAGS.root_dir, '--verbosity', str(FLAGS.verbosity),
        '--alsologtostderr'],
       env=os.environ, cwd=current_path)
 

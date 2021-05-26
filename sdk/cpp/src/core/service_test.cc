@@ -888,15 +888,6 @@ class SessionEqMatcher : public MatcherInterface<const falken::Session&> {
                 << " does not match " << other_session_.brain().id();
       return false;
     }
-    // TODO (b/172470796): Re-enable this once the session creation timestamp
-    // bug is fixed.
-    /*
-    if (session.creation_time() != other_session_.creation_time()) {
-      *listener << "Session creation time " << session.creation_time()
-                << " does not match " << other_session_.creation_time();
-      return false;
-    }
-    */
     if (session.training_state() != other_session_.training_state()) {
       *listener << "Session training state " << session.training_state()
                 << " does not match " << other_session_.training_state();

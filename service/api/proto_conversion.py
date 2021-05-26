@@ -18,6 +18,7 @@
 import common.generate_protos  # pylint: disable=g-bad-import-order,unused-import
 import brain_pb2
 import data_store_pb2
+import episode_pb2
 from google.protobuf import timestamp_pb2
 import session_pb2
 
@@ -27,7 +28,7 @@ class ProtoConverter:
 
   # Lazily initialized by convert_data_store_proto().
   _PROTO_MAP = {}
-  _PROTO_FIELD_NAME_MAP = {}
+  _PROTO_FIELD_TO_TYPE_OR_NAME_MAP = {}
   _PROTO_FIELD_CONVERTER_MAP = {}
 
   @staticmethod
@@ -93,18 +94,19 @@ class ProtoConverter:
     if not ProtoConverter._PROTO_MAP:
       ProtoConverter._PROTO_MAP = {
           data_store_pb2.Brain: brain_pb2.Brain,
-          data_store_pb2.Session: session_pb2.Session
+          data_store_pb2.EpisodeChunk: episode_pb2.EpisodeChunk,
+          data_store_pb2.Session: session_pb2.Session,
       }
     target_proto_type = ProtoConverter._PROTO_MAP.get(source_proto_type)
     if not target_proto_type:
-      raise ValueError(
-          f'Proto {type(source_proto_type)} could not be mapped to any '
-          'proto.')
+      raise ValueError(f'Proto {source_proto_type} could not be mapped to any '
+                       'proto.')
     return target_proto_type
 
   @staticmethod
-  def _get_target_field_name(field_name, source_proto_type, target_proto_type):
-    """Get the target field name from a source proto field name.
+  def _get_target_type_or_name(field_name, source_proto_type,
+                               target_proto_type):
+    """Get the target type or field name from a source proto field name.
 
     Args:
       field_name: Name of the field in the source proto.
@@ -112,13 +114,16 @@ class ProtoConverter:
       target_proto_type: Common proto type counterpart of source_proto_type.
 
     Returns:
-      Target field_name that can be set, or None if there is no field to be
-        set in the target.
+      Target name of the field or proto type that can be set, or None if there
+        is no field to be set in the target.
     """
-    if not ProtoConverter._PROTO_FIELD_NAME_MAP:
-      ProtoConverter._PROTO_FIELD_NAME_MAP = {
+    if not ProtoConverter._PROTO_FIELD_TO_TYPE_OR_NAME_MAP:
+      ProtoConverter._PROTO_FIELD_TO_TYPE_OR_NAME_MAP = {
           data_store_pb2.Brain: {
               'name': 'display_name',
+          },
+          data_store_pb2.EpisodeChunk: {
+              'data': episode_pb2.EpisodeChunk,
           },
           data_store_pb2.Session: {
               'session_id': 'name',
@@ -129,19 +134,23 @@ class ProtoConverter:
           }
       }
 
-    target_field_name = None
-    if (source_proto_type in ProtoConverter._PROTO_FIELD_NAME_MAP and
-        field_name in ProtoConverter._PROTO_FIELD_NAME_MAP[source_proto_type]):
-      target_field_name = ProtoConverter._PROTO_FIELD_NAME_MAP[
+    target_type_or_name = None
+    if (source_proto_type in ProtoConverter._PROTO_FIELD_TO_TYPE_OR_NAME_MAP and
+        field_name
+        in ProtoConverter._PROTO_FIELD_TO_TYPE_OR_NAME_MAP[source_proto_type]):
+      target_type_or_name = ProtoConverter._PROTO_FIELD_TO_TYPE_OR_NAME_MAP[
           source_proto_type][field_name]
-    elif field_name in ProtoConverter._PROTO_FIELD_NAME_MAP.get(None, {}):
-      target_field_name = ProtoConverter._PROTO_FIELD_NAME_MAP[None][field_name]
+    elif field_name in ProtoConverter._PROTO_FIELD_TO_TYPE_OR_NAME_MAP.get(
+        None, {}):
+      target_type_or_name = ProtoConverter._PROTO_FIELD_TO_TYPE_OR_NAME_MAP[
+          None][field_name]
     elif field_name in target_proto_type.DESCRIPTOR.fields_by_name:
-      target_field_name = field_name
+      target_type_or_name = field_name
 
     # Check that the target_field_name can be found in the target_proto fields.
-    if target_field_name in target_proto_type.DESCRIPTOR.fields_by_name:
-      return target_field_name
+    if (target_type_or_name in target_proto_type.DESCRIPTOR.fields_by_name or
+        target_type_or_name == target_proto_type):
+      return target_type_or_name
     return None
 
   @staticmethod
@@ -206,14 +215,16 @@ class ProtoConverter:
     converted_proto = target_proto_type()
 
     for field_name in data_store_proto.DESCRIPTOR.fields_by_name:
-      target_field_name = ProtoConverter._get_target_field_name(
+      target_name = ProtoConverter._get_target_type_or_name(
           field_name, data_store_proto_type, target_proto_type)
-      if target_field_name:
-        target_field = converted_proto.DESCRIPTOR.fields_by_name[
-            target_field_name]
-        source_field = data_store_proto.DESCRIPTOR.fields_by_name[field_name]
-        ProtoConverter._set_field(
-            converted_proto, target_field_name,
-            ProtoConverter._convert_field(source_field, data_store_proto,
-                                          target_field))
+      if target_name:
+        if target_name == target_proto_type:
+          converted_proto = getattr(data_store_proto, field_name)
+        else:
+          target_field = converted_proto.DESCRIPTOR.fields_by_name[target_name]
+          source_field = data_store_proto.DESCRIPTOR.fields_by_name[field_name]
+          ProtoConverter._set_field(
+              converted_proto, target_name,
+              ProtoConverter._convert_field(source_field, data_store_proto,
+                                            target_field))
     return converted_proto

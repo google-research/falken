@@ -15,6 +15,8 @@
 # Lint as: python3
 """Retrieve an existing Falken object from data_store."""
 
+import zipfile
+
 from absl import logging
 from api import proto_conversion
 from data_store import resource_id
@@ -192,14 +194,12 @@ class GetModelHandler(GetHandler):
           session=snapshot.session,
           model=snapshot.model)
 
-    unused_serialized_model = self._read_and_convert_proto(
-        resource_id.FalkenResourceId(
-            project=model_id.project,
-            brain=model_id.brain,
-            session=model_id.session,
-            model=model_id.model,
-            attribute='serialized_model'))
+    model = self._read_and_convert_proto(model_id)
 
-    # TODO(b/189117004): Fill in model_response.serialized_model with a
-    # compressed version of the model in unused_serialized_model.
-    return falken_service_pb2.Model(model_id=model_id.model)
+    model_response = falken_service_pb2.Model(model_id=model_id.model)
+    model_files = model_response.serialized_model.packed_files_payload.files
+    with zipfile.ZipFile(model.compressed_model_path) as zipped_file:
+      for name in sorted(zipped_file.namelist()):
+        model_files[name] = zipped_file.read(name)
+
+    return model_response

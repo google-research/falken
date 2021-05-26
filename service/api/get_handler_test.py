@@ -14,7 +14,10 @@
 
 # Lint as: python3
 """Tests for get_handler."""
+import os.path
+import tempfile
 from unittest import mock
+import zipfile
 
 from absl.testing import absltest
 from api import get_handler
@@ -25,12 +28,24 @@ from data_store import resource_id
 import common.generate_protos  # pylint: disable=unused-import
 import brain_pb2
 import session_pb2
+import serialized_model_pb2
 import data_store_pb2
 import falken_service_pb2
 from google.rpc import code_pb2
 
 
 class GetHandlerTest(absltest.TestCase):
+
+  def setUp(self):
+    """Create a temporary directory with a zip file inside."""
+    super().setUp()
+    self._temporary_directories = []
+
+  def tearDown(self):
+    """Clean up all temporary directories."""
+    super().tearDown()
+    for t in self._temporary_directories:
+      t.cleanup()
 
   @mock.patch.object(get_handler.GetHandler, '__init__')
   def test_get_handler_get_brain(self, get_handler_base):
@@ -63,7 +78,23 @@ class GetHandlerTest(absltest.TestCase):
         mock_request, mock_context, mock_ds,
         ['project_id', 'brain_id'], 'projects/{0}/brains/{1}/sessions/*')
 
+  def setup_compressed_model(self):
+    """Create a temporary directory with a zip file inside.
+
+    Returns:
+      A string containing the path to the compressed model.
+    """
+    temp_dir = tempfile.TemporaryDirectory()
+    self._temporary_directories.append(temp_dir)
+    zip_path = os.path.join(temp_dir.name, 'model.zip')
+    zip_contents = {'a.txt': 'file 1 data', 'abc/b.txt': 'file 2 data'}
+    with zipfile.ZipFile(zip_path, 'w') as zipped_file:
+      for name, contents in zip_contents.items():
+        zipped_file.writestr(name, contents)
+    return zip_path
+
   def test_get_handler_get_model(self):
+    zip_path = self.setup_compressed_model()
     request = falken_service_pb2.GetModelRequest(
         project_id='p0', brain_id='b0', model_id='m0')
     mock_context = mock.Mock()
@@ -78,14 +109,21 @@ class GetHandlerTest(absltest.TestCase):
     mock_ds.list.return_value = ([
         resource_id.FalkenResourceId(
             'projects/p0/brains/b0/sessions/s0/models/m0')], None)
+    model_handler._read_and_convert_proto.return_value = data_store_pb2.Model(
+        compressed_model_path=zip_path)
     self.assertEqual(
-        model_handler.get(), falken_service_pb2.Model(model_id='m0'))
+        model_handler.get(), falken_service_pb2.Model(
+            model_id='m0',
+            serialized_model=serialized_model_pb2.SerializedModel(
+                packed_files_payload=serialized_model_pb2.PackedFiles(
+                    files={'a.txt': b'file 1 data', 'abc/b.txt': b'file 2 data'}
+                    ))))
 
     mock_ds.list.assert_called_once_with(resource_id.FalkenResourceId(
         'projects/p0/brains/b0/sessions/*/models/m0'), page_size=2)
     model_handler._read_and_convert_proto.assert_called_once_with(
         resource_id.FalkenResourceId(
-            'projects/p0/brains/b0/sessions/s0/models/m0/serialized_model'))
+            'projects/p0/brains/b0/sessions/s0/models/m0'))
 
   @mock.patch.object(get_handler.GetHandler, '__init__')
   def test_get_handler_get_model_snapshot_specified_both(
@@ -104,6 +142,7 @@ class GetHandlerTest(absltest.TestCase):
     get_handler_base.assert_not_called()
 
   def test_get_handler_get_model_snapshot(self):
+    zip_path = self.setup_compressed_model()
     request = falken_service_pb2.GetModelRequest(
         project_id='p0', brain_id='b0', snapshot_id='s0')
     mock_context = mock.Mock()
@@ -115,19 +154,26 @@ class GetHandlerTest(absltest.TestCase):
                      'projects/{0}/brains/{1}/snapshots/{2}')
 
     model_handler._read_and_convert_proto = mock.Mock()
-    model_handler._read_and_convert_proto.return_value = (
+    model_handler._read_and_convert_proto.side_effect = [
         data_store_pb2.Snapshot(
-            project_id='p0', brain_id='b0', session='s0', model='m0'))
+            project_id='p0', brain_id='b0', session='s0', model='m0'),
+        data_store_pb2.Model(compressed_model_path=zip_path)
+    ]
 
     self.assertEqual(
-        model_handler.get(), falken_service_pb2.Model(model_id='m0'))
+        model_handler.get(), falken_service_pb2.Model(
+            model_id='m0',
+            serialized_model=serialized_model_pb2.SerializedModel(
+                packed_files_payload=serialized_model_pb2.PackedFiles(
+                    files={'a.txt': b'file 1 data', 'abc/b.txt': b'file 2 data'}
+                    ))))
 
     model_handler._read_and_convert_proto.assert_has_calls([
         mock.call(
             resource_id.FalkenResourceId('projects/p0/brains/b0/snapshots/s0')),
         mock.call(
             resource_id.FalkenResourceId(
-                'projects/p0/brains/b0/sessions/s0/models/m0/serialized_model'))
+                'projects/p0/brains/b0/sessions/s0/models/m0'))
     ])
 
   def test_get_missing_request_args(self):

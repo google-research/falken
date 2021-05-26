@@ -156,8 +156,7 @@ class FileSystem:
     rel_path = FileSystem._get_relative_path(
         self._tmp_models_directory, full_tmp_path)
     model_path = os.path.join(self._models_directory, rel_path) + '.zip'
-    if not model_path.startswith('/blobstore/'):
-      self._fs.make_dirs(os.path.split(model_path)[0])
+    self._fs.make_dirs(os.path.split(model_path)[0])
 
     # Compress in a temporary directory and then move to destination.
     with tempfile.TemporaryDirectory(dir=self._tmp_models_directory) as tmp_dir:

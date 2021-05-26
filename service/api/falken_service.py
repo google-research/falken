@@ -77,11 +77,16 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
         only when used in combination with their respective project IDs.
     """
     for project_id in project_ids:
-      api_key = unique_id.generate_base64_id()
-      project = data_store_pb2.Project(
-          project_id=project_id, name=project_id, api_key=api_key)
-      self.data_store.write(project)
-      logging.info('Generated key for %s: %s', project_id, api_key)
+      try:
+        self.data_store.read_by_proto_ids(project_id=project_id)
+        # Project exists, do nothing.
+      except data_store.NotFoundError:
+        # Project not found, create it.
+        api_key = unique_id.generate_base64_id()
+        project = data_store_pb2.Project(
+            project_id=project_id, name=project_id, api_key=api_key)
+        self.data_store.write(project)
+        logging.info('Generated key for %s: %s', project_id, api_key)
 
   def _validate_project_and_api_key(self, request, context):
     """Validate the project and API key.

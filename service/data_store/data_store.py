@@ -27,6 +27,10 @@ from log import falken_logging
 import common.generate_protos  # pylint: disable=unused-import
 import data_store_pb2
 
+
+NotFoundError = resource_store.NotFoundError
+
+
 DatastoreProto = Union[
     data_store_pb2.Assignment,
     data_store_pb2.Brain,

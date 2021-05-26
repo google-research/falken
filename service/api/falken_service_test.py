@@ -124,22 +124,17 @@ class FalkenServiceTest(absltest.TestCase):
     datastore.return_value = mock_ds
     generate_base64_id.return_value = 'api_key'
     FLAGS.project_ids = ['project_id_1', 'project_id_2']
-    expected_write_calls = [
-        mock.call(
-            data_store_pb2.Project(
-                project_id='project_id_1',
-                name='project_id_1',
-                api_key='api_key')),
-        mock.call(
-            data_store_pb2.Project(
-                project_id='project_id_2',
-                name='project_id_2',
-                api_key='api_key')),
+    mock_ds.read_by_proto_ids.side_effect = [
+        mock.Mock(),
+        data_store.NotFoundError,
     ]
     falken_service.FalkenService()
-    self.assertEqual(generate_base64_id.call_count, 2)
-    self.assertCountEqual(mock_ds.write.call_args_list,
-                          expected_write_calls)
+    self.assertEqual(generate_base64_id.call_count, 1)
+    mock_ds.write.assert_called_with(
+        data_store_pb2.Project(
+            project_id='project_id_2',
+            name='project_id_2',
+            api_key='api_key'))
 
   @mock.patch.object(falken_service.FalkenService, '_create_api_keys')
   @mock.patch.object(data_store, 'DataStore')

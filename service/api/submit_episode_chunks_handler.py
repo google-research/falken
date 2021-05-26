@@ -152,7 +152,7 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
         f'Failed to select model for session {session_resource_id}. '
         f'{e}')
 
-  _get_training_progress()
+  session_info.training_progress = selector.session_progress
 
   return falken_service_pb2.SubmitEpisodeChunksResponse(
       session_info=session_info)
@@ -544,6 +544,3 @@ def _try_start_assignments(
               episode_id=chunk.episode_id,
               chunk_id=chunk.chunk_id))
 
-
-def _get_training_progress():
-  raise NotImplementedError('Method not implemented!')

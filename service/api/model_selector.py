@@ -50,6 +50,7 @@ class ModelSelector:
     self._session_resource_id = session_resource_id
     self._summary_map = None
     self._session = self._data_store.read(self._session_resource_id)
+    self._progress = None
 
   def get_training_state(self) -> session_pb2.SessionInfo.TrainingState:
     """Get training state of the session for this model selector.
@@ -202,8 +203,21 @@ class ModelSelector:
         brain_id=self._session_resource_id.brain,
         session_id=self._session_resource_id.session)
 
+  @property
+  def session_progress(self):
+    """Get this session's progress float, lazily initialized."""
+    if not self._progress:
+      progress_per_assignment = self._data_store.calculate_assignment_progress(
+          self._session_resource_id)
+      if not progress_per_assignment:
+        self._progress = 0.0
+      else:
+        self._progress = (
+            sum(progress_per_assignment.values())/len(progress_per_assignment))
+    return self._progress
+
   def _is_session_training(self):
-    raise NotImplementedError('Coalesce with training progress logic.')
+    return self.session_progress < 1.0
 
   def _is_eval_complete(self):
     """Check that the total evals count is larger than the required number.

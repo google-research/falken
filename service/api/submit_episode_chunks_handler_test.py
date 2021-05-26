@@ -85,17 +85,17 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         created_micros=created_micros,
         steps_type=data_store_pb2.ONLY_DEMONSTRATIONS)
 
-  @mock.patch.object(submit_episode_chunks_handler, '_get_training_progress')
   @mock.patch.object(submit_episode_chunks_handler,
                      '_check_episode_data_with_brain_spec')
   @mock.patch.object(submit_episode_chunks_handler, '_store_episode_chunks')
   @mock.patch.object(submit_episode_chunks_handler, '_try_start_assignments')
   @mock.patch.object(model_selector, 'ModelSelector')
   def test_submit_episode_chunks(self, selector, unused_try, unused_store,
-                                 unused_check, unused_progress):
+                                 unused_check):
     mock_ds = mock.Mock()
     mock_ds.resource_id_from_proto_ids.return_value = self._session_resource_id
     mock_selector = selector.return_value
+    mock_selector.session_progress().return_value = 0.5
     mock_selector.get_training_state.return_value = (
         session_pb2.SessionInfo.TRAINING)
     mock_selector.select_next_model.return_value = 'm0'
@@ -105,7 +105,8 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
             mock_ds, mock.Mock()),
         falken_service_pb2.SubmitEpisodeChunksResponse(
             session_info=session_pb2.SessionInfo(
-                model_id='m0', state=session_pb2.SessionInfo.TRAINING)))
+                model_id='m0', state=session_pb2.SessionInfo.TRAINING,
+                training_progress=mock_selector.session_progress.return_value)))
 
   @mock.patch.object(submit_episode_chunks_handler,
                      '_check_episode_data_with_brain_spec')

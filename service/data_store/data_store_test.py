@@ -289,23 +289,25 @@ class DataStoreTest(parameterized.TestCase):
   # pylint: disable=g-long-lambda
   @parameterized.named_parameters(
       ('project', lambda x: data_store_pb2.Project(project_id=str(x)),
-       'projects/*'),
+       'projects/*', False),
       ('brain', lambda x: data_store_pb2.Brain(
           project_id='p1', brain_id=str(x)),
-       'projects/p1/brains/*'),
+       'projects/p1/brains/*', False),
       ('session', lambda x: data_store_pb2.Session(
           project_id='p1', brain_id='b1', session_id=str(x)),
-       'projects/p1/brains/b1/sessions/*'),
+       'projects/p1/brains/b1/sessions/*', False),
       ('episode_chunk', lambda x: data_store_pb2.EpisodeChunk(
           project_id='p1', brain_id='b1', session_id='s1',
           episode_id='e1', chunk_id=x),
-       'projects/p1/brains/b1/sessions/s1/episodes/e1/chunks/*'),
+       'projects/p1/brains/b1/sessions/s1/episodes/e1/chunks/*', False),
       ('online_evaluation', lambda x: data_store_pb2.OnlineEvaluation(
           project_id='p1', brain_id='b1', session_id='s1',
           episode_id=str(x)),
-       'projects/p1/brains/b1/sessions/s1/episodes/*/online_evaluation'))
+       'projects/p1/brains/b1/sessions/s1/episodes/*/online_evaluation', False),
+      ('time_descending', lambda x: data_store_pb2.Project(project_id=str(x)),
+       'projects/*', True))
   @mock.patch.object(time, 'time', autospec=True)
-  def test_list(self, creation_function, rid_glob, mock_time):
+  def test_list(self, creation_function, rid_glob, time_descending, mock_time):
     rid_glob = resource_id.FalkenResourceId(rid_glob)
     rids = []
     for i in range(100):
@@ -317,27 +319,48 @@ class DataStoreTest(parameterized.TestCase):
     self.assertEqual(result, rid_strings)
 
     # Test min_timestamp
-    result, _ = self._data_store.list(rid_glob, min_timestamp_micros=50)
-    self.assertEqual(result, rid_strings[50:])
+    result, _ = self._data_store.list(rid_glob, min_timestamp_micros=50,
+                                      time_descending=time_descending)
+    if time_descending:
+      sorted_rid_strings = sorted(
+          rid_strings[50:],
+          key=lambda x: int(str(x).split('/')[1]),
+          reverse=True)
+      self.assertEqual(result, sorted_rid_strings)
+    else:
+      self.assertEqual(result, rid_strings[50:])
 
     # Test pagination + min_timestamp
     result = []
     page_token = None
     i = 0
+    page_size = 10
+    min_timestamp = 5
     while True:
       page, page_token = self._data_store.list(
-          rid_glob, page_size=10, page_token=page_token,
-          min_timestamp_micros=5)
-      self.assertLessEqual(len(page), 10)
-      self.assertLessEqual(i, 10)
+          rid_glob, page_size=page_size, page_token=page_token,
+          min_timestamp_micros=min_timestamp, time_descending=time_descending)
+      self.assertLessEqual(len(page), page_size)
+      self.assertLessEqual(i, page_size)
       result += page
-      last_page_index = min(len(rid_strings) -1, 5 + (i + 1) * 10 - 1)
+      if time_descending:
+        last_page_index = max(0, 100 - (i + 1) * page_size)
+      else:
+        last_page_index = min(
+            len(rid_strings) -1, min_timestamp + (i + 1) * page_size - 1)
       want_token = f'{last_page_index}:{rid_strings[last_page_index]}'
       i += 1
       if not page_token:
         break
       self.assertEqual(page_token, want_token)
-    self.assertEqual(result, rid_strings[5:])
+    if time_descending:
+      sorted_rid_strings = sorted(
+          rid_strings[5:],
+          key=lambda x: int(str(x).split('/')[1]),
+          reverse=True)
+      self.assertEqual(result, sorted_rid_strings)
+    else:
+      self.assertEqual(result, rid_strings[5:])
 
   @parameterized.named_parameters(
       ('descending', True),
@@ -406,7 +429,6 @@ class DataStoreTest(parameterized.TestCase):
 
     self.assertEqual(len(set(result)), len(result))
     self.assertLen(result, expected_results)
-
 
 if __name__ == '__main__':
   absltest.main()

@@ -262,23 +262,32 @@ class ResourceStore:
         int(os.path.basename(f)[len(self._RESOURCE_PREFIX):]) for f in files]
     by_timestamp = sorted(zip(timestamps, paths), reverse=time_descending)
 
-    combined_min_timestamp = min_timestamp_micros
+    page_token_res_id = None
+    page_token_timestamp = None
     if page_token:
       page_token_timestamp, page_token_res_id = self._decode_token(page_token)
-      combined_min_timestamp = max(page_token_timestamp, combined_min_timestamp)
-    else:
-      page_token_res_id = None
+    # Return True if the first item goes before the second item in a list in
+    # ascending or descending order.
+    check_is_before = (
+        lambda x, y: x > y) if time_descending else (lambda x, y: x < y)
 
     page = []
     last_timestamp_micros = 0
     last_read_index = -1
     for last_read_index, (timestamp_micros, res_id_string) in enumerate(
         by_timestamp):
-      if timestamp_micros < combined_min_timestamp:
+      if timestamp_micros < min_timestamp_micros:
+        # Skip if created before provided min timestamp.
         continue
-      if (timestamp_micros == combined_min_timestamp and
-          page_token_res_id and
-          res_id_string <= page_token_res_id):
+      if page_token and check_is_before(
+          timestamp_micros, page_token_timestamp):
+        # Skip if created before the token based on time_descending.
+        continue
+      if page_token and timestamp_micros == page_token_timestamp and (
+          # Skip if item is the token.
+          res_id_string == page_token_res_id or
+          # Skip if item is before the token based on time_descending.
+          check_is_before(res_id_string, page_token_res_id)):
         continue
 
       page.append(self._resource_id_type(res_id_string))

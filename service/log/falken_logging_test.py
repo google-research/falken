@@ -74,15 +74,14 @@ class LoggingTest(absltest.TestCase):
         'Tried to log a message using an invalid key %s with value %s.',
         'unknown', 'foo')
 
-  def test_log_message(self):
-    """Test creating a message string and logging it."""
-    mock_log_callable = mock.Mock()
-    falken_logging._log_message(mock_log_callable, 'hello')
-    falken_logging._log_message(mock_log_callable, 'goodbye', project_id='foo')
-    mock_log_callable.assert_has_calls(
-        [mock.call('hello'),
-         mock.call('goodbye\n'
-                   ' project_id: foo')])
+  def test_build_log_message(self):
+    """Test building a log message."""
+    self.assertEqual(
+        falken_logging.build_log_message('hello'), 'hello')
+    self.assertEqual(
+        falken_logging.build_log_message('goodbye', project_id='foo'),
+        'goodbye\n'
+        ' project_id: foo')
 
   @mock.patch.object(logging, 'error')
   def test_error(self, mock_log_error):

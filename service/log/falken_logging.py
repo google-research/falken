@@ -77,31 +77,33 @@ def _log_items_to_string(log_items):
   return '\n'.join(lines)
 
 
-def _log_message(log_callable, message, **kwargs):
-  """Log a message with a callable.
+def build_log_message(message, **kwargs):
+  """Constructs a log message with key-value attributes to add to the message.
 
   Args:
-    log_callable: Callable that takes a string to log.
     message: Message to log.
     **kwargs: Key value pairs of attributes to add to the message, where valid
       keys are those in _LOG_KWARGS.
+
+  Returns:
+    A string combining the message and kwargs.
   """
-  log_callable('\n'.join([message, _log_items_to_string(kwargs)]).rstrip())
+  return '\n'.join([message, _log_items_to_string(kwargs)]).rstrip()
 
 
 def error(message: str, **kwargs):
   """Logs an error message."""
   _register_frame_to_skip()
-  _log_message(logging.error, message, **kwargs)
+  logging.error(build_log_message(message, **kwargs))
 
 
 def warn(message: str, **kwargs):
   """Logs a warning message."""
   _register_frame_to_skip()
-  _log_message(logging.warning, message, **kwargs)
+  logging.warning(build_log_message(message, **kwargs))
 
 
 def info(message: str, **kwargs):
   """Logs an info message."""
   _register_frame_to_skip()
-  _log_message(logging.info, message, **kwargs)
+  logging.info(build_log_message(message, **kwargs))

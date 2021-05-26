@@ -115,7 +115,7 @@ class ModelSelector:
           f'{self._session_resource_id.session}.')
 
   def _best_offline_or_starting_snapshot_model(self):
-    """Return best model from offline evaluation or from starting snapshot."""
+    """Return best model ID from offline evaluation or from starting snapshot."""
     try:
       offline_model = self._best_offline_model()
     except (FileNotFoundError, ValueError):
@@ -136,7 +136,7 @@ class ModelSelector:
     return offline_model
 
   def _best_offline_model(self):
-    """Goes through offline evaluations and returns model with best score."""
+    """Goes through offline evaluations and returns model ID with best score."""
     offline_eval_summary = self._get_offline_eval_summary(
         self._session_resource_id)
     if not offline_eval_summary:
@@ -145,7 +145,7 @@ class ModelSelector:
     return offline_eval_summary.scores_by_offline_evaluation_id()[0][1].model_id
 
   def _next_online_eval_model(self):
-    """Selects the next model to try based on the online eval results."""
+    """Selects the next model ID to try based on the online eval results."""
     if not self._get_summary_map():
       raise FileNotFoundError('No models found for evaluation session '
                               f'{self._session_resource_id.session}.')
@@ -162,7 +162,7 @@ class ModelSelector:
     return model_ids[selected_model_index]
 
   def select_final_model(self):
-    """Select the final model for each session type."""
+    """Select the final model ID for each session type."""
     session_type = self._get_session_type()
     if session_type == session_pb2.INTERACTIVE_TRAINING:
       return self._best_offline_model()
@@ -179,7 +179,7 @@ class ModelSelector:
                        'session {self._session.session_id}.')
 
   def _best_online_model(self):
-    """Select the model with the best online evaluation score."""
+    """Select the model ID with the best online evaluation score."""
     if not self._get_summary_map():
       raise ValueError(
           'No models found for session '

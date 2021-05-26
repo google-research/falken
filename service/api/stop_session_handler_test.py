@@ -93,15 +93,18 @@ class StopSessionHandlerTest(parameterized.TestCase):
         expected_session_resource_id = resource_id.FalkenResourceId(
             project=request.session.project_id, brain=request.session.brain_id,
             session=request.session.name)
+        expected_model_resource_id = resource_id.FalkenResourceId(
+            project=request.session.project_id, brain=request.session.brain_id,
+            session=request.session.name, model='m0')
         read_session_with_snapshot_updated = data_store_pb2.Session(
             project_id='p0', brain_id='b0', session_id='s0',
             snapshot=get_snapshot_id.return_value)
         mock_ds_write_stopped_session.assert_called_once_with(
             read_session_with_snapshot_updated)
         mock_ds_read.assert_called_once_with(expected_session_resource_id)
-        get_snapshot_id.assert_called_once_with(expected_session_resource_id,
-                                                mock_ds_read.return_value, 'm0',
-                                                self._data_store, mock_context)
+        get_snapshot_id.assert_called_once_with(
+            expected_session_resource_id, mock_ds_read.return_value,
+            expected_model_resource_id, self._data_store, mock_context)
         selector.assert_called_once_with(self._data_store,
                                          expected_session_resource_id)
         mock_selector.select_final_model.assert_called_once()

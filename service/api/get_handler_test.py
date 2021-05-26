@@ -63,16 +63,29 @@ class GetHandlerTest(absltest.TestCase):
         mock_request, mock_context, mock_ds,
         ['project_id', 'brain_id'], 'projects/{0}/brains/{1}/sessions/*')
 
-  @mock.patch.object(get_handler.GetHandler, '__init__')
-  def test_get_handler_get_model(self, get_handler_base):
-    request = falken_service_pb2.GetModelRequest(model_id='m0')
+  def test_get_handler_get_model(self):
+    request = falken_service_pb2.GetModelRequest(
+        project_id='p0', brain_id='b0', model_id='m0')
     mock_context = mock.Mock()
     mock_ds = mock.Mock()
-    get_handler.GetModelHandler(request, mock_context, mock_ds)
-    get_handler_base.assert_called_once_with(
-        request, mock_context, mock_ds,
-        ['project_id', 'brain_id', 'session_id', 'model_id'],
-        'projects/{0}/brains/{1}/sessions/{2}/models/{3}')
+    model_handler = get_handler.GetModelHandler(request, mock_context, mock_ds)
+    self.assertEqual(model_handler._request_args,
+                     ['project_id', 'brain_id', 'model_id'])
+    self.assertEqual(model_handler._glob_pattern,
+                     'projects/{0}/brains/{1}/sessions/*/models/{2}')
+
+    model_handler._read_and_convert_proto = mock.Mock()
+    mock_ds.list.return_value = ([
+        resource_id.FalkenResourceId(
+            'projects/p0/brains/b0/sessions/s0/models/m0')], None)
+    self.assertEqual(
+        model_handler.get(), falken_service_pb2.Model(model_id='m0'))
+
+    mock_ds.list.assert_called_once_with(resource_id.FalkenResourceId(
+        'projects/p0/brains/b0/sessions/*/models/m0'), page_size=2)
+    model_handler._read_and_convert_proto.assert_called_once_with(
+        resource_id.FalkenResourceId(
+            'projects/p0/brains/b0/sessions/s0/models/m0/serialized_model'))
 
   @mock.patch.object(get_handler.GetHandler, '__init__')
   def test_get_handler_get_model_snapshot_specified_both(
@@ -88,25 +101,34 @@ class GetHandlerTest(absltest.TestCase):
         code_pb2.INVALID_ARGUMENT,
         'Either model ID or snapshot ID should be specified, not both. '
         'Found snapshot_id s0 and model_id m0.')
-    get_handler_base.assert_called_once_with(
-        request, mock_context, mock_ds,
-        ['project_id', 'brain_id', 'session_id', 'model_id'],
-        'projects/{0}/brains/{1}/sessions/{2}/models/{3}')
+    get_handler_base.assert_not_called()
 
-  @mock.patch.object(get_handler.GetHandler, '__init__')
-  def test_get_handler_get_model_snapshot(self, get_handler_base):
-    request = falken_service_pb2.GetModelRequest(snapshot_id='s0')
+  def test_get_handler_get_model_snapshot(self):
+    request = falken_service_pb2.GetModelRequest(
+        project_id='p0', brain_id='b0', snapshot_id='s0')
     mock_context = mock.Mock()
     mock_ds = mock.Mock()
     model_handler = get_handler.GetModelHandler(request, mock_context, mock_ds)
-    get_handler_base.assert_called_once_with(
-        request, mock_context, mock_ds,
-        ['project_id', 'brain_id', 'session_id', 'model_id'],
-        'projects/{0}/brains/{1}/sessions/{2}/models/{3}')
     self.assertEqual(model_handler._request_args,
-                     ['project_id', 'brain_id', 'session_id', 'snapshot_id'])
+                     ['project_id', 'brain_id', 'snapshot_id'])
     self.assertEqual(model_handler._glob_pattern,
-                     'projects/{0}/brains/{1}/sessions/{2}/snapshots/{3}')
+                     'projects/{0}/brains/{1}/snapshots/{2}')
+
+    model_handler._read_and_convert_proto = mock.Mock()
+    model_handler._read_and_convert_proto.return_value = (
+        data_store_pb2.Snapshot(
+            project_id='p0', brain_id='b0', session='s0', model='m0'))
+
+    self.assertEqual(
+        model_handler.get(), falken_service_pb2.Model(model_id='m0'))
+
+    model_handler._read_and_convert_proto.assert_has_calls([
+        mock.call(
+            resource_id.FalkenResourceId('projects/p0/brains/b0/snapshots/s0')),
+        mock.call(
+            resource_id.FalkenResourceId(
+                'projects/p0/brains/b0/sessions/s0/models/m0/serialized_model'))
+    ])
 
   def test_get_missing_request_args(self):
     mock_context = mock.Mock()

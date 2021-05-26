@@ -19,8 +19,10 @@ from absl import logging
 from api import proto_conversion
 from data_store import resource_id
 
-import common.generate_protos  # pylint: disable=unused-import,g-bad-import-order
+# pylint: disable=g-bad-import-order
+import common.generate_protos  # pylint: disable=unused-import
 from google.rpc import code_pb2
+import falken_service_pb2
 
 
 class GetHandler:
@@ -57,28 +59,41 @@ class GetHandler:
 
     Returns:
       session: Falken proto that was requested.
+    """
+    logging.debug('Get called with request %s', str(self._request))
 
+    return self._read_and_convert_proto(
+        resource_id.FalkenResourceId(self._instantiate_glob_pattern()))
+
+  def _read_and_convert_proto(self, res_id):
+    return proto_conversion.ProtoConverter.convert_proto(
+        self._data_store.read(res_id))
+
+  def _instantiate_glob_pattern(self):
+    """Instantiates glob pattern using request attributes.
+
+    Returns:
+      A string containing a glob pattern that can be used to find or list
+      resources.
     Raises:
       Exception: The gRPC context is aborted when the required fields are not
         specified in the request, which raises an exception to terminate the RPC
         with a no-OK status.
     """
-    logging.debug('Get called with request %s', str(self._request))
-
     args = []
     for arg in self._request_args:
-      if not getattr(self._request, arg):
+      try:
+        attr = getattr(self._request, arg)
+      except AttributeError:
+        attr = None
+
+      if not attr:
         self._context.abort(
             code_pb2.INVALID_ARGUMENT,
             f'Could not find {arg} in {self._request_type}.')
-      args.append(getattr(self._request, arg))
+      args.append(attr)
 
-    return self._read_and_convert_proto(
-        resource_id.FalkenResourceId(self._glob_pattern.format(*args)))
-
-  def _read_and_convert_proto(self, res_id):
-    return proto_conversion.ProtoConverter.convert_proto(
-        self._data_store.read(res_id))
+    return self._glob_pattern.format(*args)
 
 
 class GetBrainHandler(GetHandler):
@@ -135,10 +150,6 @@ class GetModelHandler(GetHandler):
   """Handles retrieving an existing model."""
 
   def __init__(self, request, context, data_store):
-    super().__init__(request, context, data_store,
-                     ['project_id', 'brain_id', 'session_id', 'model_id'],
-                     'projects/{0}/brains/{1}/sessions/{2}/models/{3}')
-
     if request.snapshot_id and request.model_id:
       context.abort(
           code_pb2.INVALID_ARGUMENT,
@@ -147,7 +158,48 @@ class GetModelHandler(GetHandler):
           f'{request.model_id}.')
 
     if request.snapshot_id:
-      self._request_args = [
-          'project_id', 'brain_id', 'session_id', 'snapshot_id']
-      self._glob_pattern = 'projects/{0}/brains/{1}/sessions/{2}/snapshots/{3}'
+      super().__init__(request, context, data_store,
+                       ['project_id', 'brain_id', 'snapshot_id'],
+                       'projects/{0}/brains/{1}/snapshots/{2}')
+    else:
+      super().__init__(request, context, data_store,
+                       ['project_id', 'brain_id', 'model_id'],
+                       'projects/{0}/brains/{1}/sessions/*/models/{2}')
 
+  def get(self):
+    glob = self._instantiate_glob_pattern()
+
+    if self._request.model_id:
+      listed_ids, _ = self._data_store.list(
+          resource_id.FalkenResourceId(glob),
+          page_size=2)
+
+      if not listed_ids:
+        self._context.abort(
+            code_pb2.INVALID_ARGUMENT, 'No models found for the given request.')
+
+      if len(listed_ids) > 1:
+        raise RuntimeError(f'{len(listed_ids)} resources found for glob '
+                           f'{glob}, but only one was expected.')
+
+      model_id = listed_ids[0]
+    else:
+      snapshot = self._read_and_convert_proto(
+          resource_id.FalkenResourceId(glob))
+      model_id = resource_id.FalkenResourceId(
+          project=snapshot.project_id,
+          brain=snapshot.brain_id,
+          session=snapshot.session,
+          model=snapshot.model)
+
+    unused_serialized_model = self._read_and_convert_proto(
+        resource_id.FalkenResourceId(
+            project=model_id.project,
+            brain=model_id.brain,
+            session=model_id.session,
+            model=model_id.model,
+            attribute='serialized_model'))
+
+    # TODO(b/189117004): Fill in model_response.serialized_model with a
+    # compressed version of the model in unused_serialized_model.
+    return falken_service_pb2.Model(model_id=model_id.model)

@@ -22,6 +22,7 @@ import os
 
 from absl import app
 from absl import flags
+from absl import logging
 
 FLAGS = flags.FLAGS
 
@@ -107,6 +108,8 @@ def main(unused_argv):
             read_file_to_lines(FLAGS.cert),
             project_id=FLAGS.project_id,
             api_key=FLAGS.api_key), sort_keys=True, indent=2))
+    full_path = os.path.join(os.getcwd(), FLAGS.config_json)
+    logging.info('Wrote SDK configuration to %s', full_path)
 
 
 if __name__ == '__main__':

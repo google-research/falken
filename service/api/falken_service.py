@@ -20,6 +20,7 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
+from api import api_keys
 from api import create_brain_handler
 from api import create_session_handler
 from api import get_handler
@@ -28,11 +29,9 @@ from api import list_handler
 from api import request_metadata
 from api import stop_session_handler
 from api import submit_episode_chunks_handler
-from api import unique_id
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
-import data_store_pb2
 import falken_service_pb2_grpc
 from google.rpc import code_pb2
 
@@ -77,16 +76,8 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
         only when used in combination with their respective project IDs.
     """
     for project_id in project_ids:
-      try:
-        self.data_store.read_by_proto_ids(project_id=project_id)
-        # Project exists, do nothing.
-      except data_store.NotFoundError:
-        # Project not found, create it.
-        api_key = unique_id.generate_base64_id()
-        project = data_store_pb2.Project(
-            project_id=project_id, name=project_id, api_key=api_key)
-        self.data_store.write(project)
-        logging.info('Generated key for %s: %s', project_id, api_key)
+      api_key = api_keys.get_or_create_api_key(self.data_store, project_id)
+      logging.info('Project %s has api key %s', project_id, api_key)
 
   def _validate_project_and_api_key(self, request, context):
     """Validate the project and API key.

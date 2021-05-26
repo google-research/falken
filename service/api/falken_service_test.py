@@ -24,7 +24,6 @@ from absl import flags
 from absl.testing import absltest
 from api import falken_service
 from api import test_constants
-from api import unique_id
 
 # pylint: disable=g-bad-import-order
 import common.generate_protos  # pylint: disable=unused-import
@@ -115,26 +114,6 @@ class FalkenServiceTest(absltest.TestCase):
         hash(
             grpc.ssl_server_credentials(
                 ((test_private_key, test_certificate_chain),))))
-
-  @mock.patch.object(unique_id, 'generate_base64_id')
-  @mock.patch.object(data_store, 'DataStore')
-  def test_create_api_keys(self, datastore, generate_base64_id):
-    """Test creation of API keys for project_ids specified in FLAGS."""
-    mock_ds = mock.Mock()
-    datastore.return_value = mock_ds
-    generate_base64_id.return_value = 'api_key'
-    FLAGS.project_ids = ['project_id_1', 'project_id_2']
-    mock_ds.read_by_proto_ids.side_effect = [
-        mock.Mock(),
-        data_store.NotFoundError,
-    ]
-    falken_service.FalkenService()
-    self.assertEqual(generate_base64_id.call_count, 1)
-    mock_ds.write.assert_called_with(
-        data_store_pb2.Project(
-            project_id='project_id_2',
-            name='project_id_2',
-            api_key='api_key'))
 
   @mock.patch.object(falken_service.FalkenService, '_create_api_keys')
   @mock.patch.object(data_store, 'DataStore')

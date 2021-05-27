@@ -29,6 +29,12 @@ import "episode.proto";
 import "serialized_model.proto";
 import "session.proto";
 
+message AssignmentProgress {
+  // Training progress 0 (training not started) and 1 (training complete).
+  float training_progress = 1;
+  // The timestamp of the most recent demo that has been trained on.
+  uint64 most_recent_demo_time_micros = 2;
+}
 
 message Assignment {
   string project_id = 1;
@@ -38,6 +44,8 @@ message Assignment {
 
   google.rpc.Status status = 5;
   uint64 created_micros = 6;
+
+  AssignmentProgress progress = 7;
 }
 
 message Project {

@@ -478,3 +478,21 @@ class Storage:
     self._data_store.write(session)
     self._data_store.write(assignment)
     return assignment
+
+  def record_assignment_progress(
+      self, training_progress, most_recent_demo_time_micros):
+    """Record the training progress of the assignment being processed.
+
+    Args:
+      training_progress: A float between 0 (untrained) and 1 (fully trained)
+          representing the training progress of the most recently exported
+          model for this assignment.
+      most_recent_demo_time_micros: The microsecond timestamp of the most
+          recent chunk of data containing demonstrations that a model has been
+          trained on.
+    """
+    assert self._in_progress_assignment
+    progress = self._in_progress_assignment.progress
+    progress.training_progress = training_progress
+    progress.most_recent_demo_time_micros = most_recent_demo_time_micros
+    self._data_store.write(self._in_progress_assignment)

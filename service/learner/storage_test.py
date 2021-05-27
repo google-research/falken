@@ -417,6 +417,20 @@ class StorageTest(parameterized.TestCase):
         project_id=test_data.PROJECT_ID, brain_id=test_data.BRAIN_ID,
         session_id=test_data.SESSION_ID, assignment_id=test_data.ASSIGNMENT_ID))
 
+  def test_record_assignment_progress(self):
+    """Ensure the assignment is updated in record_assignment_progress."""
+    assignment_res_id = self.data_store.write(test_data.assignment())
+    self.storage._enqueue_pending_assignment(assignment_res_id)
+
+    self.storage.receive_assignment()
+    self.storage.record_assignment_progress(0.5, 123_456_789)
+
+    got = self.data_store.read(assignment_res_id)
+    want_progress = data_store_pb2.AssignmentProgress(
+        training_progress=0.5,
+        most_recent_demo_time_micros=123_456_789)
+    self.assertEqual(got.progress, want_progress)
+
 
 if __name__ == '__main__':
   absltest.main()

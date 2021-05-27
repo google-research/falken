@@ -91,7 +91,7 @@ class DataCacheTest(absltest.TestCase):
             brain_id='test_brain_id', session_id='s0'),
         mock.call(
             project_id='test_project_id', brain_id='test_brain_id',
-            session_id='s0', snapshot_id='ss0')])
+            snapshot_id='ss0')])
 
   def test_get_starting_snapshot_wrong_length(self):
     mock_ds = mock.Mock()

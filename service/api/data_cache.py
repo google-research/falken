@@ -92,7 +92,7 @@ def get_starting_snapshot(data_store, project_id, brain_id, session_id):
         f'{len(session.starting_snapshots)} for session {session.session_id}.')
   return data_store.read_by_proto_ids(
       project_id=project_id, brain_id=brain_id,
-      session_id=session_id, snapshot_id=session.starting_snapshots[0])
+      snapshot_id=session.starting_snapshots[0])
 
 
 @functools.lru_cache(maxsize=_MAX_CACHE)

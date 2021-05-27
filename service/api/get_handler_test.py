@@ -87,7 +87,11 @@ class GetHandlerTest(absltest.TestCase):
     temp_dir = tempfile.TemporaryDirectory()
     self._temporary_directories.append(temp_dir)
     zip_path = os.path.join(temp_dir.name, 'model.zip')
-    zip_contents = {'a.txt': 'file 1 data', 'abc/b.txt': 'file 2 data'}
+    zip_contents = {
+        'saved_model/a.txt': 'file 1 data',
+        'saved_model/abc/b.txt': 'file 2 data',
+        'saved_model/abc/': ''
+    }
     with zipfile.ZipFile(zip_path, 'w') as zipped_file:
       for name, contents in zip_contents.items():
         zipped_file.writestr(name, contents)

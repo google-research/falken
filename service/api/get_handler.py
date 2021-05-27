@@ -15,6 +15,7 @@
 # Lint as: python3
 """Retrieve an existing Falken object from data_store."""
 
+import os.path
 import zipfile
 
 from absl import logging
@@ -25,6 +26,9 @@ from data_store import resource_id
 import common.generate_protos  # pylint: disable=unused-import
 from google.rpc import code_pb2
 import falken_service_pb2
+
+
+_SAVED_MODEL_PATH = 'saved_model'
 
 
 class GetHandler:
@@ -200,6 +204,11 @@ class GetModelHandler(GetHandler):
     model_files = model_response.serialized_model.packed_files_payload.files
     with zipfile.ZipFile(model.compressed_model_path) as zipped_file:
       for name in sorted(zipped_file.namelist()):
-        model_files[name] = zipped_file.read(name)
+        is_file = os.path.basename(name)
+        is_inside_saved_model = os.path.commonpath(
+            [name, _SAVED_MODEL_PATH]) == _SAVED_MODEL_PATH
+        if is_file and is_inside_saved_model:
+          model_files[os.path.relpath(name, _SAVED_MODEL_PATH)] = (
+              zipped_file.read(name))
 
     return model_response

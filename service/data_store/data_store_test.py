@@ -344,13 +344,13 @@ class DataStoreTest(parameterized.TestCase):
       self.assertLessEqual(i, page_size)
       result += page
       if time_descending:
-        last_page_index = max(0, 100 - (i + 1) * page_size)
+        last_page_index = max(min_timestamp, 100 - (i + 1) * page_size)
       else:
         last_page_index = min(
             len(rid_strings) -1, min_timestamp + (i + 1) * page_size - 1)
       want_token = f'{last_page_index}:{rid_strings[last_page_index]}'
       i += 1
-      if not page_token:
+      if not page:
         break
       self.assertEqual(page_token, want_token)
     if time_descending:
@@ -413,14 +413,19 @@ class DataStoreTest(parameterized.TestCase):
     result = []
     i = 0
     page_token = None
+    page_size = 3
+    last_page = None
     while True:
       page, page_token = self._data_store.list(
-          rid_glob, page_size=3, page_token=page_token,
+          rid_glob, page_size=page_size, page_token=page_token,
           min_timestamp_micros=min_timestamp)
       result += page
-      if not page_token:
+      if not page:
+        self.assertLen(last_page, page_size - 1)
         break
-      self.assertLen(page, 3)
+      if last_page:
+        self.assertLen(last_page, page_size)
+      last_page = page
       i += 1
 
     # Check ordering of returned elements.

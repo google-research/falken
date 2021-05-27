@@ -273,9 +273,7 @@ class ResourceStore:
 
     page = []
     last_timestamp_micros = 0
-    last_read_index = -1
-    for last_read_index, (timestamp_micros, res_id_string) in enumerate(
-        by_timestamp):
+    for (timestamp_micros, res_id_string) in by_timestamp:
       if timestamp_micros < min_timestamp_micros:
         # Skip if created before provided min timestamp.
         continue
@@ -295,9 +293,8 @@ class ResourceStore:
       if page_size and len(page) == page_size:
         break
 
-    if last_read_index == len(by_timestamp) - 1:
-      return page, ''
-    else:
+    token = ''
+    if page:
       token = self._encode_token(last_timestamp_micros, page[-1])
     return page, token
 

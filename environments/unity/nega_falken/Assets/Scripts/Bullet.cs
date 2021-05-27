@@ -51,7 +51,7 @@ public class Bullet : MonoBehaviour
 
     public void OnCollisionEnter(Collision collision)
     {
-        var mPlayer = collision.gameObject.GetComponent<FalkenPlayer>();
+        var mPlayer = collision.gameObject.GetComponent<NegaFalkenPlayer>();
 
         if (collision.gameObject != firedBy)
         {

@@ -98,11 +98,11 @@ public class SessionController : MonoBehaviour
                 foreach (Player p in cur.players)
                 {
                     // Cast if possible and provide references to the running session.
-                    var falkenPlayer = p as FalkenPlayer;
-                    if (falkenPlayer != null)
+                    var negaFalkenPlayer = p as NegaFalkenPlayer;
+                    if (negaFalkenPlayer != null)
                     {
-                        falkenPlayer.Session = _session;
-                        falkenPlayer.BrainSpec = _brain.BrainSpec;
+                        negaFalkenPlayer.Session = _session;
+                        negaFalkenPlayer.BrainSpec = _brain.BrainSpec;
                     }
                 }
 

@@ -100,7 +100,7 @@ public class Arena : MonoBehaviour
     {
         get
         {
-            foreach (FalkenPlayer p in players)
+            foreach (NegaFalkenPlayer p in players)
             {
                 if (p.EpisodeStarted)
                 {
@@ -165,15 +165,15 @@ public class Arena : MonoBehaviour
     }
 
     /// <summary>
-    /// Starts episodes on each of the FalkenPlayers.
+    /// Starts episodes on each of the NegaFalkenPlayers.
     /// </summary>
     public void StartGame()
     {
         foreach (var gamePlayer in players)
         {
-            if (gamePlayer is FalkenPlayer falkenPlayer)
+            if (gamePlayer is NegaFalkenPlayer negaFalkenPlayer)
             {
-                falkenPlayer.StartEpisode();
+                negaFalkenPlayer.StartEpisode();
             }
         }
     }

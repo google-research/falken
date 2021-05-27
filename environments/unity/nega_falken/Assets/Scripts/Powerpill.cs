@@ -53,7 +53,7 @@ public class Powerpill : MonoBehaviour
 
     public void OnTriggerEnter(Collider collision)
     {
-        var mPlayer = collision.gameObject.GetComponent<FalkenPlayer>();
+        var mPlayer = collision.gameObject.GetComponent<NegaFalkenPlayer>();
 
         if (mPlayer != null)
         {

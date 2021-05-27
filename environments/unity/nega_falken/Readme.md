@@ -40,5 +40,4 @@ It is possible to have multiple enemies in the same arena. To do that:
 - In the Arena gameobject, you have a list of current players. Increase the number of players and
   set a reference to the player you created.
 
-Note: You can add FalkenPlayers and Players. The first one will feed the Falken brain while the
-other will be ignored.
+Note: You can add NegaFalkenPlayers and Players. The first one will feed the Falken brain while the other will be ignored.

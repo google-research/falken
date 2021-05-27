@@ -52,7 +52,7 @@ public class PlayerBrainSpec : Falken.BrainSpec<PlayerObservations, PlayerAction
 {
 }
 
-public class FalkenPlayer : Player
+public class NegaFalkenPlayer : Player
 {
     #region Editor variables
     public float autopilotSeconds = 2;

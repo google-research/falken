@@ -186,7 +186,7 @@ class GetModelHandler(GetHandler):
 
       model_id = listed_ids[0]
     else:
-      snapshot = self._read_and_convert_proto(
+      snapshot = self._data_store.read(
           resource_id.FalkenResourceId(glob))
       model_id = resource_id.FalkenResourceId(
           project=snapshot.project_id,
@@ -194,7 +194,7 @@ class GetModelHandler(GetHandler):
           session=snapshot.session,
           model=snapshot.model)
 
-    model = self._read_and_convert_proto(model_id)
+    model = self._data_store.read(model_id)
 
     model_response = falken_service_pb2.Model(model_id=model_id.model)
     model_files = model_response.serialized_model.packed_files_payload.files

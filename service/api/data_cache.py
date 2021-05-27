@@ -93,3 +93,19 @@ def get_starting_snapshot(data_store, project_id, brain_id, session_id):
   return data_store.read_by_proto_ids(
       project_id=project_id, brain_id=brain_id,
       session_id=session_id, snapshot_id=session.starting_snapshots[0])
+
+
+@functools.lru_cache(maxsize=_MAX_CACHE)
+def get_assignment_id(data_store, assignment_resource_id):
+  """Returns an assignment ID string from an assignment resource ID.
+
+  Args:
+    data_store: data_store.DataStore to read from if the assignment ID is not
+      cached.
+    assignment_resource_id: resource_id.FalkenResourceId of the assignment.
+
+  Returns:
+    assignment_id string.
+  """
+  assignment = data_store.read(assignment_resource_id)
+  return assignment.assignment_id

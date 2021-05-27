@@ -213,7 +213,8 @@ class ModelSelectorTest(parameterized.TestCase):
         get_offline_eval_summary.return_value,
         get_online_eval_summary.return_value)
 
-  def test_get_offline_eval_summary(self):
+  @mock.patch.object(data_cache, 'get_assignment_id')
+  def test_get_offline_eval_summary(self, get_assignment_id):
     self._ds.list_by_proto_ids.side_effect = [
         ([
             resource_id.FalkenResourceId(
@@ -256,8 +257,9 @@ class ModelSelectorTest(parameterized.TestCase):
             assignment='a2'),  # Gets ignored because 0.8 < 0.7
         data_store_pb2.OfflineEvaluation(
             offline_evaluation_id=3, score=0.7, model_id='m0',
-            assignment='a3')
+            assignment='a3'),
     ]
+    get_assignment_id.side_effect = ['a1', 'a2', 'a3']
     starting_snapshot = data_store_pb2.Snapshot(
         project_id='p1', brain_id='b1', session='s1', snapshot_id='ss0')
     session_resource_id = resource_id.FalkenResourceId(
@@ -312,7 +314,9 @@ class ModelSelectorTest(parameterized.TestCase):
                 'offline_evaluations/3'))
     ])
 
-  def test_get_offline_eval_summary_assignment_not_matching(self):
+  @mock.patch.object(data_cache, 'get_assignment_id')
+  def test_get_offline_eval_summary_assignment_not_matching(
+      self, get_assignment_id):
     self._ds.list_by_proto_ids.side_effect = [
         ([
             resource_id.FalkenResourceId(
@@ -332,6 +336,7 @@ class ModelSelectorTest(parameterized.TestCase):
     ]
     starting_snapshot = data_store_pb2.Snapshot(
         project_id='p1', brain_id='b1', session='s1', snapshot_id='ss0')
+    get_assignment_id.return_value = 'a1'
     with self.assertRaisesWithLiteralMatch(
         ValueError,
         'Assignment ID a2 not found in assignments for session s1.'):

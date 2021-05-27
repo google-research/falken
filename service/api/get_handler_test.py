@@ -105,11 +105,10 @@ class GetHandlerTest(absltest.TestCase):
     self.assertEqual(model_handler._glob_pattern,
                      'projects/{0}/brains/{1}/sessions/*/models/{2}')
 
-    model_handler._read_and_convert_proto = mock.Mock()
     mock_ds.list.return_value = ([
         resource_id.FalkenResourceId(
             'projects/p0/brains/b0/sessions/s0/models/m0')], None)
-    model_handler._read_and_convert_proto.return_value = data_store_pb2.Model(
+    mock_ds.read.return_value = data_store_pb2.Model(
         compressed_model_path=zip_path)
     self.assertEqual(
         model_handler.get(), falken_service_pb2.Model(
@@ -121,7 +120,7 @@ class GetHandlerTest(absltest.TestCase):
 
     mock_ds.list.assert_called_once_with(resource_id.FalkenResourceId(
         'projects/p0/brains/b0/sessions/*/models/m0'), page_size=2)
-    model_handler._read_and_convert_proto.assert_called_once_with(
+    mock_ds.read.assert_called_once_with(
         resource_id.FalkenResourceId(
             'projects/p0/brains/b0/sessions/s0/models/m0'))
 
@@ -153,8 +152,7 @@ class GetHandlerTest(absltest.TestCase):
     self.assertEqual(model_handler._glob_pattern,
                      'projects/{0}/brains/{1}/snapshots/{2}')
 
-    model_handler._read_and_convert_proto = mock.Mock()
-    model_handler._read_and_convert_proto.side_effect = [
+    mock_ds.read.side_effect = [
         data_store_pb2.Snapshot(
             project_id='p0', brain_id='b0', session='s0', model='m0'),
         data_store_pb2.Model(compressed_model_path=zip_path)
@@ -168,7 +166,7 @@ class GetHandlerTest(absltest.TestCase):
                     files={'a.txt': b'file 1 data', 'abc/b.txt': b'file 2 data'}
                     ))))
 
-    model_handler._read_and_convert_proto.assert_has_calls([
+    mock_ds.read.assert_has_calls([
         mock.call(
             resource_id.FalkenResourceId('projects/p0/brains/b0/snapshots/s0')),
         mock.call(

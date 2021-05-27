@@ -107,6 +107,19 @@ class DataCacheTest(absltest.TestCase):
     mock_ds.read_by_proto_ids.assert_called_once_with(
         project_id='test_project_id', brain_id='test_brain_id', session_id='s0')
 
+  def test_get_assignment_id(self):
+    mock_ds = mock.Mock()
+    mock_ds.read.return_value = mock.Mock()
+    mock_resource_id = mock.Mock()
+    # Call twice.
+    self.assertEqual(
+        data_cache.get_assignment_id(mock_ds, mock_resource_id),
+        mock_ds.read.return_value.assignment_id)
+    self.assertEqual(
+        data_cache.get_assignment_id(mock_ds, mock_resource_id),
+        mock_ds.read.return_value.assignment_id)
+    # Datastore read only called once.
+    mock_ds.read.assert_called_once_with(mock_resource_id)
 
 if __name__ == '__main__':
   absltest.main()

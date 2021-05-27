@@ -285,7 +285,8 @@ class ModelSelector:
         session_id=session_resource_id.session,
         assignment_id='*')
     assignment_ids = set(
-        [res_id.assignment for res_id in assignment_resource_ids])
+        [data_cache.get_assignment_id(self._data_store, res_id)
+         for res_id in assignment_resource_ids])
 
     offline_eval_summary = (
         model_selection_record.OfflineEvaluationByAssignmentAndEvalId())

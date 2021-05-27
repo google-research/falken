@@ -112,7 +112,7 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def GetBrain(self, request, context):
     """Retrieves an existing Brain."""
     self._validate_project_and_api_key(request, context)
-    return create_session_handler.GetBrainHandler(
+    return get_handler.GetBrainHandler(
         request, context, self.data_store).get()
 
   def ListBrains(self, request, context):
@@ -142,7 +142,7 @@ class FalkenService(falken_service_pb2_grpc.FalkenService):
   def GetSessionByIndex(self, request, context):
     """Retrieves a Session by index."""
     self._validate_project_and_api_key(request, context)
-    return create_session_handler.GetSessionByIndexHandler(
+    return get_handler.GetSessionByIndexHandler(
         request, context, self.data_store).get()
 
   def ListSessions(self, request, context):

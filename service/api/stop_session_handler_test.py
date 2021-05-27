@@ -295,7 +295,8 @@ class StopSessionHandlerTest(parameterized.TestCase):
 
         mock_ds_write.assert_called_once_with(
             data_store_pb2.Snapshot(
-                project_id='p0', brain_id='b0', snapshot_id='ss2', model='m0',
+                project_id='p0', brain_id='b0', session='s0',
+                snapshot_id='ss2', model='m0',
                 model_path='test_model_path',
                 ancestor_snapshots=[
                     data_store_pb2.SnapshotParents(

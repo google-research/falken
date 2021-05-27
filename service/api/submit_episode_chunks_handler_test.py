@@ -452,7 +452,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     episode_complete.return_value = True
     episode_score.return_value = 1
     get_episode_steps_type.return_value = (data_store_pb2.ONLY_INFERENCES,
-                                           ['m0', 'm1'])
+                                           {'m0'})
 
     mock_ds = mock.Mock()
     chunk = self._chunks()[0]

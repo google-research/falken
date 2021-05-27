@@ -234,7 +234,8 @@ def _create_snapshot(session_resource_id, starting_snapshots,
   write_snapshot = data_store_pb2.Snapshot(
       project_id=snapshot_resource_id.project,
       brain_id=snapshot_resource_id.brain,
-      snapshot_id=snapshot_resource_id.snapshot)
+      snapshot_id=snapshot_resource_id.snapshot,
+      session=session_resource_id.session)
   write_snapshot.model = model_resource_id.model
   write_snapshot.model_path = model_path
 

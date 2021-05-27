@@ -31,7 +31,6 @@ from learner import stats_collector
 from learner import storage
 from learner import test_data
 from learner.brains import continuous_imitation_brain
-from learner.brains import demonstration_buffer
 
 
 class ModelExporterTest(parameterized.TestCase):
@@ -70,7 +69,14 @@ class ModelExporterTest(parameterized.TestCase):
     self._model_manager = model_manager.ModelManager()
 
     self._hparams = continuous_imitation_brain.BCAgent.default_hparams()
-    self._hparams['training_examples'] = 1
+
+    # Set up cheap brain hparams to speed up testing.
+    self._hparams.update(dict(
+        training_examples=1,
+        use_xla_jit=False,
+        fc_layers=[1],
+        batch_size=1,
+        use_tf_function=False))
 
     self._eval_tuples = [(0, 2.3), (1, 2.34), (2, 2.11), (3, 1.0)]
     self._stats = stats_collector.StatsCollector(self._assignment.project_id,
@@ -91,30 +97,23 @@ class ModelExporterTest(parameterized.TestCase):
     del self._tmp_export_path
     super(ModelExporterTest, self).tearDown()
 
-  def setup_valid_checkpoint(self, checkpoint_path):
-    """Sets up everything in a checkpoint path that had been saved."""
+  def setup_valid_checkpoint(self, checkpoint_path, compile_graph=False):
+    """Sets up a valids checkpoint at the indicated path.
+
+    Args:
+      checkpoint_path: The path the checkpoint should be set up in.
+      compile_graph: Whether the model should be compiled before exporting
+          a checkpoint. This is necessary if the checkpoint is to be loaded
+          in at a later point.
+    """
     brain = continuous_imitation_brain.ContinuousImitationBrain(
         brain_id=self._assignment.brain_id,
         spec_pb=self._storage.get_brain_spec(self._assignment.project_id,
                                              self._assignment.brain_id),
         checkpoint_path=self.checkpoints_path,
-        hparams=self._hparams)
-
-    observation_data = test_data.observation_data(50.0, (10, 15, 20))
-    action_data = test_data.action_data(1, 0.3)
-    reward = 0
-
-    total_frames = self._STEPS_PER_EPISODE * self._EPISODES_TO_RUN
-    for i in range(total_frames):
-      phase = demonstration_buffer.StepPhase.IN_PROGRESS
-      if i % self._STEPS_PER_EPISODE == 0:
-        phase = demonstration_buffer.StepPhase.START
-      elif i % self._STEPS_PER_EPISODE == self._STEPS_PER_EPISODE - 1:
-        phase = demonstration_buffer.StepPhase.SUCCESS
-      brain.record_step(observation_data, reward, phase, self._ENVIRONMENT_ID,
-                        action_data, i)
-
-    brain.train()
+        hparams=self._hparams,
+        write_tflite=False,
+        compile_graph=compile_graph)
 
     os.makedirs(checkpoint_path)
     brain.save_checkpoint(checkpoint_path)
@@ -186,7 +185,8 @@ class ModelExporterTest(parameterized.TestCase):
     self.assertTrue(self._model_exporter._export_model_thread.is_alive())
 
     checkpoint_path_1 = os.path.join(self.tmp_models_path, '1/checkpoint')
-    self.setup_valid_checkpoint(checkpoint_path_1)
+    self.setup_valid_checkpoint(checkpoint_path_1,
+                                compile_graph=True)
     model_1_eval_tuples = [(4, 0.9), (5, 0.1)]
     self._model_exporter.export_model(
         checkpoint_path_1, model_1_eval_tuples, self._stats, 'model_id_1',

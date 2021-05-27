@@ -138,6 +138,8 @@ class BCAgent(behavioral_cloning_agent.BehavioralCloningAgent):
         batch_size=500,
         # Number of trajectories to process on each call to train().
         training_examples=1000000,
+        # Whether to compile the graphs.
+        use_tf_function=True,
         # 'use_xla_jit' indicates whether we want to translate the inner
         # training loop using XLA JIT.
         use_xla_jit=True,
@@ -393,13 +395,17 @@ class ContinuousImitationBrain:
       # We trigger retracing of the train_step function on restart, since
       # otherwise, some of the variables seem to be reused.
       inital_time = time.perf_counter()
-      self._get_experiences = common.function(
-          self._py_fun_get_experiences,
-          autograph=True)
-      self._train_step = common.function(
-          self._py_fun_train_step,
-          autograph=True,
-          experimental_compile=self._hparams['use_xla_jit'])
+      if self._hparams['use_tf_function']:
+        self._get_experiences = common.function(
+            self._py_fun_get_experiences,
+            autograph=True)
+        self._train_step = common.function(
+            self._py_fun_train_step,
+            autograph=True,
+            experimental_compile=self._hparams['use_xla_jit'])
+      else:
+        self._get_experiences = self._py_fun_get_experiences
+        self._train_step = self._py_fun_train_step
       falken_logging.info('Retraced train functions in '
                           f'{time.perf_counter() - inital_time} secs.')
       # Initialize demo, eval and replay buffers.

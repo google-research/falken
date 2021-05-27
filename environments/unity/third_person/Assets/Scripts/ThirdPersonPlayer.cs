@@ -16,7 +16,7 @@
 using System.Collections;
 using System;
 
-public class Entity : Falken.EntityBase
+public class ThirdPersonEntity : Falken.EntityBase
 {
     public void UpdateFrom(GameObject gameObject)
     {
@@ -25,31 +25,31 @@ public class Entity : Falken.EntityBase
     }
 }
 
-public class Observations : Falken.ObservationsBase
+public class ThirdPersonObservations : Falken.ObservationsBase
 {
-    public Entity camera;
-    public Entity goal;
-    public Observations()
+    public ThirdPersonEntity camera;
+    public ThirdPersonEntity goal;
+    public ThirdPersonObservations()
     {
-        camera = new Entity();
-        player = new Entity();
-        goal = new Entity();
+        camera = new ThirdPersonEntity();
+        player = new ThirdPersonEntity();
+        goal = new ThirdPersonEntity();
     }
 
     public void UpdateFrom(GameObject player, GameObject camera, GameObject goal)
     {
-        ((Entity)this.player).UpdateFrom(player);
+        ((ThirdPersonEntity)this.player).UpdateFrom(player);
         this.camera.UpdateFrom(camera);
         this.goal.UpdateFrom(goal);
     }
 }
 
-public class Actions : Falken.ActionsBase
+public class ThirdPersonActions : Falken.ActionsBase
 {
     public Falken.Joystick joy_axis1;
     public Falken.Joystick joy_axis2;
 
-    public Actions(ControlType controlType)
+    public ThirdPersonActions(ControlType controlType)
     {
         switch (controlType)
         {
@@ -81,36 +81,40 @@ public class Actions : Falken.ActionsBase
     }
 }
 
-public class CameraRelativeActions : Actions
+public class CameraRelativeActions : ThirdPersonActions
 {
     public CameraRelativeActions() : base(ControlType.Camera) { }
 }
 
-public class PlayerRelativeActions : Actions
+public class PlayerRelativeActions : ThirdPersonActions
 {
     public PlayerRelativeActions() : base(ControlType.Player) { }
 }
 
-public class WorldRelativeActions : Actions
+public class WorldRelativeActions : ThirdPersonActions
 {
     public WorldRelativeActions() : base(ControlType.World) { }
 }
 
 // Handles Flight and Autoflight mode.
-public class FlightActions : Actions
+public class FlightActions : ThirdPersonActions
 {
     public FlightActions() : base(ControlType.Flight) { }
 }
 
-public class CameraRelativeBrainSpec : Falken.BrainSpec<Observations, CameraRelativeActions> { }
+public class CameraRelativeBrainSpec :
+    Falken.BrainSpec<ThirdPersonObservations, CameraRelativeActions> { }
 
-public class PlayerRelativeBrainSpec : Falken.BrainSpec<Observations, PlayerRelativeActions> { }
+public class PlayerRelativeBrainSpec :
+    Falken.BrainSpec<ThirdPersonObservations, PlayerRelativeActions> { }
 
-public class WorldRelativeBrainSpec : Falken.BrainSpec<Observations, WorldRelativeActions> { }
+public class WorldRelativeBrainSpec :
+    Falken.BrainSpec<ThirdPersonObservations, WorldRelativeActions> { }
 
-public class FlightBrainSpec : Falken.BrainSpec<Observations, FlightActions> { }
+public class FlightBrainSpec :
+    Falken.BrainSpec<ThirdPersonObservations, FlightActions> { }
 
-public class FalkenController : InputController
+public class ThirdPersonPlayer : InputController
 {
     public InputController playerInput;
     public GameLogic gameLogic;
@@ -128,8 +132,8 @@ public class FalkenController : InputController
     Falken.Episode _episode;
 
 
-    Actions _actions;
-    Observations _observations;
+    ThirdPersonActions _actions;
+    ThirdPersonObservations _observations;
 
     private uint _steps = 0;
 

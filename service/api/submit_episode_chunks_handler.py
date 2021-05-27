@@ -334,7 +334,6 @@ def _record_online_evaluation(data_store, chunk, episode_resource_id):
     raise e
 
   # Fetch previous episode chunk inference info for the same episode.
-  model_ids = []
   steps_type, model_ids = _get_episode_steps_type(data_store, chunk,
                                                   episode_resource_id)
   if not steps_type and not model_ids:
@@ -355,7 +354,16 @@ def _record_online_evaluation(data_store, chunk, episode_resource_id):
         'models.', str(steps_type), len(model_ids))
     return
 
-  model_id = model_ids[0]
+  if len(model_ids) > 1:
+    # If there are multiple models, we can't attribute the performance to any
+    # specific model.
+    logging.debug(
+        'Skipping online eval for complete episode of type %s '
+        'because it contains multiple models (%d).', str(steps_type),
+        len(model_ids))
+    return
+
+  model_id = model_ids.pop()
   logging.debug('Recording score %d for episode %d model %s.', episode_score,
                 episode_resource_id.episode, model_id)
   data_store.write(
@@ -366,7 +374,6 @@ def _record_online_evaluation(data_store, chunk, episode_resource_id):
           episode_id=episode_resource_id.episode,
           model=model_id,
           score=episode_score))
-  return
 
 
 def _episode_complete(chunk):

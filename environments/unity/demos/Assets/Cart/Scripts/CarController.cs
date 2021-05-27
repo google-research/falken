@@ -17,6 +17,44 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
+/// Reflects Observations to/from the Falken service.
+/// </summary>
+public class CartPlayerEntity : Falken.EntityBase
+{
+    public Falken.Number velocity = new Falken.Number(-20.0f, 50.0f);
+    public Falken.Number angleToNextTrackSegment =
+        new Falken.Number(-180.0f, 180.0f);
+    public Falken.Feelers feelers = new Falken.Feelers(
+        15.0f, 0.0f, 90.0f, 14, null);
+    public Falken.Boolean wrongDirection = new Falken.Boolean();
+}
+
+/// <summary>
+/// Falken Observations for the game.
+/// </summary>
+public class CartObservations : Falken.ObservationsBase
+{
+    public CartObservations()
+    {
+        player = new CartPlayerEntity();
+    }
+}
+
+/// <summary>
+/// Reflects actions to/from the Falken service.
+/// </summary>
+public class CartActions : Falken.ActionsBase
+{
+    public Falken.Number steering = new Falken.Number(-1.0f, 1.0f);
+    public Falken.Number throttle = new Falken.Number(-1.0f, 1.0f);
+    public Falken.Number handbrake = new Falken.Number(0.0f, 1.0f);
+}
+
+public class CartBrainSpec : Falken.BrainSpec<CartObservations, CartActions>
+{
+}
+
+/// <summary>
 /// <c>CarController</c> Transforms player input into lower level physical vehicle controls.
 /// </summary>
 public class CarController : MonoBehaviour {
@@ -44,11 +82,77 @@ public class CarController : MonoBehaviour {
     [Range(0, 90)]
     public float maxSteeringAngle;
 
+    CartBrainSpec _brainSpec = null;
+    private Falken.Episode _episode = null;
+    private bool _autopilot = false;
+    private bool _stepSucceeded = true;
+
+    /// <summary>
+    /// Sets Falken brain spec.
+    /// </summary>
+    public CartBrainSpec FalkenBrainSpec
+    {
+        set
+        {
+            _brainSpec = value;
+        }
+    }
+
+    /// <summary>
+    /// Sets Falken episode.
+    /// </summary>
+    public Falken.Episode FalkenEpisode
+    {
+        set
+        {
+            _episode = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets episode step result.
+    /// </summary>
+    public bool StepSucceeded
+    {
+        get
+        {
+            return _stepSucceeded;
+        }
+    }
+
     void FixedUpdate()
     {
+        // Get human actions.
         float playerSteering = Input.GetAxis("Steering");
         float playerThrottle = Input.GetAxis("Gas") - Input.GetAxis("Brake");
         float playerHandbrake = Input.GetAxis("Handbrake");
+
+        if (ConnectedToFalken)
+        {
+            // TODO(jballoffet): Add autopilot mode (Falken takes over).
+            _autopilot = false;
+
+            // Set brain spec.
+            SetObservations();
+            SetActions(playerSteering, playerThrottle, playerHandbrake);
+
+            // Set actions origin.
+            Actions.ActionsSource = _autopilot ?
+                    Falken.ActionsBase.Source.BrainAction :
+                    Falken.ActionsBase.Source.HumanDemonstration;
+
+            _stepSucceeded = _episode.Step();
+
+            // If the brain is at the wheel, override the actions with the
+            // values returned by Step.
+            if (Actions.ActionsSource == Falken.ActionsBase.Source.BrainAction)
+            {
+                playerSteering = Actions.steering.Value;
+                playerThrottle = Actions.throttle.Value;
+                playerHandbrake = Actions.handbrake.Value;
+            }
+        }
+
         Drive(playerSteering, playerThrottle, playerHandbrake);
     }
 
@@ -95,5 +199,53 @@ public class CarController : MonoBehaviour {
             visualWheel.transform.position = position;
             visualWheel.transform.rotation = rotation;
         }
+    }
+
+    private bool ConnectedToFalken
+    {
+        get
+        {
+            return _brainSpec != null && _episode != null;
+        }
+    }
+
+    private CartObservations Observations
+    {
+        get
+        {
+            return _brainSpec.Observations;
+        }
+    }
+
+    private CartActions Actions
+    {
+        get
+        {
+            return _brainSpec.Actions;
+        }
+    }
+
+    /// <summary>
+    /// Sets the observations.
+    /// </summary>
+    private void SetObservations()
+    {
+        Observations.player.position = transform.position;
+        Observations.player.rotation = transform.rotation;
+        // TODO(jballoffet): Compute correct values.
+        CartPlayerEntity entity = (CartPlayerEntity)Observations.player;
+        entity.velocity.Value = 1.0f;
+        entity.angleToNextTrackSegment.Value = 2.0f;
+        entity.wrongDirection.Value = false;
+    }
+
+    /// <summary>
+    /// Sets the actions.
+    /// </summary>
+    private void SetActions(float steering, float throttle, float handbrake)
+    {
+        Actions.steering.Value = steering;
+        Actions.throttle.Value = throttle;
+        Actions.handbrake.Value = handbrake;
     }
 }

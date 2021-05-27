@@ -16,11 +16,11 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// <c>FalkenPlayer</c> AI player that can be trained to play and test games.
+/// <c>FalkenGame</c> AI player that can be trained to play and test games.
 /// </summary>
 [Serializable]
-public class FalkenPlayer<BrainSpec>
-  where BrainSpec : Falken.BrainSpecBase, new()
+public class FalkenGame<PlayerBrainSpec>
+  where PlayerBrainSpec : Falken.BrainSpecBase, new()
 {
     [Tooltip("The Falken service project ID.")]
     public string falkenProjectId = "";
@@ -28,13 +28,27 @@ public class FalkenPlayer<BrainSpec>
     public string falkenApiKey = "";
     [Tooltip("The Falken brain human readable name.")]
     public string brainDisplayName = "Cart Brain";
-    [Tooltip("[Optional] The Falken session snapshot ID.")]
-    public string snapshotId = null;
     [Tooltip("The Falken brain ID.")]
     public string brainId = null;
+    [Tooltip("[Optional] The Falken session snapshot ID.")]
+    public string snapshotId = null;
+    [Tooltip("The maximum number of steps per episode.")]
+    public uint falkenMaxSteps = 300;
 
     private Falken.Service _service = null;
-    private Falken.Brain<BrainSpec> _brain = null;
+    private Falken.Brain<PlayerBrainSpec> _brain = null;
+    private Falken.Session _session = null;
+
+    /// <summary>
+    /// Getter for brain spec.
+    /// </summary>
+    public PlayerBrainSpec BrainSpec
+    {
+        get
+        {
+            return _brain?.BrainSpec;
+        }
+    }
 
     /// <summary>
     /// Connects to Falken service and creates or loads a brain.
@@ -45,24 +59,53 @@ public class FalkenPlayer<BrainSpec>
         _service = Falken.Service.Connect(falkenProjectId, falkenApiKey);
         if (_service == null)
         {
-            Debug.Log(
+            Debug.LogWarning(
                 "Failed to connect to Falken's services. Make sure" +
                 "You have a valid api key and project id or your " +
                 "json config is properly formated.");
-            brainId = null;
             return;
         }
 
-        // If there is no brainId, create a new one. Othewise, load an existing brain.
+        // If there is no brainId, create a new one. Othewise, load an existing
+        // brain.
         if (String.IsNullOrEmpty(brainId))
         {
-            _brain = _service.CreateBrain<BrainSpec>(brainDisplayName);
+            _brain = _service.CreateBrain<PlayerBrainSpec>(brainDisplayName);
         }
         else
         {
-            _brain = _service.LoadBrain<BrainSpec>(brainId, snapshotId);
+            _brain = _service.LoadBrain<PlayerBrainSpec>(brainId, snapshotId);
+        }
+        if (_brain == null)
+        {
+            return;
         }
         brainId = _brain.Id;
+
+        // Create session.
+        _session = _brain.StartSession(Falken.Session.Type.InteractiveTraining,
+                                       falkenMaxSteps);
+    }
+
+    /// <summary>
+    /// Starts a new episode.
+    /// </summary>
+    public Falken.Episode CreateEpisode()
+    {
+        return _session?.StartEpisode();
+    }
+
+    /// <summary>
+    /// Stops a session.
+    /// </summary>
+    public void StopSession()
+    {
+        if (_session != null)
+        {
+            snapshotId = _session.Stop();
+            Debug.Log($"Stopped session with snapshot ID: {snapshotId}");
+            _session = null;
+        }
     }
 
     /// <summary>
@@ -70,7 +113,9 @@ public class FalkenPlayer<BrainSpec>
     /// </summary>
     public void Shutdown()
     {
-        Debug.Log("Shutting down brain: " + brainId);
+        StopSession();
+
+        Debug.Log($"Shutting down brain {brainId}");
         _brain = null;
         _service = null;
     }

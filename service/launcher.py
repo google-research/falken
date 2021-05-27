@@ -22,8 +22,14 @@ import sys
 from absl import app
 from absl import flags
 from absl import logging
-import common.generate_protos  # pylint: disable=unused-import
-import common.pip_installer  # pylint: disable=unused-import
+
+from api import api_keys
+from data_store import data_store
+from data_store import file_system
+
+# pylint: disable=unused-import,g-bad-import-order
+import common.generate_protos
+import common.pip_installer
 
 FLAGS = flags.FLAGS
 
@@ -39,6 +45,10 @@ flags.DEFINE_bool('clean_up_protos', False,
 flags.DEFINE_multi_string(
     'project_ids', [],
     'Project IDs to create API keys for and use with Falken.')
+flags.DEFINE_bool(
+    'generate_sdk_config', False,
+    'Auto-generate SDK config using default settings. Requires that exactly '
+    'one project_id is specified via --project_ids')
 flags.DEFINE_multi_string(
     'hyperparameters',
     r'{"fc_layers":[32], "learning_rate":1e-4, "continuous":false, '
@@ -116,12 +126,32 @@ def run_learner(current_path: str):
       env=os.environ, cwd=current_path)
 
 
+def run_generate_sdk_configuration(
+    current_path: str, project_id: str, api_key: str):
+  """Run script to generate the JSON config file for the SDK."""
+  logging.info('Writing config for project %s, api_key %s', project_id, api_key)
+  subprocess.run(
+      [sys.executable, '-m', 'tools.generate_sdk_configuration',
+       '--project_id', project_id, '--api_key', api_key],
+      check=True, cwd=current_path)
+
+
 def main(argv):
   if len(argv) > 1:
     logging.error('Non-flag parameters are not allowed.')
 
-  logging.debug('Starting Falken services. Press ctrl-c to exit.')
   file_dir = os.path.dirname(os.path.abspath(__file__))
+  if FLAGS.generate_sdk_config:
+    if len(FLAGS.project_ids) != 1:
+      raise ValueError('--generate_sdk_config flag requires that exactly '
+                       'one project ID is specified via --project_ids')
+    (project_id,) = FLAGS.project_ids
+    api_key = api_keys.get_or_create_api_key(
+        data_store.DataStore(file_system.FileSystem(FLAGS.root_dir)),
+        project_id)
+    run_generate_sdk_configuration(file_dir, project_id, api_key)
+
+  logging.debug('Starting Falken services. Press ctrl-c to exit.')
   check_ssl()
   api_process = run_api(file_dir)
   learner_process = run_learner(file_dir)

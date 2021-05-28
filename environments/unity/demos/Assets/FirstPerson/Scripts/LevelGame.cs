@@ -69,7 +69,7 @@ public class LevelGame : MonoBehaviour
         }
     }
 
-    private void PlayerKilled() {
+    private void PlayerKilled(Health killed) {
         Debug.Log("You lose!");
         ResetGame();
     }

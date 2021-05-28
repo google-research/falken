@@ -17,206 +17,183 @@ using System.Threading;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
-public class PlayerEntity : Falken.EntityBase
+/// <summary>
+/// <c> NegaActions </c> Describes the control Actions a NegaFalken player can perform.
+/// </summary>
+public class NegaActions : Falken.ActionsBase
 {
-    [Range(-1.5f, 1.5f)]
-    public float angle;
-    [Range(0f, 3.0f)]
-    public float distance_to_enemy;
-    public bool boosted;
-    public Falken.Feelers feelers = new Falken.Feelers(
-        0.8f, 0.0f, 90.0f, 14, null);
+    public Falken.Number throttle = new Falken.Number(-1f, 1f);
+    public Falken.Number steering = new Falken.Number(-1f, 1f);
+    public Falken.Boolean fire = new Falken.Boolean();
 }
 
-public class PlayerActions : Falken.ActionsBase
+/// <summary>
+/// <c>HelloPlayerEntity</c> Observations that sense the enemy and environment around the player.
+/// </summary>
+public class NegaPlayerEntity : Falken.EntityBase
 {
-    [Range(-1f, 1f)]
-    public float throttle;
-    [Range(-1f, 1f)]
-    public float steering;
-    public bool fire;
+    public Falken.Number angle = new Falken.Number(-1.5f, 1.5f);
+    public Falken.Number distance_to_enemy = new Falken.Number(0f, 3f);
+    public Falken.Feelers feelers = new Falken.Feelers(3f, 0f, 360.0f, 14, null);
 }
 
-public class PlayerObservations : Falken.ObservationsBase
+/// <summary>
+/// <c>HelloObservations</c> Final observations with player and enemy entities.
+/// </summary>
+public class NegaObservations : Falken.ObservationsBase
 {
     public Falken.EntityBase enemy = new Falken.EntityBase("enemy");
 
-    public PlayerObservations()
+    public NegaObservations()
     {
-        player = new PlayerEntity();
+        player = new NegaPlayerEntity();
     }
 }
 
-public class PlayerBrainSpec : Falken.BrainSpec<PlayerObservations, PlayerActions>
-{
-}
+/// <summary>
+/// <c>NegaBrainSpec</c> Binding of Actions and Observations for this player.
+/// </summary>
+public class NegaPlayerBrainSpec : Falken.BrainSpec<NegaObservations, NegaActions> {}
 
-public class NegaFalkenPlayer : Player
+/// <summary>
+/// <c>NegaFalkenPlayer</c> Implements an asteroids-like player that can turn, thurst and fire.
+/// </summary>
+[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(Health))]
+[RequireComponent(typeof(Weapon))]
+public class NegaFalkenPlayer : MonoBehaviour
 {
     #region Editor variables
-    public float autopilotSeconds = 2;
+    [Tooltip("Maximum amount of force to apply when accelerating.")]
+    [Range(0, 10)]
+    public float movementRate = 5.0f;
+    [Tooltip("Maximum amount of torque to apply when steering.")]
+    [Range(0, 10)]
+    public float steeringRate = 0.15f;
+    [Tooltip("Maximum linear speed for this player.")]
+    [Range(0, 10)]
+    public float maxSpeed = 5f;
+    [Tooltip("Maximum angular speed for this player.")]
+    [Range(0, 10)]
+    public float maxTurn = 5f;
+
+    // Controls
+    [Tooltip("Magnitude of the backwards impulse to apply when firing.")]
+    [Range(0, 100)]
+    public float recoil = 2f;
     #endregion
 
     #region Protected and private attributes
-    protected Falken.Session _session;
-    protected PlayerBrainSpec _brainSpec;
+    private Rigidbody _rBody;
+    private Health _health;
+    private Weapon _weapon;
+    private Slider _healthSlider;
+
+    private SessionController _controller;
+    private NegaPlayerBrainSpec _brainSpec;
     private Falken.Episode _episode = null;
-    private float _lastUserInputFixedTime = float.MinValue;
+    private bool _humanControlled = false;
     #endregion
 
     #region Getters and Setters
     /// <summary>
-    /// Returns true if an episode was already started.
+    /// Sets a slider UI object to represent this player's health.
     /// </summary>
-    public bool EpisodeStarted
-    {
-        get
-        {
-            return _episode != null && !_episode.Completed;
-        }
-    }
-
-    /// <summary>
-    /// Current Falken session.
-    /// </summary>
-    public Falken.Session Session
+    public Slider HealthSlider
     {
         set
         {
-            _session = value;
-        }
-        get
-        {
-            return _session;
-        }
-    }
-
-    /// <summary>
-    /// BrainSpec of the brain to be trained.
-    /// </summary>
-    public PlayerBrainSpec BrainSpec
-    {
-        set
-        {
-            _brainSpec = value;
-        }
-        get
-        {
-            return _brainSpec;
-        }
-    }
-
-    /// <summary>
-    /// If the user does not move a specific amount of time, enable autopilot
-    /// </summary>
-    /// </returns> True if autopilot should be enabled.
-    protected bool AutopilotEnabled
-    {
-        get
-        {
-            return (Time.fixedTime - _lastUserInputFixedTime) > autopilotSeconds;
-        }
-
-    }
-
-    /// <summary>
-    /// Player should move only if this property is true.
-    /// </summary>
-    protected bool BrainInControl
-    {
-        get
-        {
-            if (_brainSpec.Actions.ActionsSource == Falken.ActionsBase.Source.BrainAction)
+            _healthSlider = value;
+            if (_healthSlider)
             {
-                return true;
+                _healthSlider.minValue = 0;
+                _healthSlider.maxValue = _health.maxHealth;
             }
-            return false;
         }
+    }
+
+    /// <summary>
+    /// Sets the current SessionController.
+    /// </summary>
+    public SessionController SessionController { set { _controller = value; } }
+
+    /// <summary>
+    /// Sets the current NegaPlayerBrainSpec.
+    /// </summary>
+    public NegaPlayerBrainSpec BrainSpec { set { _brainSpec = value; } }
+
+    /// <summary>
+    /// Sets whether this agent is human or AI controlled.
+    /// </summary>
+    public bool HumanControlled
+    {
+        set { _humanControlled = value; }
+        get { return _humanControlled; }
+    }
+
+    /// <summary>
+    /// Accessor for this player's Falken episode.
+    /// </summary>
+    public Falken.Episode Episode
+    {
+        set { _episode = value; }
+        get { return _episode; }
     }
     #endregion
 
     #region Unity Callbacks
-    public override void OnEnable()
+    void OnEnable()
     {
-        base.OnEnable();
-        Reset();
+        _rBody = GetComponent<Rigidbody>();
+        _rBody.maxAngularVelocity = maxTurn;
+
+        _health = GetComponent<Health>();
+        _weapon = GetComponent<Weapon>();
     }
 
-    public override void FixedUpdate()
+    void FixedUpdate()
     {
-        UpdateHealth();
-        UpdateBlinking();
-
-        if (EpisodeStarted)
+        if (_healthSlider != null)
         {
-            DateTime before_complete = DateTime.Now;
-            // Reset if goal was reached.
-            if (!Alive)
-            {
-                EndEpisode(Falken.Episode.CompletionState.Failure);
-                return;
-            }
-            else if (_episode.Completed)
-            {
-                // Reset if maxSteps reached
-                EndEpisode(Falken.Episode.CompletionState.Aborted);
-                return;
-            }
-            else if (!arena.EnemiesAlive)
-            {
-                EndEpisode(Falken.Episode.CompletionState.Success);
-                return;
-            }
-
-            // Update the brainSpec with the observations and actions of this frame.
-            CalculateObservations();
-            // backup actions because Step will overwrite them
-            var control = CalculateActions();
-
-            // Step if there are enemies alive.
-            if (arena.EnemiesAlive)
-            {
-                // Check if the player is in autopilot.
-                _episode.Step();
-            }
-
-            // Move the player accordingly.
-            if (BrainInControl)
-            {
-                control.Throttle = _brainSpec.Actions.throttle;
-                control.Steering = _brainSpec.Actions.steering;
-                control.Fire = _brainSpec.Actions.fire;
-            }
-            ApplySteeringForces(control);
+            _healthSlider.value = _health.CurrentHealth;
         }
+
+        // Update the brainSpec with the observations and actions of this frame.
+        CalculateObservations();
+
+        float steering = _humanControlled ? Input.GetAxis("Steering") : 0f;
+        float throttle = _humanControlled ? Input.GetAxis("Gas") - Input.GetAxis("Brake") : 0f;
+        bool fire = _humanControlled ? Input.GetButtonDown("Fire") : false;
+
+        _brainSpec.Actions.steering.Value = steering;
+        _brainSpec.Actions.throttle.Value = throttle;
+        _brainSpec.Actions.fire.Value = fire;
+        _brainSpec.Actions.ActionsSource = _humanControlled ?
+            Falken.ActionsBase.Source.HumanDemonstration :
+            Falken.ActionsBase.Source.BrainAction;
+
+        _episode.Step();
+
+        if (_brainSpec.Actions.ActionsSource == Falken.ActionsBase.Source.BrainAction)
+        {
+            steering = _brainSpec.Actions.steering.Value;
+            throttle = _brainSpec.Actions.throttle.Value;
+            fire = _brainSpec.Actions.fire.Value;
+        }
+        ApplyActions(steering, throttle, fire);
     }
     #endregion
 
     #region Auxiliary methods
     /// <summary>
-    /// Reset the current mirror player to its original state
+    /// Update the observations of brainspec based on the current status of the player.
     /// </summary>
-    public void EndEpisode(Falken.Episode.CompletionState episodeState)
-    {
-        // Finish the episode.
-        if (EpisodeStarted)
-        {
-            _episode.Complete(episodeState);
-        }
-
-        // Hide current player
-        base.Die();
-    }
-
-    /// <summary>
-    /// Update the actions of brainspec based on the current status of the mirror player.
-    /// </summary>
-    /// </returns> Copy of the updated PlayerActions.
-    protected void CalculateObservations()
+    private void CalculateObservations()
     {
         var playerForward = gameObject.transform.forward;
-        var enemy = arena.GetClosestEnemy(this);
+        var enemy = _controller.GetClosestEnemy(this);
         var enemyPosition = enemy.transform.position;
 
         var playerToEnemy = enemyPosition - transform.position;
@@ -228,72 +205,43 @@ public class NegaFalkenPlayer : Player
         // 1 or -1 away, with positive numbers on the left and negative on the
         // right.
 
-        var playerEntity = (PlayerEntity) _brainSpec.Observations.player;
-        playerEntity.angle = sideSign * (1f + Vector3.Dot(directionToEnemy,
-                                             -playerForward)) * 0.5f;
-        playerEntity.distance_to_enemy = Mathf.Log(playerToEnemy.magnitude + 1);
+        var playerEntity = (NegaPlayerEntity) _brainSpec.Observations.player;
+        playerEntity.angle.Value = sideSign * (1f + Vector3.Dot(directionToEnemy,
+            -playerForward)) * 0.5f;
+        playerEntity.distance_to_enemy.Value = Mathf.Log(playerToEnemy.magnitude + 1);
         playerEntity.feelers.Update(
             gameObject.transform, new Vector3(0.0f, 0.0f, 0.0f), true);
-        if (Boosted)
-        {
-            playerEntity.boosted = true;
-        }
-        else
-        {
-            playerEntity.boosted = false;
-        }
 
         playerEntity.position = gameObject.transform.position;
         playerEntity.rotation = gameObject.transform.rotation;
 
-        _brainSpec.Observations.enemy.rotation =
-            Quaternion.FromToRotation(transform.forward, enemy.transform.forward);
         _brainSpec.Observations.enemy.position = enemyPosition;
+        _brainSpec.Observations.enemy.rotation = enemy.transform.rotation;
     }
 
     /// <summary>
-    /// Update the actions of brainspec based on the current status of the mirror player.
+    /// Apply steering, throttle, and fire Actions to the player.
     /// </summary>
-    /// </returns> Copy of the updated PlayerActions.
-    protected override Controls CalculateActions()
+    private void ApplyActions(float steering, float throttle, bool fire)
     {
-        var controls = base.CalculateActions();
-
-        if (controls.MovementApplied)
+        // Going backwards is slower.
+        if (throttle < 0)
         {
-            _lastUserInputFixedTime = Time.fixedTime;
+            throttle *= 0.5f;
+        }
+        if (_rBody.velocity.magnitude < maxSpeed)
+        {
+            _rBody.AddForce(throttle * transform.forward * movementRate);
+        }
+        if (_rBody.angularVelocity.magnitude < maxTurn)
+        {
+            _rBody.AddTorque(new Vector3(0, steering * steeringRate, 0.0f));
         }
 
-        if (!AutopilotEnabled)
+        if (fire)
         {
-            _brainSpec.Actions.throttle = controls.Throttle;
-            _brainSpec.Actions.steering = controls.Steering;
-            _brainSpec.Actions.fire = controls.Fire;
-            _brainSpec.Actions.ActionsSource = Falken.ActionsBase.Source.HumanDemonstration;
-        }
-        else
-        {
-            _brainSpec.Actions.ActionsSource = Falken.ActionsBase.Source.None;
-        }
-
-        return controls;
-    }
-
-    /// <summary>
-    /// Start the episode if not already started.
-    /// </summary>
-    public void StartEpisode()
-    {
-        // Start the episode if not already started.
-        if (!EpisodeStarted)
-        {
-            // Reset life bar.
-            Reset();
-
-            // Respawn the current player.
-            Respawn();
-
-            _episode = _session.StartEpisode();
+            _weapon.Fire(null, transform.position + transform.forward * 10f);
+            _rBody.AddForce(-recoil * transform.forward);
         }
     }
     #endregion

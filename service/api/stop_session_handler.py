@@ -61,11 +61,7 @@ def stop_session(request, context, data_store):
 
   selector = model_selector.ModelSelector(data_store, session_resource_id)
   try:
-    model_resource_id = data_store.resource_id_from_proto_ids(
-        project_id=request.session.project_id,
-        brain_id=request.session.brain_id,
-        session_id=request.session.name,
-        model_id=selector.select_final_model())
+    model_resource_id = selector.select_final_model()
   except FileNotFoundError as e:
     model_resource_id = None
   except Exception as e:  # pylint: disable=broad-except

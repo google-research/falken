@@ -82,7 +82,9 @@ class StopSessionHandlerTest(parameterized.TestCase):
         mock_ds_read.return_value = read_session
         mock_context = mock.Mock()
         mock_selector = selector.return_value
-        mock_selector.select_final_model.return_value = 'm0'
+        mock_selector.select_final_model.return_value = (
+            resource_id.FalkenResourceId(
+                project='p0', brain='b0', session='s0', model='m0'))
 
         self.assertEqual(
             stop_session_handler.stop_session(request, mock_context,

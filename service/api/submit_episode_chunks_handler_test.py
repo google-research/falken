@@ -98,7 +98,8 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     mock_selector.session_progress().return_value = 0.5
     mock_selector.get_training_state.return_value = (
         session_pb2.SessionInfo.TRAINING)
-    mock_selector.select_next_model.return_value = 'm0'
+    mock_selector.select_next_model.return_value = resource_id.FalkenResourceId(
+        project='p0', brain='b0', session='s0', model='m0')
     self.assertEqual(
         submit_episode_chunks_handler.submit_episode_chunks(
             falken_service_pb2.SubmitEpisodeChunksRequest(), mock.Mock(),

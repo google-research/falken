@@ -504,11 +504,12 @@ class ModelSelectorTest(parameterized.TestCase):
       self._model_selector.select_next_model()
 
   @mock.patch.object(model_selector.ModelSelector, '_best_offline_model')
-  def test_best_offline_or_starting_snapshot_model(self, best_offline_model):
-    best_offline_model.return_value = 'm0'
+  def test_best_offline_or_starting_snapshot_model(self,
+                                                   best_offline_model):
+    self._ds.resource_id_from_proto_ids.return_value = 'result/res_id'
     self.assertEqual(
         self._model_selector._best_offline_or_starting_snapshot_model(),
-        best_offline_model.return_value)
+        'result/res_id')
     best_offline_model.assert_called_once_with()
 
   @mock.patch.object(model_selector.ModelSelector, '_best_offline_model')
@@ -516,10 +517,17 @@ class ModelSelectorTest(parameterized.TestCase):
   def test_best_offline_or_starting_snapshot_model_starting_snapshot(
       self, get_starting_snapshot, best_offline_model):
     best_offline_model.side_effect = FileNotFoundError()
-    get_starting_snapshot.return_value = data_store_pb2.Snapshot(model='m0')
+    get_starting_snapshot.return_value = data_store_pb2.Snapshot(
+        project_id='p0', brain_id='b0', snapshot_id='sn0',
+        session='s0', model='m0')
+    self._ds.resource_id_from_proto_ids.return_value = 'res_id'
+
     self.assertEqual(
         self._model_selector._best_offline_or_starting_snapshot_model(),
-        get_starting_snapshot.return_value.model)
+        'res_id')
+    self._ds.resource_id_from_proto_ids.assert_called_once_with(
+        project_id='p0', brain_id='b0', session_id='s0', model_id='m0')
+
     best_offline_model.assert_called_once_with()
     get_starting_snapshot.assert_called_once_with(
         self._ds, self._ds.read.return_value.project_id,
@@ -532,7 +540,7 @@ class ModelSelectorTest(parameterized.TestCase):
       self, get_starting_snapshot, best_offline_model):
     best_offline_model.side_effect = FileNotFoundError()
     get_starting_snapshot.side_effect = FileNotFoundError()
-    self.assertEmpty(
+    self.assertIsNone(
         self._model_selector._best_offline_or_starting_snapshot_model())
 
   @mock.patch.object(model_selector.ModelSelector, '_get_offline_eval_summary')
@@ -548,17 +556,27 @@ class ModelSelectorTest(parameterized.TestCase):
         FileNotFoundError, 'No offline eval found for session s0.'):
       self._model_selector._best_offline_model()
 
+  @mock.patch.object(data_cache, 'get_starting_snapshot')
   @mock.patch.object(online_eval_sampling.UCBSampling, 'select_next')
   @mock.patch.object(model_selector.ModelSelector, '_create_model_records')
   @mock.patch.object(model_selector.ModelSelector, '_get_summary_map')
   def test_next_online_eval_model(self, get_summary_map, create_model_records,
-                                  select_next):
+                                  select_next, get_starting_snapshot):
     get_summary_map.return_value = ModelSelectorTest.summary_map
+    get_starting_snapshot.return_value = data_store_pb2.Snapshot(
+        project_id='p0', brain_id='b0', session='snapshot_sess',
+        snapshot_id='s0')
     create_model_records.return_value = (1, ['m0'], [
         online_eval_sampling.ModelRecord(successes=10, failures=2)
     ])
     select_next.return_value = 0
-    self.assertEqual(self._model_selector._next_online_eval_model(), 'm0')
+    self._ds.resource_id_from_proto_ids.return_value = (
+        'projects/p0/brains/b0/sessions/snapshot_sess/models/m0')
+    self.assertEqual(self._model_selector._next_online_eval_model(),
+                     'projects/p0/brains/b0/sessions/snapshot_sess/models/m0')
+    self._ds.resource_id_from_proto_ids.assert_called_once_with(
+        project_id='p0', brain_id='b0', session_id='snapshot_sess',
+        model_id='m0')
 
   @mock.patch.object(model_selector.ModelSelector, '_get_summary_map')
   def test_next_online_eval_model_no_summary_map(self, get_summary_map):
@@ -582,7 +600,13 @@ class ModelSelectorTest(parameterized.TestCase):
     best_online_model.return_value = 'm0'
     best_offline_model.return_value = 'm0'
     get_starting_snapshot.return_value = data_store_pb2.Snapshot(model='m0')
-    self.assertEqual(self._model_selector.select_final_model(), 'm0')
+    self._ds.resource_id_from_proto_ids.return_value = (
+        'fake/resource_id')
+    self.assertEqual(self._model_selector.select_final_model(),
+                     'fake/resource_id')
+    self._ds.resource_id_from_proto_ids.assert_called_once_with(
+        project_id=mock.ANY, brain_id=mock.ANY, session_id=mock.ANY,
+        model_id='m0')
 
   @mock.patch.object(model_selector.ModelSelector, '_get_session_type')
   def test_select_final_model_invalid_session_type(self, get_session_type):

@@ -145,7 +145,8 @@ def submit_episode_chunks(request, context, data_store, assignment_notifier):
                   f'Getting training state failed. {e}')
 
   try:
-    session_info.model_id = selector.select_next_model()
+    model_res_id = selector.select_next_model()
+    session_info.model_id = model_res_id.model if model_res_id else ''
   except (FileNotFoundError, resource_store.InternalError, ValueError) as e:
     context.abort(
         code_pb2.INVALID_ARGUMENT,

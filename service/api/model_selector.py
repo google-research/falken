@@ -82,7 +82,7 @@ class ModelSelector:
     """Selects next model to try.
 
     Returns:
-      Model ID string for the model to try.
+      resource_id.ResourceId of the model to select next.
 
     Raises:
       ValueError if model was not found or if requested for an unsupported
@@ -90,34 +90,44 @@ class ModelSelector:
     """
     session_type = self._get_session_type()
     if session_type == session_pb2.INTERACTIVE_TRAINING:
-      model_id = self._best_offline_or_starting_snapshot_model()
-      logging.info('Selected model %s for training session %s.', model_id,
-                   self._session_resource_id.session)
-      return model_id
+      model_resource_id = self._best_offline_or_starting_snapshot_model()
+      logging.info('Selected model %s for training session %s.',
+                   model_resource_id,
+                   self._session_resource_id)
+      return model_resource_id
     elif session_type == session_pb2.INFERENCE:
-      model_id = self.select_final_model()
-      logging.info('Selected model %s for inference session %s.', model_id,
-                   self._session_resource_id.session)
-      return model_id
+      model_resource_id = self.select_final_model()
+      logging.info('Selected model %s for inference session %s.',
+                   model_resource_id,
+                   self._session_resource_id)
+      return model_resource_id
     elif session_type == session_pb2.EVALUATION:
       # Fetch the next online eval model.
-      next_online_eval_model_id = self._next_online_eval_model()
-      if not next_online_eval_model_id:
+      model_resource_id = self._next_online_eval_model()
+      if not model_resource_id:
         raise ValueError(
             'Empty model returned by online eval sampling for session '
             f'{self._session_resource_id.session}')
-      logging.info('Selected model for online eval model: %s.',
-                   next_online_eval_model_id)
-      return next_online_eval_model_id
+      logging.info('Selected model %s for evaluation session %s.',
+                   model_resource_id,
+                   self._session_resource_id)
+      return model_resource_id
     else:
       raise ValueError(
           f'Unsupported session type: {session_type} found for session '
           f'{self._session_resource_id.session}.')
 
   def _best_offline_or_starting_snapshot_model(self):
-    """Return best model ID from offline evaluation or from starting snapshot."""
+    """Return best model resource ID by offline score or starting snapshot."""
     try:
-      offline_model = self._best_offline_model()
+      offline_model_id = self._best_offline_model()
+      res_id = self._data_store.resource_id_from_proto_ids(
+          project_id=self._session.project_id,
+          brain_id=self._session.brain_id,
+          session_id=self._session.session_id,
+          model_id=offline_model_id)
+      logging.info('Selected best offline model: %s', res_id)
+      return res_id
     except (FileNotFoundError, ValueError):
       # If offline model is not found, try getting the snapshot model.
       try:
@@ -125,15 +135,18 @@ class ModelSelector:
                                                     self._session.project_id,
                                                     self._session.brain_id,
                                                     self._session.session_id)
-        logging.info('Selected model from snapshot %s.', snapshot.model)
-        return snapshot.model
+        res_id = self._data_store.resource_id_from_proto_ids(
+            project_id=snapshot.project_id,
+            brain_id=snapshot.brain_id,
+            session_id=snapshot.session,
+            model_id=snapshot.model)
+        logging.info('Selected model from snapshot: %s.', res_id)
+        return res_id
       except (FileNotFoundError, resource_store.InternalError, ValueError):
         logging.info(
             'Failed to get offline model and model from starting snapshot for '
             'session %s. Returning empty model.', self._session.session_id)
-        return ''
-    logging.info('Selected best offline model %s', offline_model)
-    return offline_model
+        return None
 
   def _best_offline_model(self):
     """Goes through offline evaluations and returns model ID with best score."""
@@ -145,7 +158,7 @@ class ModelSelector:
     return offline_eval_summary.scores_by_offline_evaluation_id()[0][1].model_id
 
   def _next_online_eval_model(self):
-    """Selects the next model ID to try based on the online eval results."""
+    """Selects the next model resource ID based on the online eval results."""
     if not self._get_summary_map():
       raise FileNotFoundError('No models found for evaluation session '
                               f'{self._session_resource_id.session}.')
@@ -159,21 +172,45 @@ class ModelSelector:
     if selected_model_index < 0:
       raise ValueError(
           f'Selected model index is less than 0: {selected_model_index}')
-    return model_ids[selected_model_index]
+    model_id = model_ids[selected_model_index]
+    snapshot = data_cache.get_starting_snapshot(self._data_store,
+                                                self._session.project_id,
+                                                self._session.brain_id,
+                                                self._session.session_id)
+    return self._data_store.resource_id_from_proto_ids(
+        project_id=snapshot.project_id,
+        brain_id=snapshot.brain_id,
+        session_id=snapshot.session,
+        model_id=model_id)
 
   def select_final_model(self):
     """Select the final model ID for each session type."""
     session_type = self._get_session_type()
     if session_type == session_pb2.INTERACTIVE_TRAINING:
-      return self._best_offline_model()
-    elif session_type == session_pb2.INFERENCE:
-      snapshot = data_cache.get_starting_snapshot(self._data_store,
-                                                  self._session.project_id,
-                                                  self._session.brain_id,
-                                                  self._session.session_id)
-      return snapshot.model
+      model_id = self._best_offline_model()
+      return self._data_store.resource_id_from_proto_ids(
+          project_id=self._session.project_id,
+          brain_id=self._session.brain_id,
+          session_id=self._session.session_id,
+          model_id=model_id)
+
+    snapshot = data_cache.get_starting_snapshot(self._data_store,
+                                                self._session.project_id,
+                                                self._session.brain_id,
+                                                self._session.session_id)
+    if session_type == session_pb2.INFERENCE:
+      return self._data_store.resource_id_from_proto_ids(
+          project_id=snapshot.project_id,
+          brain_id=snapshot.brain_id,
+          session_id=snapshot.session,
+          model_id=snapshot.model)
     elif session_type == session_pb2.EVALUATION:
-      return self._best_online_model()
+      model_id = self._best_online_model()
+      return self._data_store.resource_id_from_proto_ids(
+          project_id=snapshot.project_id,
+          brain_id=snapshot.brain_id,
+          session_id=snapshot.session,
+          model_id=model_id)
     else:
       raise ValueError(f'Unsupported session type: {session_type} found for '
                        'session {self._session.session_id}.')

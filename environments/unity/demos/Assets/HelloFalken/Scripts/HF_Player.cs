@@ -22,124 +22,127 @@ using UnityEngine;
 using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
 
-public class HF_Actions : Falken.ActionsBase
+/// <summary>
+/// <c>HelloActions</c> Describes the control Actions a HelloFalken player can perform.
+/// </summary>
+public class HelloActions : Falken.ActionsBase
 {
-    protected const double _epsilon = 1e-20;
-
-    [Range(-1f, 1f)]
-    public float throttle;
+    public Falken.Number throttle = new Falken.Number(-1f, 1f);
 
     public Falken.Joystick steering = new Falken.Joystick(
         "steering", Falken.AxesMode.DeltaPitchYaw, Falken.ControlledEntity.Player);
 
     public virtual bool IsNoop()
     {
+        const double epsilon = 1e-20;
         return (
-            Math.Abs(throttle) <= _epsilon &&
-            Math.Abs(steering.X) <= _epsilon);
+            Math.Abs(throttle.Value) <= epsilon &&
+            Math.Abs(steering.X) <= epsilon);
     }
 }
 
-public class HF_Entity : Falken.EntityBase
+/// <summary>
+/// <c>HelloPlayerEntity</c> Basic observations that sense the environment around the player entity.
+/// </summary>
+public class HelloPlayerEntity : Falken.EntityBase
 {
-    public Falken.Feelers feelers = new Falken.Feelers(0.8f, 0.15f, 90.0f, 14, null);
+    public Falken.Feelers feelers = new Falken.Feelers(3f, 0f, 360.0f, 14, null);
 }
 
-public class HF_Observations : Falken.ObservationsBase
+/// <summary>
+/// <c>HelloObservations</c> Final observations with player and goal entities.
+/// </summary>
+public class HelloObservations : Falken.ObservationsBase
 {
     public Falken.EntityBase goal = new Falken.EntityBase("goal");
 
-    public HF_Observations()
+    public HelloObservations()
     {
-        player = new HF_Entity();
+        player = new HelloPlayerEntity();
     }
 }
 
-public class HF_BrainSpec : Falken.BrainSpec<HF_Observations, HF_Actions> {}
+/// <summary>
+/// <c>HelloBrainSpec</c> Binding of Actions and Observations for this simple player.
+/// </summary>
+public class HelloBrainSpec : Falken.BrainSpec<HelloObservations, HelloActions> {}
 
 
+/// <summary>
+/// <c>HF_Player</c> Demonstrates how to use Falken in a very simple game.
+/// The player can control the steering and thrust of a ship and then attempts to steer the ship
+/// to a goal object. Ship and goal transforms are randomized every time.
+/// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public class HF_Player : MonoBehaviour
 {
     #region Editor Variables
+    [Tooltip("Maximum amount of force to apply when accelerating.")]
+    [Range(0, 10)]
     public float movementRate = 10f;
+    [Tooltip("Maximum amount of torque to apply when steering.")]
+    [Range(0, 10)]
     public float steeringRate = 10f;
-    public float linearDrag = 2f;
-    public float angularDrag = 5f;
+    [Tooltip("Maximum linear speed for this player.")]
+    [Range(0, 10)]
     public float maxSpeed = 5f;
+    [Tooltip("Maximum angular speed for this player.")]
+    [Range(0, 10)]
     public float maxTurn = 5f;
-    public bool useGamepad = false;
-    public uint maxSteps = 300;
-    public float autopilotSeconds = 2;
-    // Distance to the goal object that is required to complete the episode.
-    public const float goalDistance = 0.3f;
+
+    [Tooltip("Reference to the goal object that the player needs to move to.")]
     public GameObject goalObject;
+    [Tooltip("Reference to the ground plane the player spawns above.")]
     public GameObject groundPlane;
-    public string falkenApiKey = "";
+
+    [Tooltip("Falken ProjectId")]
     public string falkenProjectId = "";
+    [Tooltip("Falken API Key")]
+    public string falkenApiKey = "";
+    [Tooltip("Falken Brain ID. Leave null to create a new brain.")]
     public string brainId = "";
+    [Tooltip("Falken Snapshot ID. Leave null to use latest snapshot.")]
     public string snapshotId = "";
+    [Tooltip("Display name of the brain.")]
     public string brainLabel = "Hello Falken Brain";
+    [Tooltip("Maximum number of FixedUpdates in an Episode.")]
+    public uint maxSteps = 300;
     #endregion
 
     #region Private State
-
     protected Falken.Service _service = null;
-    protected Falken.Brain<HF_BrainSpec> _brain = null;
+    protected Falken.Brain<HelloBrainSpec> _brain = null;
     protected Falken.Session _session = null;
     private Falken.Episode _episode = null;
     private Falken.Session.Type _sessionType = Falken.Session.Type.InteractiveTraining;
-    private int _numEpisodesRequested;
-    private int _numEpisodesRemaining;
     private int _totalSuccess;
     private int _totalFailure;
     private uint _numSteps;
     private float _lastDistance;
     private float _lastUserInputFixedTime;
     private Rigidbody _playerRigidBody;
+    private float _goalTolerance = 0.3f;
     private bool _autopilot = false;
     #endregion
 
-    // Optionally load arguments from Unity command line and the public string
-    // commandLineArguments.
-    public string commandLineArguments = null;
-    private CommandLineParser _commandLineParser = null;
-
     #region Unity Callbacks
-
-    public HF_Actions Actions
-    {
-        get
-        {
-            return _brain?.BrainSpec.Actions;
-        }
-    }
-
-    public HF_Observations Observations
-    {
-        get
-        {
-            return _brain?.BrainSpec.Observations;
-        }
-    }
-
-    public void OnEnable()
+    void OnEnable()
     {
         _service = Falken.Service.Connect(falkenProjectId, falkenApiKey);
-        _commandLineParser = new CommandLineParser(commandLineArguments);
         CreateOrLoadBrain();
-        _playerRigidBody = gameObject.GetComponent<Rigidbody>();
 
-        if (!goalObject || !groundPlane)
+        _playerRigidBody = gameObject.GetComponent<Rigidbody>();
+        _playerRigidBody.maxAngularVelocity = maxTurn;
+
+        if (goalObject)
         {
-            Debug.LogError(
-                "HF_Player requires both Goal and a Ground objects.");
+           _goalTolerance = goalObject.GetComponent<Renderer>().bounds.extents.magnitude;
         }
 
         ResetGameState();
     }
 
-    public void OnDisable()
+    void OnDisable()
     {
         if(_session != null)
         {
@@ -147,10 +150,6 @@ public class HF_Player : MonoBehaviour
             Debug.Log($"Session completed. session_id: {_session.Id}" +
                       $" brain_id: {_brain.Id} snapshot_id: " +
                       $"{endingSnapshotId}");
-            Debug.Log($"[Test Runner] Completed {_numEpisodesRequested} episodes: " +
-                      $"{_totalSuccess} succeeded, " +
-                      $"{_totalFailure} failed, " +
-                      $"0 aborted.");
             _service = null;
             _brain = null;
             _session = null;
@@ -159,7 +158,7 @@ public class HF_Player : MonoBehaviour
         _playerRigidBody = null;
     }
 
-    public void OnGUI()
+    void OnGUI()
     {
         string message = _autopilot ? "falken enabled" :
                                      "recording demonstrations";
@@ -184,59 +183,21 @@ public class HF_Player : MonoBehaviour
 
     }
 
-    // Initialize a new brain or load the specified brain from brain ID and
-    // snapshot ID.
-    private void CreateOrLoadBrain()
-    {
-        if (!String.IsNullOrEmpty(_commandLineParser.BrainId)) {
-            brainId = _commandLineParser.BrainId;
-            snapshotId = _commandLineParser.SnapshotId;
-        }
-        if (_service == null)
-        {
-            Debug.Log(
-                "Failed to connect to Falken's services. Make sure" +
-                $"You have a valid api key and project id or your " +
-                "json config is properly formated.");
-            return;
-        }
-        try
-        {
-            if (String.IsNullOrEmpty(brainId))
-            {
-                _brain = _service.CreateBrain<HF_BrainSpec>(brainLabel);
-            }
-            else
-            {
-                _brain = _service.LoadBrain<HF_BrainSpec>(
-                    brainId, snapshotId);
-            }
-            _sessionType = _commandLineParser.SessionType;
-            _numEpisodesRequested = _commandLineParser.EpisodesRequested;
-            _numEpisodesRemaining = _numEpisodesRequested;
-            _session = _brain.StartSession(_sessionType, maxSteps);
-            _episode = _session.StartEpisode();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError(e.ToString());
-            _brain = null;
-            _session = null;
-            _episode = null;
-        }
-    }
-
-    public void FixedUpdate()
+    void FixedUpdate()
     {
         ++_numSteps;
+
+        if (Input.GetButtonDown("ToggleControl"))
+        {
+            _autopilot = !_autopilot;
+        }
 
         CalculateObservations();
         CalculateActions();
 
         // Calculate Rewards
         float currentDistance = Vector3.Distance(transform.position, goalObject.transform.position);
-        bool atGoal = currentDistance <= goalDistance;
-        float reward = atGoal ? 10f : _lastDistance - currentDistance;
+        bool atGoal = currentDistance <= _goalTolerance;
         _lastDistance = currentDistance;
         if (atGoal)
         {
@@ -255,13 +216,12 @@ public class HF_Player : MonoBehaviour
 
         // Backup the throttle and steering values, since the values in Actions will
         // be consumed and replaced by Step
-        float throttle = Actions.throttle;
+        float throttle = Actions.throttle.Value;
         float steering = Actions.steering.X;
 
         if (_session != null)
         {
             // Keyboard input overrides brain input.
-            _autopilot = Time.fixedTime - _lastUserInputFixedTime > autopilotSeconds;
             _brain.BrainSpec.Actions.ActionsSource = _autopilot ?
                 Falken.ActionsBase.Source.BrainAction :
                 Falken.ActionsBase.Source.HumanDemonstration;
@@ -271,7 +231,7 @@ public class HF_Player : MonoBehaviour
             // values returned by Step.
             if (_brain.BrainSpec.Actions.ActionsSource == Falken.ActionsBase.Source.BrainAction)
             {
-                throttle = Actions.throttle;
+                throttle = Actions.throttle.Value;
                 steering = Actions.steering.X;
             }
         }
@@ -280,75 +240,76 @@ public class HF_Player : MonoBehaviour
     }
     #endregion
 
-    private void CalculateObservations()
+    #region Private Methods
+    private HelloActions Actions { get { return _brain?.BrainSpec.Actions; } }
+
+    private HelloObservations Observations { get { return _brain?.BrainSpec.Observations; } }
+
+    // Initialize a new brain or load the specified brain from brain ID and
+    // snapshot ID.
+    private void CreateOrLoadBrain()
     {
-        if (Observations == null)
+        if (_service == null)
         {
+            Debug.Log(
+                "Failed to connect to Falken's services. Make sure" +
+                $"You have a valid api key and project id or your " +
+                "json config is properly formated.");
             return;
         }
+        try
+        {
+            if (String.IsNullOrEmpty(brainId))
+            {
+                _brain = _service.CreateBrain<HelloBrainSpec>(brainLabel);
+            }
+            else
+            {
+                _brain = _service.LoadBrain<HelloBrainSpec>(
+                    brainId, snapshotId);
+            }
+            _session = _brain.StartSession(_sessionType, maxSteps);
+            _episode = _session.StartEpisode();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e.ToString());
+            _brain = null;
+            _session = null;
+            _episode = null;
+        }
+    }
 
-        Observations.player.position = gameObject.transform.position;
-        Observations.player.rotation = gameObject.transform.rotation;
-        Observations.goal.position = goalObject.transform.position;
-        Observations.goal.rotation = goalObject.transform.rotation;
-        HF_Entity entity = (HF_Entity)Observations.player;
-        entity.feelers.Update(gameObject.transform, new Vector3(0.0f, 0.0f, 0.0f), true);
+    private void CalculateObservations()
+    {
+        if (Observations != null)
+        {
+            Observations.player.position = gameObject.transform.position;
+            Observations.player.rotation = gameObject.transform.rotation;
+            Observations.goal.position = goalObject.transform.position;
+            Observations.goal.rotation = goalObject.transform.rotation;
+            HelloPlayerEntity entity = (HelloPlayerEntity)Observations.player;
+            entity.feelers.Update(gameObject.transform, new Vector3(0.0f, 0.0f, 0.0f), true);
+        }
     }
 
     private void CalculateActions()
     {
-        if (Actions == null)
+        if (Actions != null)
         {
-            return;
-        }
+            Actions.steering.X = Input.GetAxis("Steering");
+            Actions.steering.Y = 0f;
+            Actions.throttle.Value = Input.GetAxis("Gas") - Input.GetAxis("Brake");
 
-        Actions.throttle = 0f;
-        if (Input.GetKey(KeyCode.W))
-        {
-            Actions.throttle += 1f;
-        }
-        if (Input.GetKey(KeyCode.S))
-        {
-            Actions.throttle -= 1f;
-        }
-
-        Actions.steering.X = 0f;
-        Actions.steering.Y = 0f;
-
-        if (Input.GetKey(KeyCode.A))
-        {
-            Actions.steering.X -= 1f;
-        }
-        if (Input.GetKey(KeyCode.D))
-        {
-            Actions.steering.X += 1f;
-        }
-
-        if (useGamepad)
-        {
-            Actions.steering.X = Input.GetAxis("Turn");
-            // Pressing up on the axis is -1.
-            Actions.throttle = -Input.GetAxis("Accelerate");
-            Actions.throttle = Mathf.Clamp(Actions.throttle, -1f, 1f);
-        }
-
-        if (!Actions.IsNoop())
-        {
-            _lastUserInputFixedTime = Time.fixedTime;
+            if (!Actions.IsNoop())
+            {
+                _lastUserInputFixedTime = Time.fixedTime;
+            }
         }
     }
 
-    public void ApplyActions(float throttle, float steering)
+    private void ApplyActions(float throttle, float steering)
     {
-        if (Actions == null)
-        {
-            return;
-        }
-
-        _playerRigidBody.maxAngularVelocity = maxTurn;
-        _playerRigidBody.angularDrag = angularDrag;
-        _playerRigidBody.drag = linearDrag;
-
         if (_playerRigidBody.velocity.magnitude < maxSpeed)
         {
             _playerRigidBody.AddForce(throttle * transform.forward * movementRate);
@@ -360,28 +321,11 @@ public class HF_Player : MonoBehaviour
         }
     }
 
-    private void CompleteEpisodeAndResetGame(
-        Falken.Episode.CompletionState episodeState)
+    private void CompleteEpisodeAndResetGame(Falken.Episode.CompletionState episodeState)
     {
         if (_session != null)
         {
             _episode.Complete(episodeState);
-            if (_numEpisodesRequested != 0)
-            {
-                _numEpisodesRemaining--;
-                // Stop the game if a certain number of episodes were requested
-                // through command line and we have fulfilled them.
-                if (_numEpisodesRemaining <= 0)
-                {
-                    OnDisable();
-#if UNITY_EDITOR
-                    UnityEditor.EditorApplication.isPlaying = false;
-#else
-                    Application.Quit();
-#endif
-                    return;
-                }
-            }
             _episode = _session.StartEpisode();
         }
         ResetGameState();
@@ -400,7 +344,7 @@ public class HF_Player : MonoBehaviour
         do {
             goalObject.transform.position = GenerateRandomGroundPos(0f, goalExtents);
             _lastDistance = Vector3.Distance(transform.position, goalObject.transform.position);
-        } while (_lastDistance < goalDistance);
+        } while (_lastDistance < _goalTolerance);
 
         if (_playerRigidBody)
         {
@@ -409,10 +353,10 @@ public class HF_Player : MonoBehaviour
         }
     }
 
-    public Vector3 GenerateRandomGroundPos(float angle, Vector3 extents)
+    private Vector3 GenerateRandomGroundPos(float angle, Vector3 extents)
     {
         Bounds groundBounds = groundPlane.GetComponent<Renderer>().bounds;
-        float wallWidth = 0.4f;
+        float wallWidth = 1f;
         Quaternion boxOrientation = Quaternion.AngleAxis(angle, Vector3.up);
         Vector3 position;
         do {
@@ -424,4 +368,5 @@ public class HF_Player : MonoBehaviour
         } while (Physics.OverlapBox(position, extents, boxOrientation).Length > 0);
         return position;
     }
+    #endregion
 }

@@ -15,8 +15,6 @@
 # Lint as: python3
 """Ephemeral datastore for testing."""
 
-import tempfile
-
 from data_store import data_store
 from data_store import file_system
 
@@ -25,9 +23,5 @@ class TestDataStore(data_store.DataStore):
   """An ephemeral datastore that writes to its own temporary directory."""
 
   def __init__(self):
-    self._tmp_dir = tempfile.TemporaryDirectory()
-    self._file_system = file_system.FileSystem(self._tmp_dir.name)
+    self._file_system = file_system.FakeFileSystem()
     super().__init__(self._file_system)
-
-  def __del__(self):
-    self._tmp_dir.cleanup()

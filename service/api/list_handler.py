@@ -99,14 +99,14 @@ class ListHandler:
 
     response = self._response_proto_type()
 
-    list_ids, next_token = self._data_store.list(
+    list_resource_ids, next_token = self._data_store.list(
         resource_id.FalkenResourceId(self._glob_pattern.format(*args)),
         page_size=self._request.page_size or None,
         page_token=self._request.page_token or None)
 
     response.next_page_token = next_token or ''
 
-    self._fill_response(response, list_ids)
+    self._fill_response(response, list_resource_ids)
 
     return response
 
@@ -115,7 +115,7 @@ class ListHandler:
 
     Args:
       response: falken_service_pb2.List*Response instance getting populated.
-      res_ids: Resource id of the protos to fill the response with.
+      res_ids: ResourceId instances of the protos to fill the response with.
     """
     for res_id in res_ids:
       getattr(response, self._response_proto_repeated_field_name).append(
@@ -168,9 +168,6 @@ class ListEpisodeChunksHandler(ListHandler):
     if (self._request.filter !=
         falken_service_pb2.ListEpisodeChunksRequest.EPISODE_IDS):
       return super().read(res_id)
-
-    # Translate string to ResourceId object.
-    res_id = resource_id.FalkenResourceId(res_id)
 
     return data_store_pb2.EpisodeChunk(
         project_id=res_id.project,

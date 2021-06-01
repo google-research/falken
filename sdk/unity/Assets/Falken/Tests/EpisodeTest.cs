@@ -86,6 +86,7 @@ namespace FalkenTests
               Falken.Session.Type.InteractiveTraining, 5);
             Falken.Episode episode = session.StartEpisode();
             Assert.IsNotEmpty(episode.Id);
+            session.Stop();
         }
     }
 }

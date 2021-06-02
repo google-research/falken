@@ -158,6 +158,9 @@ class GetHandlerTest(absltest.TestCase):
             project_id='p0', brain_id='b0', session='s0', model='m0'),
         data_store_pb2.Model(compressed_model_path=zip_path)
     ]
+    mock_ds.list.return_value = [
+        resource_id.FalkenResourceId(
+            'projects/p0/brains/b0/sessions/s0/models/m0')], None
 
     self.assertEqual(
         model_handler.get(), falken_service_pb2.Model(

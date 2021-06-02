@@ -183,6 +183,20 @@ class ModelSelector:
         session_id=snapshot.session,
         model_id=model_id)
 
+  def _lookup_model_resource_id(self, project_id, brain_id, model_id):
+    """Get model resource ID based on model ID from arbitrary session."""
+    res_ids, _ = self._data_store.list_from_proto_ids(
+        project_id=project_id,
+        brain_id=brain_id,
+        session_id='*',
+        model_id=model_id,
+        page_size=2)
+    if len(res_ids) != 1:
+      raise RuntimeError(
+          f'Expected one requested model with ID {model_id} in ' +
+          f'projects/{project_id}/brains/{brain_id}, but found {len(res_ids)}')
+    return res_ids[0]
+
   def select_final_model(self):
     """Select the final model ID for each session type."""
     session_type = self._get_session_type()
@@ -199,18 +213,16 @@ class ModelSelector:
                                                 self._session.brain_id,
                                                 self._session.session_id)
     if session_type == session_pb2.INFERENCE:
-      return self._data_store.resource_id_from_proto_ids(
-          project_id=snapshot.project_id,
-          brain_id=snapshot.brain_id,
-          session_id=snapshot.session,
-          model_id=snapshot.model)
+      return self._lookup_model_resource_id(
+          snapshot.project_id,
+          snapshot.brain_id,
+          snapshot.model)
     elif session_type == session_pb2.EVALUATION:
       model_id = self._best_online_model()
-      return self._data_store.resource_id_from_proto_ids(
-          project_id=snapshot.project_id,
-          brain_id=snapshot.brain_id,
-          session_id=snapshot.session,
-          model_id=model_id)
+      return self._lookup_model_resource_id(
+          snapshot.project_id,
+          snapshot.brain_id,
+          model_id)
     else:
       raise ValueError(f'Unsupported session type: {session_type} found for '
                        'session {self._session.session_id}.')

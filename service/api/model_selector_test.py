@@ -600,13 +600,19 @@ class ModelSelectorTest(parameterized.TestCase):
     best_online_model.return_value = 'm0'
     best_offline_model.return_value = 'm0'
     get_starting_snapshot.return_value = data_store_pb2.Snapshot(model='m0')
-    self._ds.resource_id_from_proto_ids.return_value = (
-        'fake/resource_id')
+    if session_type != session_pb2.INTERACTIVE_TRAINING:
+      self._ds.list_from_proto_ids.return_value = (
+          ['fake/resource_id'], None)
+    else:
+      self._ds.resource_id_from_proto_ids.return_value = (
+          'fake/resource_id')
     self.assertEqual(self._model_selector.select_final_model(),
                      'fake/resource_id')
-    self._ds.resource_id_from_proto_ids.assert_called_once_with(
-        project_id=mock.ANY, brain_id=mock.ANY, session_id=mock.ANY,
-        model_id='m0')
+
+    if session_type == session_pb2.INTERACTIVE_TRAINING:
+      self._ds.resource_id_from_proto_ids.assert_called_once_with(
+          project_id=mock.ANY, brain_id=mock.ANY, session_id=mock.ANY,
+          model_id='m0')
 
   @mock.patch.object(model_selector.ModelSelector, '_get_session_type')
   def test_select_final_model_invalid_session_type(self, get_session_type):

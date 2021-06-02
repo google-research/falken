@@ -193,30 +193,29 @@ class GetModelHandler(GetHandler):
           f'{request.model_id}.')
 
   def get(self):
-    glob = self._instantiate_glob_pattern()
-
     if self._request.model_id:
-      listed_ids, _ = self._data_store.list(
-          resource_id.FalkenResourceId(glob),
-          page_size=2)
-
-      if not listed_ids:
-        self._abort(
-            code_pb2.INVALID_ARGUMENT, 'No models found for the given request.')
-
-      if len(listed_ids) > 1:
-        raise RuntimeError(f'{len(listed_ids)} resources found for glob '
-                           f'{glob}, but only one was expected.')
-
-      model_id = listed_ids[0]
+      model_glob = self._instantiate_glob_pattern()
     else:
+      # Read the model glob from the snapshot
       snapshot = self._data_store.read(
-          resource_id.FalkenResourceId(glob))
-      model_id = resource_id.FalkenResourceId(
+          resource_id.FalkenResourceId(self._instantiate_glob_pattern()))
+      model_glob = resource_id.FalkenResourceId(
           project=snapshot.project_id,
           brain=snapshot.brain_id,
-          session=snapshot.session,
+          session='*',
           model=snapshot.model)
+
+    listed_ids, _ = self._data_store.list(model_glob, page_size=2)
+
+    if not listed_ids:
+      self._abort(
+          code_pb2.INVALID_ARGUMENT, 'No models found for the given request.')
+
+    if len(listed_ids) > 1:
+      raise RuntimeError(f'{len(listed_ids)} resources found for glob '
+                         f'{model_glob}, but only one was expected.')
+
+    model_id = listed_ids[0]
 
     model = self._data_store.read(model_id)
 

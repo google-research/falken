@@ -94,12 +94,32 @@ class GetHandler:
         attr = None
 
       if not attr:
-        self._context.abort(
+        self._abort(
             code_pb2.INVALID_ARGUMENT,
             f'Could not find {arg} in {self._request_type}.')
       args.append(attr)
 
     return self._glob_pattern.format(*args)
+
+  def _abort(self, code, details):
+    """Terminates the RPC call with a failure.
+
+    Args:
+      code: error StatusCode object to send to client.
+      details: String to send to client.
+    Raises:
+      Exception: This method will always raise an exception to abort
+      the request.
+    """
+    logging.error(
+        'Aborting gRPC call with code %s, details "%s".\n'
+        '  Request type: %s\n'
+        '  Request: %s\n'
+        '  Request args: %s\n'
+        '  Glob pattern: %s',
+        code, details, self._request_type, self._request, self._request_args,
+        self._glob_pattern)
+    self._context.abort(code, details)
 
 
 class GetBrainHandler(GetHandler):
@@ -133,7 +153,7 @@ class GetSessionByIndexHandler(GetHandler):
         self._request.session_index)
     if not (self._request.project_id and self._request.brain_id and
             self._request.session_index):
-      self._context.abort(
+      self._abort(
           code_pb2.INVALID_ARGUMENT,
           'Project ID, brain ID, and session index must be specified in '
           'GetSessionByIndexRequest.')
@@ -144,7 +164,7 @@ class GetSessionByIndexHandler(GetHandler):
                 self._request.project_id, self._request.brain_id)),
         page_size=self._request.session_index + 1)
     if len(session_ids) < self._request.session_index:
-      self._context.abort(
+      self._abort(
           code_pb2.INVALID_ARGUMENT,
           f'Session at index {self._request.session_index} was not found.')
 
@@ -156,13 +176,6 @@ class GetModelHandler(GetHandler):
   """Handles retrieving an existing model."""
 
   def __init__(self, request, context, data_store):
-    if request.snapshot_id and request.model_id:
-      context.abort(
-          code_pb2.INVALID_ARGUMENT,
-          'Either model ID or snapshot ID should be specified, not both. '
-          f'Found snapshot_id {request.snapshot_id} and model_id '
-          f'{request.model_id}.')
-
     if request.snapshot_id:
       super().__init__(request, context, data_store,
                        ['project_id', 'brain_id', 'snapshot_id'],
@@ -171,6 +184,13 @@ class GetModelHandler(GetHandler):
       super().__init__(request, context, data_store,
                        ['project_id', 'brain_id', 'model_id'],
                        'projects/{0}/brains/{1}/sessions/*/models/{2}')
+
+    if request.snapshot_id and request.model_id:
+      self._abort(
+          code_pb2.INVALID_ARGUMENT,
+          'Either model ID or snapshot ID should be specified, not both. '
+          f'Found snapshot_id {request.snapshot_id} and model_id '
+          f'{request.model_id}.')
 
   def get(self):
     glob = self._instantiate_glob_pattern()
@@ -181,7 +201,7 @@ class GetModelHandler(GetHandler):
           page_size=2)
 
       if not listed_ids:
-        self._context.abort(
+        self._abort(
             code_pb2.INVALID_ARGUMENT, 'No models found for the given request.')
 
       if len(listed_ids) > 1:

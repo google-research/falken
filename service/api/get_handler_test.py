@@ -128,9 +128,7 @@ class GetHandlerTest(absltest.TestCase):
         resource_id.FalkenResourceId(
             'projects/p0/brains/b0/sessions/s0/models/m0'))
 
-  @mock.patch.object(get_handler.GetHandler, '__init__')
-  def test_get_handler_get_model_snapshot_specified_both(
-      self, get_handler_base):
+  def test_get_handler_get_model_snapshot_specified_both(self):
     request = falken_service_pb2.GetModelRequest(
         snapshot_id='s0', model_id='m0')
     mock_context = mock.Mock()
@@ -142,7 +140,6 @@ class GetHandlerTest(absltest.TestCase):
         code_pb2.INVALID_ARGUMENT,
         'Either model ID or snapshot ID should be specified, not both. '
         'Found snapshot_id s0 and model_id m0.')
-    get_handler_base.assert_not_called()
 
   def test_get_handler_get_model_snapshot(self):
     zip_path = self.setup_compressed_model()

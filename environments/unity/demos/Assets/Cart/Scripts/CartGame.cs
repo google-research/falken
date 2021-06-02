@@ -12,9 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+
+/// CartFalkenGame class is required as a workaround given that Unity cannot
+/// serialize an attribute with a generic class type.
+[System.Serializable]
+public class CartFalkenGame : FalkenGame<CartBrainSpec>
+{
+}
 
 /// <summary>
 /// <c>CartGame</c> Creates cars and manages the state of the race.
@@ -27,10 +34,13 @@ public class CartGame : MonoBehaviour
     public CarController carPrefab;
     [Tooltip("The chase camera prefab to instantiate at the start of the game.")]
     public CarCamera cameraPrefab;
+    [Tooltip("The Falken game.")]
+    public CartFalkenGame cartFalkenGame;
 
     private CarController car;
     private CarCamera chaseCamera;
     private int nextCheckpointIndex;
+    private Falken.Episode episode = null;
 
     void Start()
     {
@@ -48,10 +58,20 @@ public class CartGame : MonoBehaviour
         } else {
             Debug.Log("CartGame is not configured properly. Please set a track, car, and camera.");
         }
+
+        // Initialize Falken.
+        cartFalkenGame.Init();
+        //car.FalkenGame = cartFalkenGame;
+        car.FalkenBrainSpec = cartFalkenGame.BrainSpec;
+
+        // Create a new episode.
+        CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Success);
     }
 
-    void Update() {
-        if (track && car) {
+    void FixedUpdate()
+    {
+        if (track && car)
+        {
             Transform[] controlPoints = track.GetControlPoints();
             Transform checkpoint = controlPoints[nextCheckpointIndex];
             Vector3 carToCheckpoint = (car.transform.position - checkpoint.position).normalized;
@@ -62,6 +82,32 @@ public class CartGame : MonoBehaviour
                     Debug.Log("Completed a lap!");
                 }
             }
+
+            // TODO(jballoffet): Add condition for successful episode.
+            bool atGoal = false;
+            if (atGoal)
+            {
+                Debug.Log("Succeeded episode " + episode.Id);
+                CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Success);
+                return;
+            }
+            else if (!car.StepSucceeded)
+            {
+                Debug.Log("Failed episode " + episode.Id);
+                CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Failure);
+                return;
+            }
         }
+    }
+
+    /// <summary>
+    /// Completes the current episode if any and creates a new one.
+    /// </summary>
+    private void CreateEpisodeAndResetGame(
+        Falken.Episode.CompletionState episodeState)
+    {
+        episode?.Complete(episodeState);
+        episode = cartFalkenGame.CreateEpisode();
+        car.FalkenEpisode = episode;
     }
 }

@@ -254,7 +254,6 @@ class AssignmentProcessor:
     self._brain = None
     self._hparams = None
     self._model_manager = None
-    self._model_exporter = None
     self._always_block_when_fetching = always_block_when_fetching
     self._stats = stats_collector.StatsCollector(
         self._write_assignment.project_id,
@@ -467,6 +466,14 @@ class AssignmentProcessor:
     Returns:
       The ID of the model that was written.
     """
+    if self._session_complete():
+      falken_logging.info(
+          'Skipping model export on completed session.',
+          project_id=self._write_assignment.project_id,
+          brain_id=self._write_assignment.brain_id,
+          session_id=self._write_assignment.session_id)
+      return
+
     falken_logging.info(
         'Writing tmp model.',
         project_id=self._write_assignment.project_id,

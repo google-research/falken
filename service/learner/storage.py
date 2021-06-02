@@ -207,19 +207,7 @@ class Storage:
         model_path=model_path,
         episode_id=episode_id,
         episode_chunk_id=episode_chunk_id)
-
-    session_state = self.get_session_state(
-        assignment.project_id, assignment.brain_id, assignment.session_id)
-
-    if session_state != SessionState.ENDED:
-      self._data_store.write(m)
-    else:
-      falken_logging.info('Skipping model write to DB for closed session.',
-                          project_id=assignment.project_id,
-                          brain_id=assignment.brain_id,
-                          session_id=assignment.session_id,
-                          assignment_id=assignment.assignment_id)
-
+    self._data_store.write(m)
     return m.model_id
 
   @wrap_data_store_exception

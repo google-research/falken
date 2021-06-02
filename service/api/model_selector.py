@@ -185,7 +185,7 @@ class ModelSelector:
 
   def _lookup_model_resource_id(self, project_id, brain_id, model_id):
     """Get model resource ID based on model ID from arbitrary session."""
-    res_ids, _ = self._data_store.list_from_proto_ids(
+    res_ids, _ = self._data_store.list_by_proto_ids(
         project_id=project_id,
         brain_id=brain_id,
         session_id='*',

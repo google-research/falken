@@ -601,7 +601,7 @@ class ModelSelectorTest(parameterized.TestCase):
     best_offline_model.return_value = 'm0'
     get_starting_snapshot.return_value = data_store_pb2.Snapshot(model='m0')
     if session_type != session_pb2.INTERACTIVE_TRAINING:
-      self._ds.list_from_proto_ids.return_value = (
+      self._ds.list_by_proto_ids.return_value = (
           ['fake/resource_id'], None)
     else:
       self._ds.resource_id_from_proto_ids.return_value = (

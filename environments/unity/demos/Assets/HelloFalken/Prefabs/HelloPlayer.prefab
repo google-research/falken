@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 3180024069426278714}
   - component: {fileID: 3180024069426278713}
   m_Layer: 0
-  m_Name: Player
+  m_Name: HelloPlayer
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -30,7 +30,7 @@ Transform:
   m_GameObject: {fileID: 3180024069426278710}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -2, y: 0.76, z: 0}
-  m_LocalScale: {x: 0.8, y: 0.8, z: 0.7}
+  m_LocalScale: {x: 0.7, y: 0.7, z: 0.7}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -94,15 +94,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   movementRate: 8
   steeringRate: 6
-  linearDrag: 2
-  angularDrag: 5
   maxSpeed: 4
   maxTurn: 3
-  autopilotSeconds: 2
   goalObject: {fileID: 0}
   groundPlane: {fileID: 0}
-  falkenApiKey: 
   falkenProjectId: 
+  falkenApiKey: 
   brainId: 
   snapshotId: 
   brainLabel: Hello Falken Brain

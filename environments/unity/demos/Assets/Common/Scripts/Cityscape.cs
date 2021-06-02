@@ -43,16 +43,16 @@ public class Cityscape : MonoBehaviour
     public float taperMax = 1;
     [Tooltip("The min hue a building can have.")]
     [Range(0, 1)]
-    public float hueMin = 1f;
+    public float hueMin = 0;
     [Tooltip("The max hue a building can have.")]
     [Range(0, 1)]
-    public float hueMax = 1;
+    public float hueMax = 0;
     [Tooltip("The min saturation a building can have.")]
     [Range(0, 1)]
-    public float saturationMin = 1f;
+    public float saturationMin = 0;
     [Tooltip("The max saturation a building can have.")]
     [Range(0, 1)]
-    public float saturationMax = 1;
+    public float saturationMax = 0;
     [Tooltip("The darkest a building can be.")]
     [Range(0, 1)]
     public float valueMin = 1f;

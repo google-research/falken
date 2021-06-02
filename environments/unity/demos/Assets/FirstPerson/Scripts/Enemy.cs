@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -22,6 +21,24 @@ using UnityEngine;
 /// </summary>
 public class Enemy : MonoBehaviour
 {
+    public enum AttackStyle {
+        None = 0,
+        /// Move up from initial positon, attack, move back down, repeat.
+        Up = (1 << 0),
+        /// Move down from initial positon, attack, move back up, repeat.
+        Down = (1 << 1),
+        /// Move left from initial positon, attack, move back right, repeat.
+        Left = (1 << 2),
+        /// Move right from initial positon, attack, move back left, repeat.
+        Right = (1 << 3),
+        /// Randomly attack Up or Down.
+        Vertical = Up | Down,
+        /// Randomly attack Left or Right.
+        Horizontal = Left | Right,
+        /// Randomly select any of the 4 attack behaviors.
+        All = Vertical | Horizontal,
+    };
+
     [Tooltip("Distance at which to start attacking the player.")]
     [Range(1, 100)]
     public float activationRange = 10f;
@@ -31,9 +48,16 @@ public class Enemy : MonoBehaviour
     [Tooltip("Duration of the hiding/waiting phase of the attack.")]
     [Range(0, 100)]
     public float hideDuration = 5f;
+    [Tooltip("How far to move from intial position when attacking.")]
+    [Range(0,100)]
+    public float moveDistance = 1;
+    [Tooltip("How quickly to move while attacking.")]
+    [Range(0,100)]
+    public float moveDuration = 1;
+    public AttackStyle attackStyle;
 
     private Vector3 initialPosition;
-    private Vector3 attackPosition;
+    private Quaternion initialRotation;
     private Weapon weapon;
 
     private static List<Enemy> enemies = new List<Enemy>();
@@ -46,7 +70,7 @@ public class Enemy : MonoBehaviour
     void OnEnable() {
         enemies.Add(this);
         initialPosition = transform.position;
-        attackPosition = transform.position + transform.right * 2f;
+        initialRotation = transform.rotation;
         weapon = GetComponent<Weapon>();
     }
 
@@ -66,6 +90,7 @@ public class Enemy : MonoBehaviour
             FirstPersonPlayer player = GetPlayer();
             if (player && Vector3.Distance(
                 player.transform.position, transform.position) <= activationRange) {
+                Vector3 attackPosition = GetAttackLocation(attackStyle);
                 yield return Move(attackPosition, 1f);
                 yield return Fire(attackDuration);
                 yield return Move(initialPosition, 1f);
@@ -123,5 +148,41 @@ public class Enemy : MonoBehaviour
     /// </summary>
     private FirstPersonPlayer GetPlayer() {
         return FirstPersonPlayer.Players.Count > 0 ? FirstPersonPlayer.Players[0] : null;
+    }
+
+    private Vector3 GetAttackLocation(AttackStyle attackStyle) {
+        AttackStyle chosenStyle;
+        switch (attackStyle) {
+            case AttackStyle.Vertical:
+                chosenStyle = Random.value > 0.5 ? AttackStyle.Up : AttackStyle.Down;
+                break;
+            case AttackStyle.Horizontal:
+                chosenStyle = Random.value > 0.5 ? AttackStyle.Left : AttackStyle.Right;
+                break;
+            case AttackStyle.All:
+                chosenStyle = (AttackStyle)(1 << Random.Range(0, 3));
+                break;
+            default:
+                chosenStyle = attackStyle;
+                break;
+        }
+
+        Vector3 moveDirection = Vector3.zero;
+        switch (chosenStyle) {
+            case AttackStyle.Left:
+                moveDirection = Vector3.left;
+                break;
+            case AttackStyle.Right:
+                moveDirection = Vector3.right;
+                break;
+            case AttackStyle.Up:
+                moveDirection = Vector3.up;
+                break;
+            case AttackStyle.Down:
+                moveDirection = Vector3.down;
+                break;
+        }
+
+        return initialPosition + initialRotation * (moveDirection * moveDistance);
     }
 }

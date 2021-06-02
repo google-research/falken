@@ -127,6 +127,7 @@ class ProtoConverter:
           },
           data_store_pb2.Session: {
               'session_id': 'name',
+              'starting_snapshots': 'starting_snapshot_ids',
           },
           None: {
               'created_micros': 'create_time',

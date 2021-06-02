@@ -41,8 +41,26 @@ public class Cityscape : MonoBehaviour
     [Tooltip("The largest a building's top can become from tapering.")]
     [Range(0, 1)]
     public float taperMax = 1;
+    [Tooltip("The min hue a building can have.")]
+    [Range(0, 1)]
+    public float hueMin = 1f;
+    [Tooltip("The max hue a building can have.")]
+    [Range(0, 1)]
+    public float hueMax = 1;
+    [Tooltip("The min saturation a building can have.")]
+    [Range(0, 1)]
+    public float saturationMin = 1f;
+    [Tooltip("The max saturation a building can have.")]
+    [Range(0, 1)]
+    public float saturationMax = 1;
+    [Tooltip("The darkest a building can be.")]
+    [Range(0, 1)]
+    public float valueMin = 1f;
+    [Tooltip("The brightest a building can be.")]
+    [Range(0, 1)]
+    public float valueMax = 1;
     [Tooltip("The amount of space between buildings.")]
-    [Range(0, 10)]
+    [Range(0, 100)]
     public int spacing = 5;
     [Tooltip("The number of buildings to place in each dimension.")]
     [Range(4, 50)]
@@ -52,11 +70,6 @@ public class Cityscape : MonoBehaviour
     /// Creates a new cityscape mesh, destroying any previously created cityscape on this object.
     /// </summary>
     public void CreateCityscape() {
-        List<Vector3> vertices = new List<Vector3>();
-        List<Vector3> normals = new List<Vector3>();
-        List<Vector2> uvs = new List<Vector2>();
-        List<int> triangles = new List<int>();
-
         float offset = -(ComputeCityWidth() * 0.5f - width * 0.5f);
         Vector3 cubeOrigin = new Vector3(offset, 0, offset);
 
@@ -134,36 +147,42 @@ public class Cityscape : MonoBehaviour
             new Vector2(width - offset, width - offset)
         };
 
+        Color cubeColor = Color.HSVToRGB(
+            Random.Range(hueMin, hueMax),
+            Random.Range(saturationMin, saturationMax),
+            Random.Range(valueMin, valueMax));
+        Color[] colors = { cubeColor, cubeColor, cubeColor, cubeColor };
+
         // Bottom
         quadMesh.AddQuad(
             new Vector3[] {cubePositions[3], cubePositions[2], cubePositions[1], cubePositions[0]},
             new Vector3[] {Vector3.down, Vector3.down, Vector3.down, Vector3.down},
-            bottomUVs, transform );
+            bottomUVs, colors, transform );
         // Left
         quadMesh.AddQuad(
             new Vector3[] {cubePositions[3], cubePositions[0], cubePositions[4], cubePositions[7]},
             new Vector3[] {Vector3.left, Vector3.left, Vector3.left, Vector3.left},
-            sideUVs, transform );
+            sideUVs, colors, transform );
         // Front
         quadMesh.AddQuad(
             new Vector3[] {cubePositions[0], cubePositions[1], cubePositions[5], cubePositions[4]},
             new Vector3[] {Vector3.forward, Vector3.forward, Vector3.forward, Vector3.forward},
-            sideUVs, transform );
+            sideUVs, colors, transform );
         // Back
         quadMesh.AddQuad(
             new Vector3[] {cubePositions[2], cubePositions[3], cubePositions[7], cubePositions[6]},
             new Vector3[] {Vector3.back, Vector3.back, Vector3.back, Vector3.back},
-            sideUVs, transform );
+            sideUVs, colors, transform );
         // Right
         quadMesh.AddQuad(
             new Vector3[] {cubePositions[1], cubePositions[2], cubePositions[6], cubePositions[5]},
             new Vector3[] {Vector3.right, Vector3.right, Vector3.right, Vector3.right},
-            sideUVs, transform );
+            sideUVs, colors, transform );
         // Top
         quadMesh.AddQuad(
             new Vector3[] {cubePositions[4], cubePositions[5], cubePositions[6], cubePositions[7]},
             new Vector3[] {Vector3.up, Vector3.up, Vector3.up, Vector3.up},
-            topUVs, transform );
+            topUVs, colors, transform );
     }
 
     /// <summary>

@@ -18,17 +18,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// NegaFalkenGame class is required as a workaround given that Unity cannot
-/// serialize an attribute with a generic class type.
-[System.Serializable]
-public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
-{
-}
-
 /// <summary>
 /// <c>NegaGame</c> Manages the NegaFalken game state and related Falken state.
 /// </summary>
-public class NegaGame : MonoBehaviour
+public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
 {
     #region Editor variables
     [Tooltip("Prefab that defines player one.")]
@@ -48,9 +41,6 @@ public class NegaGame : MonoBehaviour
     [Tooltip("Set to run game faster or slower than realtime.")]
     [Range(0.1f, 10)]
     public float timeScale = 1;
-
-    [Tooltip("Falken settings.")]
-    public NegaFalkenGame _falkenGame;
     #endregion
 
     #region Protected and private attributes
@@ -70,7 +60,7 @@ public class NegaGame : MonoBehaviour
         // Try to render at this specified framerate.
         Application.targetFrameRate = targetFPS;
 
-        _falkenGame.Init();
+        Init();
         ResetGame();
     }
 
@@ -117,8 +107,8 @@ public class NegaGame : MonoBehaviour
             content += "\nTimescale" + timeScale + "x";
         }
 
-        var trainingState = _falkenGame.TrainingState;
-        int percentComplete = (int)(_falkenGame.TrainingProgress * 100);
+        var trainingState = TrainingState;
+        int percentComplete = (int)(TrainingProgress * 100);
         content += "\n" +
             ((trainingState == Falken.Session.TrainingState.Complete) ?
                 "training complete" : trainingState.ToString().ToLower()) +
@@ -133,7 +123,7 @@ public class NegaGame : MonoBehaviour
 
     void OnDestroy()
     {
-        _falkenGame.Shutdown();
+        Shutdown();
     }
     #endregion
 
@@ -167,8 +157,8 @@ public class NegaGame : MonoBehaviour
         NegaFalkenPlayer player = GameObject.Instantiate(prefab, randomPos, randomRot);
         player.Game = this;
         player.HealthSlider = slider;
-        player.BrainSpec = _falkenGame.BrainSpec;
-        player.Episode = _falkenGame.CreateEpisode();
+        player.BrainSpec = BrainSpec;
+        player.Episode = CreateEpisode();
         player.GetComponent<Health>().OnKilled += PlayerKilled;
         return player;
     }

@@ -16,17 +16,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// CartFalkenGame class is required as a workaround given that Unity cannot
-/// serialize an attribute with a generic class type.
-[System.Serializable]
-public class CartFalkenGame : FalkenGame<CartBrainSpec>
-{
-}
-
 /// <summary>
 /// <c>CartGame</c> Creates cars and manages the state of the race.
 /// </summary>
-public class CartGame : MonoBehaviour
+public class CartGame : FalkenGame<CartBrainSpec>
 {
     [Tooltip("The track upon which to race.")]
     public SplineTrack track;
@@ -34,8 +27,6 @@ public class CartGame : MonoBehaviour
     public CartPlayer carPrefab;
     [Tooltip("The chase camera prefab to instantiate at the start of the game.")]
     public CarCamera cameraPrefab;
-    [Tooltip("The Falken game.")]
-    public CartFalkenGame cartFalkenGame;
 
     private CartPlayer car;
     private CarCamera chaseCamera;
@@ -60,9 +51,8 @@ public class CartGame : MonoBehaviour
         }
 
         // Initialize Falken.
-        cartFalkenGame.Init();
-        //car.FalkenGame = cartFalkenGame;
-        car.FalkenBrainSpec = cartFalkenGame.BrainSpec;
+        Init();
+        car.FalkenBrainSpec = BrainSpec;
 
         // Create a new episode.
         CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Success);
@@ -107,7 +97,7 @@ public class CartGame : MonoBehaviour
         Falken.Episode.CompletionState episodeState)
     {
         episode?.Complete(episodeState);
-        episode = cartFalkenGame.CreateEpisode();
+        episode = CreateEpisode();
         car.FalkenEpisode = episode;
     }
 }

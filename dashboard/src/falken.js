@@ -22,7 +22,9 @@ const d3 = require('d3');
 import { Episode } from './episode.js';
 import { Grapher } from './grapher.js';
 import { SceneView } from './sceneview.js';
-import { timestampToDate, dateToDateTimeLocal, labelFromDate } from './utils.js';
+import { timestampToDate, dateToDateTimeLocal,
+         labelFromDate } from './utils.js';
+import { getServiceUrl } from '../gen/endpoint.js';
 
 /**
  * Defines the Falken class that clients can use to talk to the service.
@@ -88,7 +90,7 @@ export var Falken = function() {
     episodesInputDOM.value = '';
     episodesListDOM.innerHTML = '';
 
-    const request = new falkenAPI.ListBrainsRequest();
+    const request = new falkenProto.ListBrainsRequest();
     request.setProjectId(projectId);
 
     // The listBrains API call may be paginated, so this response handler
@@ -144,7 +146,7 @@ export var Falken = function() {
     episodesInputDOM.value = '';
     episodesListDOM.innerHTML = '';
 
-    const request = new falkenAPI.ListSessionsRequest();
+    const request = new falkenProto.ListSessionsRequest();
     request.setProjectId(projectId);
     request.setBrainId(currentBrain.brainId);
 
@@ -194,13 +196,13 @@ export var Falken = function() {
     episodesInputDOM.value = "";
     episodesListDOM.innerHTML = '';
 
-    const request = new falkenAPI.ListEpisodeChunksRequest();
+    const request = new falkenProto.ListEpisodeChunksRequest();
     request.setProjectId(projectId);
     request.setBrainId(currentBrain.brainId);
     request.setSessionId(currentSession.name);
     // This filter allows us to retrieve many episdoes at once, but without
     // the overhead of getting the Step data for each of them.
-    request.setFilter(falkenAPI.ListEpisodeChunksRequest.Filter.EPISODE_IDS);
+    request.setFilter(falkenProto.ListEpisodeChunksRequest.Filter.EPISODE_IDS);
 
     // Follows the same paginated structure as Session and Brain
     let episodeIndex = 0;
@@ -247,14 +249,14 @@ export var Falken = function() {
       return;
     }
 
-    const request = new falkenAPI.ListEpisodeChunksRequest();
+    const request = new falkenProto.ListEpisodeChunksRequest();
     request.setProjectId(projectId);
     request.setBrainId(currentBrain.brainId);
     request.setSessionId(currentSession.name);
     // Steps are very heavyweight (MBs per Episode) so we only retrieve
     // the Steps for a single Episode at a time.
     request.setFilter(
-        falkenAPI.ListEpisodeChunksRequest.Filter.SPECIFIED_EPISODE);
+        falkenProto.ListEpisodeChunksRequest.Filter.SPECIFIED_EPISODE);
     request.setEpisodeId(currentEpisode.id);
 
     // Written with the same pagination structure as Brains/Sessions/Episodes
@@ -480,8 +482,6 @@ export var Falken = function() {
     updateUrl();
   }
 
-  const falkenAPI = proto.google.internal.falken.v1eap.falken;
-
   // Global state for the dashboard
   let brains = {};
   let currentBrain = null;
@@ -537,9 +537,7 @@ export var Falken = function() {
 
   // Connect to the service and initialize the dashboard with a list of Brains.
   const apiKeyMeta = {'X-Goog-Api-Key' : apiKey};
-  const service = new falkenAPI.FalkenPrivateServiceClient(
-      endpoint == "dev" ? 'https://falken-dev.sandbox.googleapis.com'
-                        : 'https://falken-pa.googleapis.com',
-      null, null);
+  const service = new falkenProto.FalkenServiceClient(
+      getServiceUrl(endpoint == "dev"), null, null);
   listBrains();
 };

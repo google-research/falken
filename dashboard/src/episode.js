@@ -20,7 +20,6 @@
  */
 
 const d3 = require('d3');
-const falkenProto = proto.research.kernel.falken.common.proto;
 
 let entityColorIndex = 0;
 const ENTITY_COLORS = d3.schemeSet1;

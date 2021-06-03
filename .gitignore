@@ -33,8 +33,9 @@ CMakeScripts/
 _deps/
 cmake_install.cmake
 sdk/cpp/build/
-dashboard/.npmrc
+dashboard/.*
 dashboard/node_modules/**
 dashboard/dist/falken.js
 dashboard/dist/falken_grpc-bundle.js
+dashboard/gen
 dashboard/tmp

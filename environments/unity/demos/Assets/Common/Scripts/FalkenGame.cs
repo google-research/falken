@@ -27,7 +27,7 @@ public class FalkenGame<PlayerBrainSpec>
     [Tooltip("The Falken service API Key.")]
     public string falkenApiKey = "";
     [Tooltip("The Falken brain human readable name.")]
-    public string brainDisplayName = "Cart Brain";
+    public string brainDisplayName = "A Brain";
     [Tooltip("The Falken brain ID.")]
     public string brainId = null;
     [Tooltip("[Optional] The Falken session snapshot ID.")]
@@ -36,7 +36,7 @@ public class FalkenGame<PlayerBrainSpec>
     public uint falkenMaxSteps = 300;
 
     private Falken.Service _service = null;
-    private Falken.Brain<PlayerBrainSpec> _brain = null;
+    private Falken.BrainBase _brain = null;
     private Falken.Session _session = null;
 
     /// <summary>
@@ -46,7 +46,30 @@ public class FalkenGame<PlayerBrainSpec>
     {
         get
         {
-            return _brain?.BrainSpec;
+            return (PlayerBrainSpec)(_brain?.BrainSpecBase);
+        }
+    }
+
+    /// <summary>
+    /// Getter for training state.
+    /// </summary>
+    public Falken.Session.TrainingState TrainingState
+    {
+        get
+        {
+            return _session != null ? _session.SessionTrainingState :
+                Falken.Session.TrainingState.Invalid;
+        }
+    }
+
+    /// <summary>
+    /// Getter for training progress.
+    /// </summary>
+    public float TrainingProgress
+    {
+        get
+        {
+            return _session != null ? _session.SessionTrainingProgress : 0f;
         }
     }
 
@@ -54,6 +77,14 @@ public class FalkenGame<PlayerBrainSpec>
     /// Connects to Falken service and creates or loads a brain.
     /// </summary>
     public void Init()
+    {
+        Init<PlayerBrainSpec>();
+    }
+
+    /// <summary>
+    /// Connects to Falken service and creates or loads a brain spec subclass.
+    /// </summary>
+    public void Init<BrainSpec>() where BrainSpec : PlayerBrainSpec, new()
     {
         // Connect to Falken service.
         _service = Falken.Service.Connect(falkenProjectId, falkenApiKey);
@@ -70,11 +101,11 @@ public class FalkenGame<PlayerBrainSpec>
         // brain.
         if (String.IsNullOrEmpty(brainId))
         {
-            _brain = _service.CreateBrain<PlayerBrainSpec>(brainDisplayName);
+            _brain = _service.CreateBrain<BrainSpec>(brainDisplayName);
         }
         else
         {
-            _brain = _service.LoadBrain<PlayerBrainSpec>(brainId, snapshotId);
+            _brain = _service.LoadBrain<BrainSpec>(brainId, snapshotId);
         }
         if (_brain == null)
         {

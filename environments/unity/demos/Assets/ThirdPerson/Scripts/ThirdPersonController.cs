@@ -97,38 +97,51 @@ public class ThirdPersonActions : Falken.ActionsBase
     }
 }
 
-public class CameraRelativeActions : ThirdPersonActions
+public class ThirdPersonBrainSpec : Falken.BrainSpecBase
 {
-    public CameraRelativeActions() : base(ControlType.Camera) { }
+    public ThirdPersonBrainSpec() :
+        base(new ThirdPersonActions(ControlType.Player), new ThirdPersonObservations()) {}
+
+    public ThirdPersonBrainSpec(ControlType controlType) :
+        base(new ThirdPersonActions(controlType), new ThirdPersonObservations()) {}
+
+    public ThirdPersonActions Actions
+    {
+        get
+        {
+            return (ThirdPersonActions)ActionsBase;
+        }
+    }
+
+    public ThirdPersonObservations Observations
+    {
+        get
+        {
+            return (ThirdPersonObservations)ObservationsBase;
+        }
+    }
 }
 
-public class PlayerRelativeActions : ThirdPersonActions
+public class CameraRelativeBrainSpec : ThirdPersonBrainSpec
 {
-    public PlayerRelativeActions() : base(ControlType.Player) { }
+    public CameraRelativeBrainSpec() : base(ControlType.Camera) {}
 }
 
-public class WorldRelativeActions : ThirdPersonActions
+public class PlayerRelativeBrainSpec : ThirdPersonBrainSpec
 {
-    public WorldRelativeActions() : base(ControlType.World) { }
+    public PlayerRelativeBrainSpec() : base(ControlType.Player) {}
 }
 
-// Handles Flight and Autoflight mode.
-public class FlightActions : ThirdPersonActions
+public class WorldRelativeBrainSpec : ThirdPersonBrainSpec
 {
-    public FlightActions() : base(ControlType.Flight) { }
+    public WorldRelativeBrainSpec() : base(ControlType.World) {}
 }
 
-public class CameraRelativeBrainSpec :
-    Falken.BrainSpec<ThirdPersonObservations, CameraRelativeActions> { }
+public class FlightBrainSpec : ThirdPersonBrainSpec
+{
+    public FlightBrainSpec() : base(ControlType.Flight) {}
+}
 
-public class PlayerRelativeBrainSpec :
-    Falken.BrainSpec<ThirdPersonObservations, PlayerRelativeActions> { }
-
-public class WorldRelativeBrainSpec :
-    Falken.BrainSpec<ThirdPersonObservations, WorldRelativeActions> { }
-
-public class FlightBrainSpec :
-    Falken.BrainSpec<ThirdPersonObservations, FlightActions> { }
 
 /// <summary>
 /// <c>ThirdPersonController</c> Provides 3P input handling, player physics, and camera control.
@@ -164,8 +177,6 @@ public class ThirdPersonController : MonoBehaviour
     private Falken.Episode _episode;
     private ThirdPersonActions _actions;
     private ThirdPersonObservations _observations;
-
-    private uint _steps = 0;
 
     public GameObject Goal { set { _goal = value; } }
 
@@ -388,20 +399,19 @@ public class ThirdPersonController : MonoBehaviour
         {
             _observations.UpdateFrom(gameObject, thirdPersonCamera.gameObject, _goal);
 
-            if (_falkenControlled)
-            {
-                // Trigger falken action inference.
-                _actions.ActionsSource = Falken.ActionsBase.Source.None;
-            }
-            else
+            if (!_falkenControlled)
             {
                 _actions.joy_axis1.X = moveInput.x;
                 _actions.joy_axis1.Y = moveInput.y;
                 _actions.joy_axis2.X = lookInput.x;
                 _actions.joy_axis2.Y = lookInput.y;
+                _actions.ActionsSource = Falken.ActionsBase.Source.HumanDemonstration;
+            }
+            else
+            {
+                _actions.ActionsSource = Falken.ActionsBase.Source.BrainAction;
             }
 
-            _steps++;
             _episode.Step();
 
             if (_falkenControlled)

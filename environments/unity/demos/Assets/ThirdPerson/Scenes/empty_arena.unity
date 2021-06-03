@@ -669,10 +669,13 @@ MonoBehaviour:
   player: {fileID: 1754845537}
   goal: {fileID: 1382576563}
   boardSize: 50
-  falkenProjectId: 
-  falkenApiKey: 
-  brainLabel: Third Person Brain
-  maxSteps: 500
+  _falkenGame:
+    falkenProjectId: 
+    falkenApiKey: 
+    brainDisplayName: Nega Brain
+    brainId: 
+    snapshotId: 
+    falkenMaxSteps: 500
 --- !u!1001 &1382576562
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -815,8 +818,6 @@ MonoBehaviour:
   cameraYawPitchSpeed: 3
   cameraLookOffset: {x: 0, y: 3, z: 0}
   lockedCamera: 1
-  rayLength: 10
-  falkenControlled: 0
 --- !u!23 &1754845538
 MeshRenderer:
   m_ObjectHideFlags: 0

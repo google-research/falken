@@ -907,8 +907,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ee4a4342fff643f884a308265fc57ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  brainDisplayName: NegaFalken Brain
-  timeScale: 1
   playerOnePrefab: {fileID: 6761130361096985113, guid: 8d8a4c256b08648ac8924b7557540867,
     type: 3}
   playerTwoPrefab: {fileID: 1537761199989577998, guid: d2b68c47dce0049359c6192e048abecd,
@@ -918,11 +916,14 @@ MonoBehaviour:
   playerOneSlider: {fileID: 1049100352}
   playerTwoSlider: {fileID: 188764971}
   targetFPS: 60
-  falkenMaxSteps: 2000
-  falkenProjectId: 
-  falkenApiKey: 
-  snapshotId: 
-  brainId: 
+  timeScale: 1
+  _falkenGame:
+    falkenProjectId: 
+    falkenApiKey: 
+    brainDisplayName: Nega Brain
+    brainId: 
+    snapshotId: 
+    falkenMaxSteps: 2000
 --- !u!4 &296342365
 Transform:
   m_ObjectHideFlags: 0

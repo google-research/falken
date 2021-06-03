@@ -18,6 +18,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// NegaFalkenGame class is required as a workaround given that Unity cannot
+/// serialize an attribute with a generic class type.
+[System.Serializable]
+public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
+{
+}
+
 /// <summary>
 /// <c>SessionController</c> Manages the NegaFalken game state and related Falken state.
 /// </summary>
@@ -42,24 +49,11 @@ public class SessionController : MonoBehaviour
     [Range(0.1f, 10)]
     public float timeScale = 1;
 
-    [Tooltip("Falken ProjectId")]
-    public string falkenProjectId = "";
-    [Tooltip("Falken API Key")]
-    public string falkenApiKey = "";
-    [Tooltip("Falken Brain ID. Leave null to use latest snapshot.")]
-    public string brainId = null;
-    [Tooltip("Falken Snapshot ID. Leave null to use latest snapshot.")]
-    public string snapshotId = null;
-    [Tooltip("Display name of the brain.")]
-    public string brainDisplayName = "NegaFalken Brain";
-    [Tooltip("Maximum number of FixedUpdates in an Episode.")]
-    public uint falkenMaxSteps = 300;
+    [Tooltip("Falken settings.")]
+    public NegaFalkenGame _falkenGame;
     #endregion
 
     #region Protected and private attributes
-    private Falken.Service _service = null;
-    private Falken.Brain<NegaPlayerBrainSpec> _brain = null;
-    private Falken.Session _session = null;
     private NegaFalkenPlayer playerOne;
     private NegaFalkenPlayer playerTwo;
     private float _deltaTime;
@@ -71,47 +65,12 @@ public class SessionController : MonoBehaviour
     }
 
     #region Unity Callbacks
-    void OnEnable()
-    {
-        // Connect to Falken service.
-        _service = Falken.Service.Connect(falkenProjectId, falkenApiKey);
-        if (_service == null)
-        {
-            Debug.Log(
-                "Failed to connect to Falken's services. Make sure" +
-                "You have a valid api key and project id or your " +
-                "json config is properly formated.");
-            brainId = null;
-            return;
-        }
-        // If there is no brainId, create a new one. Othewise, load an existing brain.
-        if (String.IsNullOrEmpty(brainId))
-        {
-            _brain = _service.CreateBrain<NegaPlayerBrainSpec>(brainDisplayName);
-        }
-        else
-        {
-            _brain = _service.LoadBrain<NegaPlayerBrainSpec>(brainId, snapshotId);
-        }
-        brainId = _brain.Id;
-    }
-
     void Start()
     {
         // Try to render at this specified framerate.
         Application.targetFrameRate = targetFPS;
 
-        if (_brain != null)
-        {
-            _session = _brain.StartSession(Falken.Session.Type.InteractiveTraining,
-                falkenMaxSteps);
-        }
-
-        if (_session == null)
-        {
-            Debug.LogError("Error while trying to start a session.");
-        }
-
+        _falkenGame.Init();
         ResetGame();
     }
 
@@ -157,29 +116,24 @@ public class SessionController : MonoBehaviour
         {
             content += "\nTimescale" + timeScale + "x";
         }
-        if (_session != null)
-        {
-            var trainingState = _session.SessionTrainingState;
-            int percentComplete = (int)(_session.SessionTrainingProgress * 100);
-            content += "\n" +
-                ((trainingState == Falken.Session.TrainingState.Complete) ?
-                 "training complete" : trainingState.ToString().ToLower()) +
-                $" ({percentComplete}%)";
-        }
+
+        var trainingState = _falkenGame.TrainingState;
+        int percentComplete = (int)(_falkenGame.TrainingProgress * 100);
+        content += "\n" +
+            ((trainingState == Falken.Session.TrainingState.Complete) ?
+                "training complete" : trainingState.ToString().ToLower()) +
+            $" ({percentComplete}%)";
+        content += "\n" +
+            "1P: " + (playerOne.HumanControlled ? "Human" : "Falken") + "\n" +
+            "2P: " + (playerTwo.HumanControlled ? "Human" : "Falken");
 
         const int width = 100;
-        GUI.Label(
-            new Rect(Screen.width / 2 - width / 2, 10, width, 20), content, style);
+        GUI.Label(new Rect(Screen.width / 2 - width / 2, 10, width, 20), content, style);
     }
 
     void OnDestroy()
     {
-        // Stop the current session if it was running.
-        if (_session != null)
-        {
-            _session.Stop();
-            _session = null;
-        }
+        _falkenGame.Shutdown();
     }
     #endregion
 
@@ -213,8 +167,8 @@ public class SessionController : MonoBehaviour
         NegaFalkenPlayer player = GameObject.Instantiate(prefab, randomPos, randomRot);
         player.SessionController = this;
         player.HealthSlider = slider;
-        player.BrainSpec = _brain.BrainSpec;
-        player.Episode = _session.StartEpisode();
+        player.BrainSpec = _falkenGame.BrainSpec;
+        player.Episode = _falkenGame.CreateEpisode();
         player.GetComponent<Health>().OnKilled += PlayerKilled;
         return player;
     }

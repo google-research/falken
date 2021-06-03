@@ -55,7 +55,7 @@ public class NegaObservations : Falken.ObservationsBase
 /// <summary>
 /// <c>NegaBrainSpec</c> Binding of Actions and Observations for this player.
 /// </summary>
-public class NegaPlayerBrainSpec : Falken.BrainSpec<NegaObservations, NegaActions> {}
+public class NegaBrainSpec : Falken.BrainSpec<NegaObservations, NegaActions> {}
 
 /// <summary>
 /// <c>NegaFalkenPlayer</c> Implements an asteroids-like player that can turn, thurst and fire.
@@ -92,7 +92,7 @@ public class NegaFalkenPlayer : MonoBehaviour
     private Slider _healthSlider;
 
     private SessionController _controller;
-    private NegaPlayerBrainSpec _brainSpec;
+    private NegaBrainSpec _brainSpec = null;
     private Falken.Episode _episode = null;
     private bool _humanControlled = false;
     #endregion
@@ -122,7 +122,7 @@ public class NegaFalkenPlayer : MonoBehaviour
     /// <summary>
     /// Sets the current NegaPlayerBrainSpec.
     /// </summary>
-    public NegaPlayerBrainSpec BrainSpec { set { _brainSpec = value; } }
+    public NegaBrainSpec BrainSpec { set { _brainSpec = value; } }
 
     /// <summary>
     /// Sets whether this agent is human or AI controlled.

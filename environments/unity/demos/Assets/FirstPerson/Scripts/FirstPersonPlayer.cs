@@ -20,6 +20,7 @@ using UnityEngine;
 /// <c>FirstPersonPlayer</c> Player controller for a first-person style game.
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(Health))]
 public class FirstPersonPlayer : MonoBehaviour
 {
     [Tooltip("The speed at which the player moves while walking.")]
@@ -65,8 +66,9 @@ public class FirstPersonPlayer : MonoBehaviour
     public static List<FirstPersonPlayer> Players { get { return players; } }
 
     private CharacterController characterController;
+    private Health health;
     private Vector3 moveDirection = Vector3.zero;
-    private float rotationX = 0;
+    private float rotationX;
     private GameObject reticleTarget;
     private Vector3 reticleHit;
     private static List<FirstPersonPlayer> players = new List<FirstPersonPlayer>();
@@ -74,6 +76,7 @@ public class FirstPersonPlayer : MonoBehaviour
     void OnEnable()
     {
         characterController = GetComponent<CharacterController>();
+        health = GetComponent<Health>();
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         players.Add(this);
@@ -81,6 +84,7 @@ public class FirstPersonPlayer : MonoBehaviour
 
     void OnDisable() {
         characterController = null;
+        health = null;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         players.Remove(this);
@@ -109,6 +113,18 @@ public class FirstPersonPlayer : MonoBehaviour
                 Screen.height * 0.5f - reticlePixels * 0.5f,
                 reticlePixels, reticlePixels);
             GUI.DrawTexture(reticleRect, reticleTexture);
+        }
+
+        if (!health.infiniteHealth) {
+            var background = GUI.skin.box.normal.background;
+            GUI.skin.box.normal.background = Texture2D.whiteTexture;
+            GUI.backgroundColor = Color.red;
+            float healthPercentage = (float)health.CurrentHealth / health.maxHealth;
+            int healthWidth = (int)(Screen.width * 0.05f);
+            int healtHeight = (int)(Screen.height * 0.2f * healthPercentage);
+            GUI.Box(new Rect(healthWidth, Screen.height - healthWidth - healtHeight,
+                healthWidth, healtHeight), "");
+            GUI.skin.box.normal.background = background;
         }
     }
 

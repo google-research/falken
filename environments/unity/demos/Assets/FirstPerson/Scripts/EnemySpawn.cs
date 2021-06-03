@@ -26,6 +26,8 @@ public class EnemySpawn : MonoBehaviour
     [Tooltip("The probability of spawning an enemy from this location.")]
     [Range(0, 1)]
     public float spawnProbability = 1f;
+    [Tooltip("Activate when GameObject is created. Primarily for testing.")]
+    public bool autoActivate;
 
     private GameObject enemy;
     private static List<EnemySpawn> enemySpawns = new List<EnemySpawn>();
@@ -54,6 +56,12 @@ public class EnemySpawn : MonoBehaviour
 
     void OnDisable() {
         enemySpawns.Remove(this);
+    }
+
+    void Start() {
+        if (autoActivate) {
+            Activate();
+        }
     }
 
     void OnDrawGizmos() {

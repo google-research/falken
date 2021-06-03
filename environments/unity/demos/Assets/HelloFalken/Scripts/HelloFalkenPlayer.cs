@@ -73,23 +73,10 @@ public class HelloBrainSpec : Falken.BrainSpec<HelloObservations, HelloActions> 
 /// The player can control the steering and thrust of a ship and then attempts to steer the ship
 /// to a goal object. Ship and goal transforms are randomized every time.
 /// </summary>
-[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(Ship))]
 public class HelloFalkenPlayer : MonoBehaviour
 {
     #region Editor Variables
-    [Tooltip("Maximum amount of force to apply when accelerating.")]
-    [Range(0, 10)]
-    public float movementRate = 10f;
-    [Tooltip("Maximum amount of torque to apply when steering.")]
-    [Range(0, 10)]
-    public float steeringRate = 10f;
-    [Tooltip("Maximum linear speed for this player.")]
-    [Range(0, 10)]
-    public float maxSpeed = 5f;
-    [Tooltip("Maximum angular speed for this player.")]
-    [Range(0, 10)]
-    public float maxTurn = 5f;
-
     [Tooltip("Reference to the goal object that the player needs to move to.")]
     public GameObject goalObject;
     [Tooltip("Reference to the ground plane the player spawns above.")]
@@ -120,7 +107,7 @@ public class HelloFalkenPlayer : MonoBehaviour
     private uint _numSteps;
     private float _lastDistance;
     private float _lastUserInputFixedTime;
-    private Rigidbody _playerRigidBody;
+    private Ship _ship;
     private float _goalTolerance = 0.3f;
     private bool _autopilot = false;
     #endregion
@@ -131,8 +118,7 @@ public class HelloFalkenPlayer : MonoBehaviour
         _service = Falken.Service.Connect(falkenProjectId, falkenApiKey);
         CreateOrLoadBrain();
 
-        _playerRigidBody = gameObject.GetComponent<Rigidbody>();
-        _playerRigidBody.maxAngularVelocity = maxTurn;
+        _ship = gameObject.GetComponent<Ship>();
 
         if (goalObject)
         {
@@ -155,7 +141,7 @@ public class HelloFalkenPlayer : MonoBehaviour
             _session = null;
             _episode = null;
         }
-        _playerRigidBody = null;
+        _ship = null;
     }
 
     void OnGUI()
@@ -236,7 +222,7 @@ public class HelloFalkenPlayer : MonoBehaviour
             }
         }
 
-        ApplyActions(throttle, steering);
+        _ship.ApplyActions(throttle, steering);
     }
     #endregion
 
@@ -308,19 +294,6 @@ public class HelloFalkenPlayer : MonoBehaviour
         }
     }
 
-    private void ApplyActions(float throttle, float steering)
-    {
-        if (_playerRigidBody.velocity.magnitude < maxSpeed)
-        {
-            _playerRigidBody.AddForce(throttle * transform.forward * movementRate);
-        }
-
-        if (_playerRigidBody.angularVelocity.magnitude < maxTurn)
-        {
-            _playerRigidBody.AddTorque(new Vector3(0, steering * steeringRate, 0f));
-        }
-    }
-
     private void CompleteEpisodeAndResetGame(Falken.Episode.CompletionState episodeState)
     {
         if (_session != null)
@@ -346,11 +319,7 @@ public class HelloFalkenPlayer : MonoBehaviour
             _lastDistance = Vector3.Distance(transform.position, goalObject.transform.position);
         } while (_lastDistance < _goalTolerance);
 
-        if (_playerRigidBody)
-        {
-            _playerRigidBody.velocity = new Vector3(0, 0, 0);
-            _playerRigidBody.angularVelocity = new Vector3(0, 0, 0);
-        }
+        _ship.Stop();
     }
 
     private Vector3 GenerateRandomGroundPos(float angle, Vector3 extents)

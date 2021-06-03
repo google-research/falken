@@ -11,9 +11,10 @@ GameObject:
   - component: {fileID: 3180024069426278712}
   - component: {fileID: 3180024069426278709}
   - component: {fileID: 3180024069426278708}
-  - component: {fileID: 3180024069426278711}
   - component: {fileID: 3180024069426278714}
   - component: {fileID: 3180024069426278713}
+  - component: {fileID: 114482528415810830}
+  - component: {fileID: 3180024069426278711}
   m_Layer: 0
   m_Name: HelloPlayer
   m_TagString: MainCamera
@@ -80,30 +81,6 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!114 &3180024069426278711
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3180024069426278710}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6b2b66883f7854afbb096e4171f80a0d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  movementRate: 8
-  steeringRate: 6
-  maxSpeed: 4
-  maxTurn: 3
-  goalObject: {fileID: 0}
-  groundPlane: {fileID: 0}
-  falkenProjectId: 
-  falkenApiKey: 
-  brainId: 
-  snapshotId: 
-  brainLabel: Hello Falken Brain
-  maxSteps: 300
 --- !u!54 &3180024069426278714
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -133,3 +110,39 @@ SphereCollider:
   serializedVersion: 2
   m_Radius: 0.8
   m_Center: {x: 0, y: 0, z: 0.25}
+--- !u!114 &114482528415810830
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3180024069426278710}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b3ed4d1eead14d4f826dd3e1c3cc5ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  movementRate: 8
+  steeringRate: 6
+  maxSpeed: 4
+  maxTurn: 3
+--- !u!114 &3180024069426278711
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3180024069426278710}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b2b66883f7854afbb096e4171f80a0d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  goalObject: {fileID: 0}
+  groundPlane: {fileID: 0}
+  falkenProjectId: 
+  falkenApiKey: 
+  brainId: 
+  snapshotId: 
+  brainLabel: Hello Falken Brain
+  maxSteps: 300

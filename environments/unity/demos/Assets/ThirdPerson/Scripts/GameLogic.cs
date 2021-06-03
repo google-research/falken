@@ -17,40 +17,153 @@ using System.Collections;
 
 public delegate void NotifyGoalReached();
 
+/// <summary>
+/// <c>GameLogic</c> Manages the lifecycle of the ThirdPerson demo.
+/// </summary>
 public class GameLogic : MonoBehaviour
 {
+    [Tooltip("Reference to the player in this game instance.")]
     public ThirdPersonController player;
+    [Tooltip("Reference to the goal object the player needs to move towards.")]
     public GameObject goal;
-    public GameObject floor;
+    [Tooltip("Defines the size of the spawn region for player and goal.")]
+    public float boardSize = 20f;
 
-    public event NotifyGoalReached notifyGoalReached;
+    [Tooltip("Falken ProjectId")]
+    public string falkenProjectId = "";
+    [Tooltip("Falken API Key")]
+    public string falkenApiKey = "";
+    [Tooltip("Display name of the brain.")]
+    public string brainLabel = "Third Person Brain";
+    [Tooltip("Maximum number of FixedUpdates in an Episode.")]
+    public uint maxSteps = 500;
 
-    public int boardSize = 6;
+    private float _goalTolerance = 1f;
+    private float _startHeight = 0f;
 
-    // Difference in position that counts as 'goal reached'.
-    public const float GoalReachedEpsilon = 2.5f;
+    private Falken.Service _service;
+    private Falken.BrainBase _brain;
+    private Falken.Session _session;
+    private Falken.Episode _episode;
 
-    public GameLogic()
+    void Start()
     {
+        if (goal && player)
+        {
+            _startHeight = player.transform.position.y;
+            player.Goal = goal;
+            Vector3 goalPosition = goal.transform.position;
+            goalPosition.y = _startHeight;
+            goal.transform.position = goalPosition;
+            _goalTolerance = goal.GetComponent<Renderer>().bounds.extents.magnitude;
+        }
+        else
+        {
+            Debug.LogWarning("ThirdPersonGame requires a player and a controller.");
+            return;
+        }
+
+        InitFalken();
+        CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Success);
     }
 
-    void SetRandomPosition(GameObject obj, bool y = false)
+    void OnDestroy()
     {
-        obj.transform.position = new Vector3(
-            Random.Range(-boardSize / 2, boardSize / 2),
-            y ? Random.Range(-boardSize / 2, boardSize / 2) :
-                obj.transform.position.y,
-            Random.Range(-boardSize / 2, boardSize / 2));
+        ShutdownFalken();
     }
 
-    void SetRandomRotation(GameObject obj)
+    void FixedUpdate()
     {
-        obj.transform.rotation = Quaternion.AngleAxis(
-            Random.value * 360, new Vector3(0f, 1.0f, 0f));
+        if (_session != null)
+        {
+            if (_episode.Completed)
+            {
+                Debug.Log("Failed to reach goal. Ending episode.");
+                CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Failure);
+            }
+            else if (Vector3.Distance(player.transform.position, goal.transform.position) <
+                _goalTolerance)
+            {
+                Debug.Log("Reached goal. Ending episode with success.");
+                CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Success);
+            }
+        }
     }
 
-    public void Reset()
+    private void InitFalken()
     {
+        if (_service == null)
+        {
+            _service = Falken.Service.Connect(falkenProjectId, falkenApiKey);
+            if (_service == null)
+            {
+                throw new System.Exception("Failed to connect to falken service.");
+            }
+            Debug.Log("Connected to falken service.");
+        }
+
+        switch (player.controlType)
+        {
+            case ControlType.Camera:
+                {
+                    var b = _service.CreateBrain<CameraRelativeBrainSpec>(brainLabel);
+                    player.SetActionsAndObservations(b.BrainSpec.Actions, b.BrainSpec.Observations);
+                    _brain = b;
+                    break;
+                }
+            case ControlType.Player:
+                {
+                    var b = _service.CreateBrain<PlayerRelativeBrainSpec>(brainLabel);
+                    player.SetActionsAndObservations(b.BrainSpec.Actions, b.BrainSpec.Observations);
+                    _brain = b;
+                    break;
+                }
+            case ControlType.World:
+                {
+                    var b = _service.CreateBrain<WorldRelativeBrainSpec>(brainLabel);
+                    player.SetActionsAndObservations(b.BrainSpec.Actions, b.BrainSpec.Observations);
+                    _brain = b;
+                    break;
+                }
+            case ControlType.Flight:
+            case ControlType.AutoFlight:
+                {
+                    var b = _service.CreateBrain<FlightBrainSpec>(brainLabel);
+                    player.SetActionsAndObservations(b.BrainSpec.Actions, b.BrainSpec.Observations);
+                    _brain = b;
+                    break;
+                }
+            default:
+                Debug.Log("Unsupported control type");
+                break;
+        }
+        _session = _brain.StartSession(Falken.Session.Type.InteractiveTraining, maxSteps);
+    }
+
+    private void ShutdownFalken()
+    {
+        if(_session != null)
+        {
+            var endingSnapshotId =  _session.Stop();
+            Debug.Log($"Session completed. session_id: {_session.Id}" +
+                      $" brain_id: {_brain.Id} snapshot_id: " +
+                      $"{endingSnapshotId}");
+            _service = null;
+            _brain = null;
+            _session = null;
+            _episode = null;
+        }
+    }
+
+    /// <summary>
+    /// Completes the current episode if any and creates a new one.
+    /// </summary>
+    private void CreateEpisodeAndResetGame(Falken.Episode.CompletionState episodeState)
+    {
+        _episode?.Complete(episodeState);
+        _episode = _session?.StartEpisode();
+        player.FalkenEpisode = _episode;
+
         bool flight = (
             player.controlType == ControlType.Flight ||
             player.controlType == ControlType.AutoFlight);
@@ -60,8 +173,6 @@ public class GameLogic : MonoBehaviour
             player.transform.rotation = Quaternion.identity;
             SetRandomPosition(player.gameObject, flight);
             SetRandomPosition(goal, flight);
-            goal.transform.position += new Vector3(
-                0, boardSize, boardSize);
         }
         else
         {
@@ -70,26 +181,19 @@ public class GameLogic : MonoBehaviour
             SetRandomPosition(goal, flight);
         }
 
-
-        if (floor) {
-            floor.SetActive(!flight);
-        }
-
-
+        player.Reset();
     }
 
-    void Start()
+    private void SetRandomPosition(GameObject obj, bool y = false)
     {
-        Reset();
+        obj.transform.position = new Vector3(
+            Random.Range(-boardSize / 2, boardSize / 2),
+            y ? _startHeight + Random.Range(-boardSize / 2, boardSize / 2) : _startHeight,
+            Random.Range(-boardSize / 2, boardSize / 2));
     }
 
-    void Update()
+    private void SetRandomRotation(GameObject obj)
     {
-        if (Vector3.Distance(player.transform.position,
-                             goal.transform.position) < GoalReachedEpsilon)
-        {
-            notifyGoalReached();
-            Reset();
-        }
+        obj.transform.rotation = Quaternion.AngleAxis(Random.value * 360, Vector3.up);
     }
 }

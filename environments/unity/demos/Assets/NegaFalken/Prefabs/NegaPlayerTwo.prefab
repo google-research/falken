@@ -13,11 +13,12 @@ GameObject:
   - component: {fileID: 6555466042607671797}
   - component: {fileID: 4568782036782010160}
   - component: {fileID: 6555466042607671800}
-  - component: {fileID: 1537761199989577998}
+  - component: {fileID: 114014789281760892}
   - component: {fileID: 114356582640189310}
   - component: {fileID: 114153839298229126}
+  - component: {fileID: 1537761199989577998}
   m_Layer: 0
-  m_Name: Player Two
+  m_Name: NegaPlayerTwo
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -112,7 +113,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 84
   m_CollisionDetection: 1
---- !u!114 &1537761199989577998
+--- !u!114 &114014789281760892
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -121,14 +122,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 6555466042607671794}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9f908282f3de64925ad9e1a4277a8a1c, type: 3}
+  m_Script: {fileID: 11500000, guid: 7b3ed4d1eead14d4f826dd3e1c3cc5ec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   movementRate: 5
   steeringRate: 1
   maxSpeed: 5
   maxTurn: 2
-  recoil: 20
 --- !u!114 &114356582640189310
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -158,3 +158,16 @@ MonoBehaviour:
     type: 3}
   maxFireRate: 0.5
   muzzleOffset: {x: 0, y: 0, z: 0.6}
+--- !u!114 &1537761199989577998
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6555466042607671794}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f908282f3de64925ad9e1a4277a8a1c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  recoil: 20

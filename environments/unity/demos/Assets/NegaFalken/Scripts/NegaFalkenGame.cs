@@ -19,7 +19,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// <c>NegaGame</c> Manages the NegaFalken game state and related Falken state.
+/// <c>NegaFalkenGame</c> Manages the NegaFalken game state and related Falken state.
 /// </summary>
 public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
 {

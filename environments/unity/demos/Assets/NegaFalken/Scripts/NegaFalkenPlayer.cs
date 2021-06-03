@@ -60,33 +60,19 @@ public class NegaBrainSpec : Falken.BrainSpec<NegaObservations, NegaActions> {}
 /// <summary>
 /// <c>NegaFalkenPlayer</c> Implements an asteroids-like player that can turn, thurst and fire.
 /// </summary>
-[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(Ship))]
 [RequireComponent(typeof(Health))]
 [RequireComponent(typeof(Weapon))]
 public class NegaFalkenPlayer : MonoBehaviour
 {
     #region Editor variables
-    [Tooltip("Maximum amount of force to apply when accelerating.")]
-    [Range(0, 10)]
-    public float movementRate = 5.0f;
-    [Tooltip("Maximum amount of torque to apply when steering.")]
-    [Range(0, 10)]
-    public float steeringRate = 0.15f;
-    [Tooltip("Maximum linear speed for this player.")]
-    [Range(0, 10)]
-    public float maxSpeed = 5f;
-    [Tooltip("Maximum angular speed for this player.")]
-    [Range(0, 10)]
-    public float maxTurn = 5f;
-
-    // Controls
     [Tooltip("Magnitude of the backwards impulse to apply when firing.")]
     [Range(0, 100)]
     public float recoil = 2f;
     #endregion
 
     #region Protected and private attributes
-    private Rigidbody _rBody;
+    private Ship _ship;
     private Health _health;
     private Weapon _weapon;
     private Slider _healthSlider;
@@ -146,9 +132,7 @@ public class NegaFalkenPlayer : MonoBehaviour
     #region Unity Callbacks
     void OnEnable()
     {
-        _rBody = GetComponent<Rigidbody>();
-        _rBody.maxAngularVelocity = maxTurn;
-
+        _ship = GetComponent<Ship>();
         _health = GetComponent<Health>();
         _weapon = GetComponent<Weapon>();
     }
@@ -229,19 +213,12 @@ public class NegaFalkenPlayer : MonoBehaviour
         {
             throttle *= 0.5f;
         }
-        if (_rBody.velocity.magnitude < maxSpeed)
-        {
-            _rBody.AddForce(throttle * transform.forward * movementRate);
-        }
-        if (_rBody.angularVelocity.magnitude < maxTurn)
-        {
-            _rBody.AddTorque(new Vector3(0, steering * steeringRate, 0.0f));
-        }
+        _ship.ApplyActions(throttle, steering);
 
         if (fire)
         {
             _weapon.Fire(null, transform.position + transform.forward * 10f);
-            _rBody.AddForce(-recoil * transform.forward);
+            _ship.ApplyRecoil(recoil);
         }
     }
     #endregion

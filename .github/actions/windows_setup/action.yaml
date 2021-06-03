@@ -1,0 +1,8 @@
+name: 'Windows pre-run setup'
+description: 'Common steps for Linux/MacOS pre-run image preparation'
+runs:
+  using: "composite"
+  steps:
+    - name: Enable git long paths support
+      shell: cmd
+      run: git config --system core.longpaths true

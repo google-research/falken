@@ -1,0 +1,123 @@
+#
+# This workflow builds the debug versions on all platforms and runs tests.
+# Unity builds are only built/tested if the CPP jobs succeed.
+#
+# This workflow is triggered daily.
+#
+# TODO(b/190199635) Enable running the tests once the service is ready.
+#
+name: build_and_test
+on:
+  # Triggers are still a work in progress to be able to debug
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '30 6 * * *'
+  # TODO(b/190199633) remove workflow_dispatch once the repo is stable and testing is working
+  workflow_dispatch:
+env:
+  BUILD_SCRIPT: "sdk/build/build_cmake_project.py"
+  CPP_SDK_REPO_PATH: "sdk/cpp"
+  UNITY_SDK_REPO_PATH: "sdk/unity"
+  PYTHON_VERSION: 3.7
+jobs:
+
+  #
+  # C++ SDK builds
+  #
+
+  cpp_sdk_linux:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/unix_setup
+      - name: Build debug
+        run: >
+          python3 ./$BUILD_SCRIPT
+          --cmake_source_project_root $CPP_SDK_REPO_PATH
+          --cmake_build_configs Debug
+
+  cpp_sdk_macos:
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/unix_setup
+      - name: Build debug
+        run: >
+          python3 ./$BUILD_SCRIPT
+          --cmake_configure_args="-DPYTHON=$(which python3)"
+          --cmake_source_project_root $CPP_SDK_REPO_PATH
+          --cmake_build_configs Debug
+
+  cpp_sdk_windows:
+    runs-on: windows-2016
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/windows_setup
+      - name: Build debug
+        shell: cmd
+        run: >
+          python3 %BUILD_SCRIPT%
+          --cmake_source_project_root %CPP_SDK_REPO_PATH%
+          --cmake_build_configs Debug
+
+  #
+  # Unity SDK builds
+  #
+
+  unity_sdk_linux:
+    needs: cpp_sdk_linux
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/unix_setup
+      - name: Build debug
+        run: >
+          python3 ./$BUILD_SCRIPT
+          --cmake_source_project_root $UNITY_SDK_REPO_PATH
+          --cmake_build_configs Debug
+
+  unity_sdk_macos:
+    needs: cpp_sdk_macos
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/unix_setup
+      - name: Build debug
+        run: >
+          python3 ./$BUILD_SCRIPT
+          --cmake_configure_args="-DPYTHON=$(which python3)"
+          --cmake_source_project_root $UNITY_SDK_REPO_PATH
+          --cmake_build_configs Debug
+
+  unity_sdk_windows:
+    needs: cpp_sdk_windows
+    runs-on: windows-2016
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/windows_setup
+      - name: Build debug
+        shell: cmd
+        run: >
+          python3 %BUILD_SCRIPT%
+          --cmake_source_project_root %UNITY_SDK_REPO_PATH%
+          --cmake_build_configs Debug

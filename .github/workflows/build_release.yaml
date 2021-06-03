@@ -1,0 +1,276 @@
+#
+# This workflow runs the full release pipeline, building all versions
+# platforms, packaging the resulting artifacts and uploading the assets
+# to Github.
+#
+name: build_release
+on:
+  # Triggers are still a work in progress to be able to debug
+  # TODO(b/190199633) remove workflow_dispatch once the repo is stable and testing is working
+  workflow_dispatch:
+env:
+  BUILD_SCRIPT: "sdk/build/build_cmake_project.py"
+  CPP_SDK_REPO_PATH: "sdk/cpp"
+  UNITY_SDK_REPO_PATH: "sdk/unity"
+  PYTHON_VERSION: 3.7
+  INPUT_ARTIFACTS_DIR: "artifacts/input"
+  OUTPUT_ARTIFACTS_DIR: "artifacts/output"
+  ASSETS_DIR_IN_BUILD: falken_unity_build/intermediates/staging/Assets
+  UNITY_PACKAGE_FILE_IN_BUILD: falken_unity_build/bin/falken.unitypackage
+jobs:
+
+  #
+  # C++ SDK builds
+  #
+
+  cpp_sdk_linux:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/unix_setup
+      - name: Build release and pack it
+        run: >
+          python3 ./$BUILD_SCRIPT
+          --cmake_source_project_root $CPP_SDK_REPO_PATH
+          --cmake_build_configs Release
+          --cmake_package_configs Release
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.job }}_artifacts
+          path: output/*
+          retention-days: 3
+
+  cpp_sdk_macos:
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/unix_setup
+      - name: Build release and pack it
+        run: >
+          python3 ./$BUILD_SCRIPT
+          --cmake_configure_args="-DPYTHON=$(which python3)"
+          --cmake_source_project_root $CPP_SDK_REPO_PATH
+          --cmake_build_configs Release
+          --cmake_package_configs Release
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.job }}_artifacts
+          path: output/*
+          retention-days: 3
+
+  cpp_sdk_windows_release:
+    runs-on: windows-2016
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/windows_setup
+      - name: Build both debug and release, and pack both
+        shell: cmd
+        run: >
+          python3 %BUILD_SCRIPT%
+          --cmake_source_project_root %CPP_SDK_REPO_PATH%
+          --cmake_build_configs Release
+          --cmake_package_configs Release
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.job }}_artifacts
+          path: output/*
+          retention-days: 3
+
+  cpp_sdk_windows_debug:
+    runs-on: windows-2016
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/windows_setup
+      - name: Build both debug and release, and pack both
+        shell: cmd
+        run: >
+          python3 %BUILD_SCRIPT%
+          --cmake_source_project_root %CPP_SDK_REPO_PATH%
+          --cmake_build_configs Debug
+          --cmake_package_configs Debug
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.job }}_artifacts
+          path: output/*
+          retention-days: 3
+
+  #
+  # Unity SDK builds
+  #
+
+  unity_sdk_linux:
+    env:
+      ASSETS_ZIP_FILE: falken_unity_sdk-Linux
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/unix_setup
+      - name: Build release and pack it
+        run: >
+          python3 ./$BUILD_SCRIPT
+          --cmake_source_project_root $UNITY_SDK_REPO_PATH
+          --cmake_build_configs Release
+          --cmake_package_configs Release
+          --zip_artifacts $ASSETS_DIR_IN_BUILD:$ASSETS_ZIP_FILE
+          --copy_artifacts $UNITY_PACKAGE_FILE_IN_BUILD
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.job }}_artifacts
+          path: output/*
+          retention-days: 3
+
+  unity_sdk_macos:
+    env:
+      ASSETS_ZIP_FILE: falken_unity_sdk-Darwin
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/unix_setup
+      - name: Build release and pack it
+        run: >
+          python3 ./$BUILD_SCRIPT
+          --cmake_configure_args="-DPYTHON=$(which python3)"
+          --cmake_source_project_root $UNITY_SDK_REPO_PATH
+          --cmake_build_configs Release
+          --cmake_package_configs Release
+          --zip_artifacts $ASSETS_DIR_IN_BUILD:$ASSETS_ZIP_FILE
+          --copy_artifacts $UNITY_PACKAGE_FILE_IN_BUILD
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.job }}_artifacts
+          path: output/*
+          retention-days: 3
+
+  unity_sdk_windows:
+    env:
+      ASSETS_ZIP_FILE: falken_unity_sdk-Windows
+    runs-on: windows-2016
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: ./.github/actions/windows_setup
+      - name: Build release and pack it
+        shell: cmd
+        run: >
+          python3 %BUILD_SCRIPT%
+          --cmake_source_project_root %UNITY_SDK_REPO_PATH%
+          --cmake_build_configs Release
+          --cmake_package_configs Release
+          --zip_artifacts %ASSETS_DIR_IN_BUILD%:%ASSETS_ZIP_FILE%
+          --copy_artifacts %UNITY_PACKAGE_FILE_IN_BUILD%
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.job }}_artifacts
+          path: output/*
+          retention-days: 3
+
+  #
+  # Multiplatform artifact collection
+  #
+
+  cpp_sdk_multiplatform:
+    env:
+      PACK_SCRIPT: "./sdk/build/multiplatform_pack_cpp.sh"
+    needs:
+      - cpp_sdk_linux
+      - cpp_sdk_macos
+      - cpp_sdk_windows_release
+      - cpp_sdk_windows_debug
+    runs-on:  ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        with:
+          name: cpp_sdk_linux_artifacts
+          path: ${{ env.INPUT_ARTIFACTS_DIR }}/Linux
+      - uses: actions/download-artifact@v2
+        with:
+          name: cpp_sdk_macos_artifacts
+          path: ${{ env.INPUT_ARTIFACTS_DIR }}/Darwin
+      - uses: actions/download-artifact@v2
+        with:
+          name: cpp_sdk_windows_release_artifacts
+          path: ${{ env.INPUT_ARTIFACTS_DIR }}/Windows
+      - uses: actions/download-artifact@v2
+        with:
+          name: cpp_sdk_windows_debug_artifacts
+          path: ${{ env.INPUT_ARTIFACTS_DIR }}/Windows
+      - name: Run packing script
+        run: $PACK_SCRIPT
+      - name: Upload packaged artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.job }}_packaged_artifacts
+          path: ${{ env.OUTPUT_ARTIFACTS_DIR }}/*
+          retention-days: 3
+
+  unity_sdk_multiplatform:
+    env:
+      PACK_SCRIPT: "./sdk/build/multiplatform_pack_unity.sh"
+    needs:
+      - unity_sdk_linux
+      - unity_sdk_macos
+      - unity_sdk_windows
+    runs-on:  ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        with:
+          name: unity_sdk_linux_artifacts
+          path: ${{ env.INPUT_ARTIFACTS_DIR }}/Linux
+      - uses: actions/download-artifact@v2
+        with:
+          name: unity_sdk_macos_artifacts
+          path: ${{ env.INPUT_ARTIFACTS_DIR }}/Darwin
+      - uses: actions/download-artifact@v2
+        with:
+          name: unity_sdk_windows_artifacts
+          path: ${{ env.INPUT_ARTIFACTS_DIR }}/Windows
+      - name: Run packing script
+        run: $PACK_SCRIPT
+      - name: Upload packaged artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.job }}_packaged_artifacts
+          path: ${{ env.OUTPUT_ARTIFACTS_DIR }}/*
+          retention-days: 3
+
+  upload_release_assets:
+    needs:
+      - cpp_sdk_multiplatform
+      - unity_sdk_multiplatform
+    runs-on:  ubuntu-18.04
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: cpp_sdk_multiplatform_packaged_artifacts
+          path: ${{ env.INPUT_ARTIFACTS_DIR }}
+      - uses: actions/download-artifact@v2
+        with:
+          name: unity_sdk_multiplatform_packaged_artifacts
+          path: ${{ env.INPUT_ARTIFACTS_DIR }}
+      - name: List of input artifacts
+        run: ls -lR ${{ env.INPUT_ARTIFACTS_DIR }}

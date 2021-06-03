@@ -22,6 +22,7 @@ import os
 import os.path
 import re
 import shutil
+import time
 
 import braceexpand
 import flufl.lock
@@ -41,7 +42,12 @@ class FileSystem(object):
     Args:
       root_path: Path where all Falken files will be stored.
     """
-    self._root_path = root_path
+    self._root_path = os.path.realpath(root_path)
+
+  def _resolve(self, path):
+    absolute_path = os.path.realpath(os.path.join(self._root_path, path))
+    assert absolute_path.startswith(self._root_path)
+    return absolute_path
 
   def read_file(self, path):
     """Reads a file.
@@ -51,7 +57,7 @@ class FileSystem(object):
     Returns:
       A bytes-like object containing the contents of the file.
     """
-    with open(os.path.join(self._root_path, path), 'rb') as f:
+    with open(self._resolve(path), 'rb') as f:
       return f.read()
 
   def write_file(self, path, data):
@@ -61,7 +67,7 @@ class FileSystem(object):
       path: The path of the file to write the data to.
       data: A bytes-like object containing the data to write.
     """
-    destination_path = os.path.join(self._root_path, path)
+    destination_path = self._resolve(path)
     directory = os.path.dirname(destination_path)
 
     os.makedirs(directory, exist_ok=True)
@@ -78,7 +84,10 @@ class FileSystem(object):
     Args:
       path: The path of the file to remove.
     """
-    os.remove(os.path.join(self._root_path, path))
+    os.remove(self._resolve(path))
+
+  def remove_tree(self, path):
+    shutil.rmtree(self._resolve(path))
 
   def get_modification_time(self, path):
     """Gives the modification time of a file.
@@ -88,7 +97,7 @@ class FileSystem(object):
     Returns:
       An int with the number of milliseconds since epoch.
     """
-    return int(1000 * os.path.getmtime(os.path.join(self._root_path, path)))
+    return int(1000 * os.path.getmtime(self._resolve(path)))
 
   def glob(self, pattern):
     """Encapsulates glob.glob.
@@ -129,7 +138,7 @@ class FileSystem(object):
       A flufl.Lock object that can be unlocked with unlock_file.
     """
     lock_failure_text = f'Could not lock file {path}.'
-    path = os.path.join(self._root_path, self._get_lock_path(path))
+    path = self._resolve(self._get_lock_path(path))
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
@@ -196,6 +205,32 @@ class FileSystem(object):
       The path to the lock file.
     """
     return os.path.join(os.path.dirname(path), '.lock')
+
+  def get_staleness(self, path):
+    """Computes millisecond staleness of file or directory.
+
+    The staleness of a file is the duration in seconds since its last
+    modification. The staleness of a directory is the smaller of:
+    * The duration in seconds since its last modification, and
+    * The staleness of any of its contents, staleness being defined recursively.
+
+    Args:
+      path: The directory or file to check for staleness.
+
+    Returns:
+      The milliseconds since last modification of the tree at path as an int.
+    """
+    resolved_path = self._resolve(path)
+
+    max_mtime = 0
+    if os.path.isdir(resolved_path):
+      for dirpath, dirnames, filenames in os.walk(resolved_path):
+        for p in dirnames + filenames:
+          p_mtime = os.path.getmtime(os.path.join(dirpath, p))
+          max_mtime = max(max_mtime, p_mtime)
+    else:
+      max_mtime = os.path.getmtime(resolved_path)
+    return int((time.time() - max_mtime) * 1000)
 
 
 class FakeFileSystem(object):

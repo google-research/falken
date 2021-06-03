@@ -18,6 +18,7 @@ import glob
 import os.path
 import tempfile
 import time
+from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -93,6 +94,31 @@ class FileSystemTest(parameterized.TestCase):
           pass
 
     self.assertFalse(self._fs.exists(self._fs._get_lock_path(path)))
+
+  @mock.patch.object(time, 'time')
+  def test_get_staleness(self, time_mock):
+    path = 'dirA/dirB/file.pb'
+    self._fs.write_file(path, self._text)
+
+    # Check that youngest mtime is being found recursively.
+    time_mock.return_value = 103
+    with mock.patch.object(os.path, 'getmtime') as getmtime_mock:
+      def _getmtime_side_effect(path):
+        if path.endswith('file.pb'):
+          return 102
+        else:
+          return 101
+      getmtime_mock.side_effect = _getmtime_side_effect
+      self.assertEqual(
+          self._fs.get_staleness('dirA'),
+          1000)
+
+  def test_remove_tree(self):
+    path = 'dirA/dirB/file.pb'
+    self._fs.write_file(path, self._text)
+    self.assertTrue(self._fs.exists(path))
+    self._fs.remove_tree('dirA')
+    self.assertFalse(self._fs.exists(path))
 
 
 if __name__ == '__main__':

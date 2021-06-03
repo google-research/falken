@@ -34,7 +34,7 @@ import common.generate_protos  # pylint: disable=unused-import
 import data_store_pb2
 
 
-_DEFAULT_STALE_SECONDS = 600
+_DEFAULT_STALE_SECONDS = 3600
 
 
 class NotFoundError(Exception):
@@ -56,7 +56,7 @@ def wrap_data_store_exception(fun):
 class SessionState:
   NEW = 1          # No data submitted yet.
   IN_PROGRESS = 2  # Data submitted recently.
-  STALE = 3         # No recent data submitted.
+  STALE = 3        # No recent data submitted.
   ENDED = 4        # Session marked as ended.
 
   @classmethod

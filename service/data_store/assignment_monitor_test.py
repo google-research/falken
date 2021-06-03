@@ -183,6 +183,38 @@ class AssignmentMonitorTest(parameterized.TestCase):
     assignment_callback.assert_not_called()
     chunk_callback.assert_not_called()
 
+  @mock.patch.object(
+      assignment_monitor, '_Metronome', new=assignment_monitor._FakeMetronome)
+  def test_lock_refresh(self):
+    """Test that assignment lock is refreshed in every poll."""
+    refresh_called = threading.Event()
+    def refresh_lock_side_effect(*unused_args):
+      refresh_called.set()
+
+    self._monitor._metronome.stop()
+    self._monitor = assignment_monitor.AssignmentMonitor(
+        self._fs, lambda x: None, lambda x: None)
+
+    metronome = self._monitor._metronome
+    self._fs.refresh_lock = mock.Mock(side_effect=refresh_lock_side_effect)
+
+    assignment_id = resource_id.FalkenResourceId(
+        project='p0', brain='b0', session='s0', assignment='a0')
+    self.assertTrue(self._monitor.acquire_assignment(assignment_id))
+    lock = self._monitor._acquired_assignment_lock_file
+
+    self._fs.refresh_lock.assert_not_called()
+    for _ in range(3):
+      metronome.force_tick()
+      self.assertTrue(refresh_called.wait(3))
+      self._fs.refresh_lock.assert_called_once_with(
+          lock, assignment_monitor._ASSIGNMENT_EXPIRATION_SECONDS)
+      refresh_called.clear()
+      self._fs.refresh_lock.reset_mock()
+
+    metronome.stop()
+    self._fs.refresh_lock.assert_not_called()
+
 
 if __name__ == '__main__':
   absltest.main()

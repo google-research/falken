@@ -145,6 +145,16 @@ class FileSystem(object):
 
     return lock
 
+  def refresh_lock(self, lock, expire_after=60*60):
+    """Refreshes a file lock.
+
+    Args:
+      lock: A lock object returned by lock_file.
+      expire_after: How many seconds to wait for the lock to expire again.
+        Default is one hour.
+    """
+    lock.refresh(expire_after)
+
   def unlock_file(self, lock):
     """Unlocks a file.
 

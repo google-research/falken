@@ -65,6 +65,10 @@ from data_store import file_system
 from data_store import resource_id
 
 
+# Seconds before an assignment acquisition expires.
+_ASSIGNMENT_EXPIRATION_SECONDS = 5 * 60  # Five minutes.
+
+
 class _Metronome:
   """Yields values with a maximum frequency."""
 
@@ -250,7 +254,8 @@ class AssignmentMonitor(_AssignmentMonitorBase):
 
       lock_path = self._get_assignment_directory(assignment_id)
       try:
-        self._acquired_assignment_lock_file = self._fs.lock_file(lock_path)
+        self._acquired_assignment_lock_file = self._fs.lock_file(
+            lock_path, _ASSIGNMENT_EXPIRATION_SECONDS)
       except file_system.UnableToLockFileError:
         self._acquired_assignment_lock_file = None
         return False
@@ -277,6 +282,10 @@ class AssignmentMonitor(_AssignmentMonitorBase):
 
       with self._acquired_assignment_in_process_lock:
         if self._acquired_assignment_id:
+          self._fs.refresh_lock(
+              self._acquired_assignment_lock_file,
+              _ASSIGNMENT_EXPIRATION_SECONDS)
+
           chunks = self._pop_episode_chunks(self._acquired_assignment_id)
 
           if chunks:

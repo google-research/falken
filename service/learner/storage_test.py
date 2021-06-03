@@ -419,11 +419,13 @@ class StorageTest(parameterized.TestCase):
 
   def test_record_assignment_progress(self):
     """Ensure the assignment is updated in record_assignment_progress."""
-    assignment_res_id = self.data_store.write(test_data.assignment())
-    self.storage._enqueue_pending_assignment(assignment_res_id)
+    assignment = test_data.assignment()
+    assignment_res_id = self.data_store.write(assignment)
 
+    self.storage._enqueue_pending_assignment(
+        self.data_store.to_resource_id(self.assignment))
     self.storage.receive_assignment()
-    self.storage.record_assignment_progress(0.5, 123_456_789)
+    self.storage.record_assignment_progress(assignment, 0.5, 123_456_789)
 
     got = self.data_store.read(assignment_res_id)
     want_progress = data_store_pb2.AssignmentProgress(

@@ -212,6 +212,15 @@ class ModelExporter:
           training_examples_completed, max_training_examples,
           most_recent_demo_time_micros, publish_path, publish_zip_path,
           model_id, stats.get_model_latency_proto())
+      if (not max_training_examples or
+          training_examples_completed > max_training_examples):
+        training_progress = 1.0
+      else:
+        training_progress = training_examples_completed / max_training_examples
+      self._storage.record_assignment_progress(
+          assignment=self._assignment,
+          training_progress=training_progress,
+          most_recent_demo_time_micros=most_recent_demo_time_micros)
 
     with stats.record_event(stats_collector.FALKEN_RECORD_EVAL_EVENT_NAME):
       self._storage.record_evaluations(self._assignment, model_id, eval_list,

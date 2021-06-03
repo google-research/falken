@@ -32,6 +32,10 @@ from learner import storage
 from learner import test_data
 from learner.brains import continuous_imitation_brain
 
+# pylint: disable=g-bad-import-order
+import common.generate_protos  # pylint: disable=unused-import
+import data_store_pb2
+
 
 class ModelExporterTest(parameterized.TestCase):
 
@@ -258,6 +262,22 @@ class ModelExporterTest(parameterized.TestCase):
           'test_checkpoint_path', self._eval_tuples, self._stats, 'model_id',
           'episode_id', 0, training_examples_completed=10,
           max_training_examples=100, most_recent_demo_time_micros=0)
+
+  def test_assignment_progress_updated(self):
+    self.initialize_and_start_model_exporter(True)
+    checkpoint_path_0 = os.path.join(self.tmp_models_path, '0/checkpoint')
+    self.setup_valid_checkpoint(checkpoint_path_0, True)
+    self._model_exporter.export_model(
+        checkpoint_path_0, self._eval_tuples, self._stats, 'model_id_0',
+        'episode_id', 0, training_examples_completed=50,
+        max_training_examples=100, most_recent_demo_time_micros=100_000)
+    self._model_exporter.stop()
+    got = self._data_store.read(
+        self._data_store.to_resource_id(self._assignment))
+    self.assertEqual(
+        got.progress,
+        data_store_pb2.AssignmentProgress(training_progress=0.5,
+                                          most_recent_demo_time_micros=100_000))
 
 
 if __name__ == '__main__':

@@ -468,10 +468,15 @@ class Storage:
     return assignment
 
   def record_assignment_progress(
-      self, training_progress, most_recent_demo_time_micros):
+      self, assignment, training_progress, most_recent_demo_time_micros):
     """Record the training progress of the assignment being processed.
 
+    This function modifies the assignment proto's assignment_progress field
+    and writes it to the datastore.
+
     Args:
+      assignment: A data_store_pb2 assignment proto. This needs to be the
+          assignment owned by this storage instance.
       training_progress: A float between 0 (untrained) and 1 (fully trained)
           representing the training progress of the most recently exported
           model for this assignment.
@@ -479,8 +484,7 @@ class Storage:
           recent chunk of data containing demonstrations that a model has been
           trained on.
     """
-    assert self._in_progress_assignment
-    progress = self._in_progress_assignment.progress
+    progress = assignment.progress
     progress.training_progress = training_progress
     progress.most_recent_demo_time_micros = most_recent_demo_time_micros
-    self._data_store.write(self._in_progress_assignment)
+    self._data_store.write(assignment)

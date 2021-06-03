@@ -24,8 +24,11 @@ The assignment monitor allows for two kinds of monitoring:
   Strong guarantees apply in this case: This is a producer-consumer scheme
   in which there's only one consumer at a time (acquiring an assignment is
   exclusive). All new chunks will be consumed by the consumer process,
-  and in the transition from one consumer process to another, each chunk
-  will be sent to either process, but no chunk will be sent to both.
+  and in a transition from one consumer process to another, each chunk will be
+  sent to either process, but no chunk will be sent to both. The only exception
+  to this is when release_assignment isn't called (for example in the case
+  of a crash), in which case notifications will be sent again to the next
+  process.
 
   The notifications on acquired assignments can be taken to mean "this
   assignment has new training data available", and since acquiring is
@@ -218,6 +221,9 @@ class AssignmentMonitor(_AssignmentMonitorBase):
     # process.
     self._acquired_assignment_in_process_lock = threading.Lock()
 
+    # List of chunk files to remove whenever an assignment is released.
+    self._chunk_files_to_remove = []
+
     # Set callbacks.
     self._assignment_callback = assignment_callback
     self._chunk_callback = chunk_callback
@@ -261,6 +267,7 @@ class AssignmentMonitor(_AssignmentMonitorBase):
         return False
 
       self._acquired_assignment_id = assignment_id
+      self._chunk_files_to_remove = []
       return True
 
   def release_assignment(self):
@@ -270,6 +277,12 @@ class AssignmentMonitor(_AssignmentMonitorBase):
         raise ValueError(
             'Attempted to release an assignment, but none has been acquired '
             'yet.')
+
+      # By removing these files, we ensure they won't be sent as notifications
+      # from any process, in the future.
+      for f in self._chunk_files_to_remove:
+        self._fs.remove_file(f)
+      self._chunk_files_to_remove = []
 
       self._fs.unlock_file(self._acquired_assignment_lock_file)
       self._acquired_assignment_id = None
@@ -314,6 +327,9 @@ class AssignmentMonitor(_AssignmentMonitorBase):
     chunks = []
     files = self._fs.glob(os.path.join(
         self._get_assignment_directory(assignment_id), 'chunk_*'))
+    files = sorted(list(set(files) - set(self._chunk_files_to_remove)))
+    self._chunk_files_to_remove.extend(files)
+
     for f in files:
       id_parts = os.path.basename(f).split('_')
       if len(id_parts) != 3 or id_parts[0] != 'chunk':
@@ -331,8 +347,6 @@ class AssignmentMonitor(_AssignmentMonitorBase):
           session=assignment_id.session,
           episode=episode_id,
           chunk=int(chunk_id)))
-
-      self._fs.remove_file(f)
 
     return chunks
 

@@ -14,6 +14,7 @@
 
 """Tests for AssignmentMonitor."""
 
+import os.path
 import tempfile
 import threading
 import types
@@ -182,6 +183,39 @@ class AssignmentMonitorTest(parameterized.TestCase):
     metronome.stop()
     assignment_callback.assert_not_called()
     chunk_callback.assert_not_called()
+
+  @mock.patch.object(
+      assignment_monitor, '_Metronome', new=assignment_monitor._FakeMetronome)
+  def test_release_assignment_removes_files(self):
+    """Verifies that chunks are removed when releasing an assignment."""
+    callback_called = threading.Event()
+    def callback(*unused_args):
+      callback_called.set()
+
+    self._monitor._metronome.stop()
+    self._monitor = assignment_monitor.AssignmentMonitor(
+        self._fs, lambda x: None, callback)
+    metronome = self._monitor._metronome
+
+    assignment_id = resource_id.FalkenResourceId(
+        project='p0', brain='b0', session='s0', assignment='a0')
+    chunk_id = resource_id.FalkenResourceId(
+        project='p0', brain='b0', session='s0', episode='e0',
+        chunk=0)
+
+    self._notifier.trigger_assignment_notification(assignment_id, chunk_id)
+    self.assertTrue(self._monitor.acquire_assignment(assignment_id))
+    metronome.force_tick()
+    self.assertTrue(callback_called.wait(3))
+
+    chunk_path = os.path.join(
+        self._monitor._get_assignment_directory(assignment_id), 'chunk_e0_0')
+    self.assertTrue(self._fs.exists(chunk_path))
+
+    self._monitor.release_assignment()
+    self.assertFalse(self._fs.exists(chunk_path))
+
+    metronome.stop()
 
   @mock.patch.object(
       assignment_monitor, '_Metronome', new=assignment_monitor._FakeMetronome)

@@ -27,12 +27,12 @@ class ModelScoresTest(absltest.TestCase):
     scores.add_score('model_id_0', 20.0)
     scores.add_score('model_id_1', 0.2)
     scores.add_score('model_id_2', -0.2)
-    # Worse than the worst, so does not get added.
-    scores.add_score('model_id_2', 30.0)
-    self.assertEqual(scores.model_scores,
+    scores.add_score('model_id_3', 30.0)
+    self.assertEqual(scores,
                      [model_selection_record.ModelScore('model_id_2', -0.2),
                       model_selection_record.ModelScore('model_id_1', 0.2),
-                      model_selection_record.ModelScore('model_id_0', 20.0)])
+                      model_selection_record.ModelScore('model_id_0', 20.0),
+                      model_selection_record.ModelScore('model_id_3', 30.0)])
 
   def test_model_ids(self):
     scores = model_selection_record.ModelScores()
@@ -43,12 +43,12 @@ class ModelScoresTest(absltest.TestCase):
     self.assertEqual(scores.model_ids,
                      set(['model_id_0', 'model_id_1', 'model_id_2']))
 
-  def test_remove_score(self):
+  def test_remove_model(self):
     scores = model_selection_record.ModelScores()
     scores.add_score('model_id_0', 20.0)
     scores.add_score('model_id_1', 0.2)
-    scores.remove_score(model_selection_record.ModelScore('model_id_0', 20.0))
-    self.assertEqual(scores.model_scores,
+    scores.remove_model('model_id_0')
+    self.assertEqual(scores,
                      [model_selection_record.ModelScore('model_id_1', 0.2)])
 
 
@@ -62,30 +62,38 @@ class OfflineEvaluationByAssignmentAndEvalIdTest(absltest.TestCase):
         'model_id_1', -76.0)
     scores[model_selection_record.AssignmentEvalId('a2', 2)].add_score(
         'model_id_2', -0.2)
+    scores[model_selection_record.AssignmentEvalId('a2', 0)].add_score(
+        'model_id_3', -30)
     scores[model_selection_record.AssignmentEvalId('a2', 1)].add_score(
         'model_id_3', -0.2)
-    scores[model_selection_record.AssignmentEvalId('a2', 1)].add_score(
-        'model_id_3', -30)
-    self.assertEqual(
+    scores[model_selection_record.AssignmentEvalId('a2', 0)].add_score(
+        'model_id_4', 1.0)
+    scores[model_selection_record.AssignmentEvalId('a2', 0)].add_score(
+        'model_id_5', 1.5)
+    self.assertSequenceEqual(
         scores.scores_by_offline_evaluation_id('a0'),
-        [(1, model_selection_record.ModelScore(
-            model_id='model_id_1', score=-76.0)),
-         (0, model_selection_record.ModelScore(
-             model_id='model_id_0', score=0.8))])
-    self.assertEqual(
+        [(1, model_selection_record.ModelScore(model_id='model_id_1',
+                                               score=-76.0)),
+         (0, model_selection_record.ModelScore(model_id='model_id_0',
+                                               score=0.8))])
+    self.assertSequenceEqual(
         scores.scores_by_offline_evaluation_id('a2'),
-        [(2, model_selection_record.ModelScore(
-            model_id='model_id_2', score=-0.2)),
-         (1, model_selection_record.ModelScore(
-             model_id='model_id_3', score=-30)),
-         (1, model_selection_record.ModelScore(
-             model_id='model_id_3', score=-0.2))])
+        [(2, model_selection_record.ModelScore(model_id='model_id_2',
+                                               score=-0.2)),
+         (1, model_selection_record.ModelScore(model_id='model_id_3',
+                                               score=-0.2)),
+         (0, model_selection_record.ModelScore(model_id='model_id_4',
+                                               score=1.0)),
+         (0, model_selection_record.ModelScore(model_id='model_id_5',
+                                               score=1.5))])
 
     # Limit number of model IDs.
-    self.assertEqual(
-        scores.scores_by_offline_evaluation_id('a2', 1),
-        [(2, model_selection_record.ModelScore(
-            model_id='model_id_2', score=-0.2))])
+    self.assertSequenceEqual(
+        scores.scores_by_offline_evaluation_id('a2', 2),
+        [(2, model_selection_record.ModelScore(model_id='model_id_2',
+                                               score=-0.2)),
+         (1, model_selection_record.ModelScore(model_id='model_id_3',
+                                               score=-0.2))])
 
   def test_model_ids_for_assignment_id(self):
     scores = model_selection_record.OfflineEvaluationByAssignmentAndEvalId()
@@ -113,22 +121,23 @@ class OfflineEvaluationByAssignmentAndEvalIdTest(absltest.TestCase):
         'model_id_3', -0.2)
     self.assertEqual(scores.assignment_ids, set(['a0', 'a2']))
 
-  def test_remove_score(self):
+  def test_remove_model(self):
     scores = model_selection_record.OfflineEvaluationByAssignmentAndEvalId()
     scores[model_selection_record.AssignmentEvalId('a0', 0)].add_score(
         'model_id_0', 0.8)
     scores[model_selection_record.AssignmentEvalId('a0', 0)].add_score(
         'model_id_1', -76.0)
-    scores.remove_score('a0', 0,
-                        model_selection_record.ModelScore('model_id_1', -76.0))
-    self.assertEqual(
-        list(scores.keys()), [model_selection_record.AssignmentEvalId('a0', 0)])
-    self.assertLen(scores.values(), 1)
-    self.assertEqual(scores[('a0', 0)].model_scores,
-                     [model_selection_record.ModelScore('model_id_0', 0.8)])
-    scores.remove_score('a0', 0,
-                        model_selection_record.ModelScore('model_id_0', 0.8))
-    self.assertEmpty(scores.items())
+    scores[model_selection_record.AssignmentEvalId('a1', 1)].add_score(
+        'model_id_1', -42.0)
+    scores.remove_model('model_id_1')
+
+    expected = model_selection_record.OfflineEvaluationByAssignmentAndEvalId()
+    expected[model_selection_record.AssignmentEvalId('a0', 0)].add_score(
+        'model_id_0', 0.8)
+    self.assertDictEqual(scores, expected)
+
+    scores.remove_model('model_id_0')
+    self.assertEmpty(scores)
 
 
 class SummaryMapTest(absltest.TestCase):
@@ -152,6 +161,8 @@ class SummaryMapTest(absltest.TestCase):
         summary_map.eval_summary_for_assignment_and_model('a0', 'm1'),
         model_selection_record.EvaluationSummary(
             model_id='m1', offline_scores={1: -22.0}, online_scores=[1.0]))
+    self.assertIsNone(summary_map.eval_summary_for_assignment_and_model(
+        'a2', 'm1'))
 
 if __name__ == '__main__':
   absltest.main()

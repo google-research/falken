@@ -15,6 +15,7 @@
 # Lint as: python3
 """Contains classes that contains records for model selection."""
 import collections
+import copy
 import typing
 
 
@@ -41,29 +42,40 @@ class ModelScores:
   def __init__(self):
     self._model_scores = []
 
+  def __repr__(self):
+    """Convert the object to a string."""
+    return str(list(self._model_scores))
+
+  def __eq__(self, other: 'ModelScores') -> bool:
+    """Compare with another object."""
+    if isinstance(other, ModelScores):
+      for item, other_item in zip(self._model_scores, other._model_scores):
+        if item != other_item:
+          return False
+    return True
+
   def add_score(self, model_id: str, score: float):
     """Adds a score for a model ID in the ModelScores object.
-
-    Only add the score to the list if the score is better (smaller) than the
-    worst score on the list.
 
     Args:
       model_id: Model ID corresponding the offline evaluation.
       score: Score corresponding the offline evaluation.
     """
-    if self._model_scores and score >= self._model_scores[-1].score:
-      return
     self._model_scores.append(ModelScore(model_id, score))
     self._model_scores.sort(key=lambda model_score: model_score.score)
 
-  def remove_score(self, model_score):
+  def remove_model(self, model_id: str):
     """Removes the specified model_score from its model scores."""
-    self._model_scores.remove(model_score)
+    self._model_scores = [m for m in self._model_scores
+                          if m.model_id != model_id]
 
-  @property
-  def model_scores(self):
-    """List of ModelScores by sorted by ascending score."""
-    return self._model_scores
+  def __iter__(self):
+    """ModelScores by sorted by ascending score."""
+    return iter(self._model_scores)
+
+  def __len__(self):
+    """Number of scores."""
+    return len(self._model_scores)
 
   @property
   def model_ids(self):
@@ -77,8 +89,11 @@ class OfflineEvaluationByAssignmentAndEvalId(collections.defaultdict):
   def __init__(self, *args):
     super().__init__(ModelScores, *args)
 
-  def __copy__(self):
-    return type(self)(self.items())
+  def __deepcopy__(self, unused_memo):
+    new = type(self)()
+    for key, item in self.items():
+      new[copy.copy(key)] = copy.copy(item)
+    return new
 
   def scores_by_offline_evaluation_id(
       self,
@@ -94,7 +109,10 @@ class OfflineEvaluationByAssignmentAndEvalId(collections.defaultdict):
 
     Returns:
       List of (offline_evaluation_id, ModelScore) ordered by descending
-        offline evaluation ID and ascending score in ModelScore.
+      offline evaluation ID and ascending score in ModelScore. The returned
+      list only contains the best score for each model. For example, if
+      a model has multiple evaluations with scores [-1.0, 0.2, 4] only the
+      best score [-1.0] for the model will be returned.
     """
     # Filter by assignment ID and order by descending evaluation ID.
     scores_ordered_by_eval = sorted([
@@ -108,11 +126,12 @@ class OfflineEvaluationByAssignmentAndEvalId(collections.defaultdict):
     result = []
     model_ids_added = set()
     for (_, eval_id), model_record in scores_ordered_by_eval:
-      if models_limit and len(model_ids_added) >= models_limit:
-        break
-      for model_score in model_record.model_scores:
-        result.append((eval_id, model_score))
-        model_ids_added.add(model_score.model_id)
+      for model_score in model_record:
+        if models_limit and len(model_ids_added) >= models_limit:
+          break
+        if model_score.model_id not in model_ids_added:
+          result.append((eval_id, model_score))
+          model_ids_added.add(model_score.model_id)
     return result
 
   def model_ids_for_assignment_id(self, assignment_id: str):
@@ -123,11 +142,12 @@ class OfflineEvaluationByAssignmentAndEvalId(collections.defaultdict):
         model_id_set.update(model_scores.model_ids)
     return model_id_set
 
-  def remove_score(self, assignment_id, eval_id, model_score):
-    """Remove a ModelScore for an assignment ID and evaluation ID."""
-    self[(assignment_id, eval_id)].remove_score(model_score)
-    if not self[(assignment_id, eval_id)].model_scores:
-      self.pop((assignment_id, eval_id))
+  def remove_model(self, model_id: str):
+    """Remove a model from the map."""
+    for key, assignment_eval_scores in list(self.items()):
+      assignment_eval_scores.remove_model(model_id)
+      if not assignment_eval_scores:
+        self.pop(key)
 
   @property
   def assignment_ids(self):
@@ -144,7 +164,7 @@ class SummaryMap(collections.defaultdict):
   def eval_summary_for_assignment_and_model(self, assignment_id: str,
                                             model_id: str) -> EvaluationSummary:
     """Returns a single EvaluationSummary for an assignment and model ID."""
-    items_for_assignment_id = self[assignment_id]
+    items_for_assignment_id = self.get(assignment_id, [])
     matching_model_id = [
         item for item in items_for_assignment_id if item.model_id == model_id
     ]

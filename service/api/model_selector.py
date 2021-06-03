@@ -341,11 +341,17 @@ class ModelSelector:
         model_selection_record.OfflineEvaluationByAssignmentAndEvalId())
 
     for offline_eval_resource_id in offline_eval_resource_ids:
-      if min([len(offline_eval_summary.model_ids_for_assignment_id(a))
-              for a in assignment_ids]
-             ) >= _NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT:
+      number_of_models_per_assignment = [
+          len(offline_eval_summary.model_ids_for_assignment_id(a))
+          for a in assignment_ids]
+      if (min(number_of_models_per_assignment) >=
+          _NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT and
+          sum(number_of_models_per_assignment) >=
+          _MAXIMUM_NUMBER_OF_MODELS_TO_ONLINE_EVAL):
         # Hit all the assignments with at least
-        # _NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT model.
+        # _NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT model and make
+        # sure we have at least _MAXIMUM_NUMBER_OF_MODELS_TO_ONLINE_EVAL
+        # across all assignments.
         break
       offline_eval = self._data_store.read(offline_eval_resource_id)
       if offline_eval.assignment not in assignment_ids:
@@ -409,33 +415,34 @@ class ModelSelector:
     models_budget = max(
         _MAXIMUM_NUMBER_OF_MODELS_TO_ONLINE_EVAL,
         len(offline_eval_summary) * _NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT)
-    offline_summary_copy = copy.copy(offline_eval_summary)
+    models_by_assignment_map = copy.deepcopy(offline_eval_summary)
 
     # First, populate with scores from top
     # _NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT models for each assignment.
-    for assignment_id in offline_eval_summary.assignment_ids:
+    for assignment_id in list(models_by_assignment_map.assignment_ids):
       top_model_scores_for_assignment_id = (
-          offline_eval_summary.scores_by_offline_evaluation_id(
+          models_by_assignment_map.scores_by_offline_evaluation_id(
               assignment_id,
               models_limit=_NUM_MODELS_TO_ONLINE_EVAL_PER_ASSIGNMENT))
       for eval_id, model_score in top_model_scores_for_assignment_id:
         self._add_summary(assignment_id, eval_id, model_score,
                           online_eval_summary.get(model_score.model_id, []),
                           summary_map)
-        offline_summary_copy.remove_score(assignment_id, eval_id, model_score)
+        models_by_assignment_map.remove_model(model_score.model_id)
 
     # If we can still add more models, populate by getting one from each
     # assignment.
-    while (summary_map.models_count < models_budget and offline_summary_copy):
-      for assignment_id in offline_eval_summary.assignment_ids:
+    while (summary_map.models_count < models_budget and
+           models_by_assignment_map):
+      for assignment_id in list(models_by_assignment_map.assignment_ids):
         top_scores_for_assignment_id = (
-            offline_eval_summary.scores_by_offline_evaluation_id(
+            models_by_assignment_map.scores_by_offline_evaluation_id(
                 assignment_id, models_limit=1))  # Pick off one model at a time.
         for eval_id, model_score in top_scores_for_assignment_id:
           self._add_summary(assignment_id, eval_id, model_score,
                             online_eval_summary.get(model_score.model_id, []),
                             summary_map)
-          offline_summary_copy.remove_score(assignment_id, eval_id, model_score)
+          models_by_assignment_map.remove_model(model_score.model_id)
     return summary_map
 
   def _add_summary(self, assignment_id, eval_id, model_score, online_scores,

@@ -62,26 +62,15 @@ class ModelSelectorTest(parameterized.TestCase):
   summary_map = model_selection_record.SummaryMap({
       'a2': [
           model_selection_record.EvaluationSummary(
-              model_id='m2',
-              offline_scores={
-                  1: -0.5,
-                  0: 0.3
-              },
+              model_id='m2', offline_scores={1: -0.5},
               online_scores=online_summary['m2'])
       ],
       'a1': [
           model_selection_record.EvaluationSummary(
-              model_id='m1',
-              offline_scores={
-                  3: 0.8,
-                  2: -0.2,
-                  1: 0.1,
-                  0: 0.4
-              },
+              model_id='m1', offline_scores={3: 0.8},
               online_scores=online_summary['m1']),
           model_selection_record.EvaluationSummary(
-              model_id='m3',
-              offline_scores={0: -4.0},
+              model_id='m3', offline_scores={0: -4.0},
               online_scores=online_summary['m3'])
       ]
   })
@@ -253,8 +242,8 @@ class ModelSelectorTest(parameterized.TestCase):
             offline_evaluation_id=2, score=0.7, model_id='m0',
             assignment='a2'),
         data_store_pb2.OfflineEvaluation(
-            offline_evaluation_id=2, score=0.8, model_id='m0',
-            assignment='a2'),  # Gets ignored because 0.8 < 0.7
+            offline_evaluation_id=2, score=0.8, model_id='m1',
+            assignment='a2'),
         data_store_pb2.OfflineEvaluation(
             offline_evaluation_id=3, score=0.7, model_id='m0',
             assignment='a3'),
@@ -277,8 +266,9 @@ class ModelSelectorTest(parameterized.TestCase):
         ['m1', 'm0', 'm1', 'm0'])
     self.assertLen(summary[key_1]._model_scores, 1)
     self.assertAlmostEqual(summary[key_1]._model_scores[0].score, 0.8)
-    self.assertLen(summary[key_2]._model_scores, 1)
+    self.assertLen(summary[key_2]._model_scores, 2)
     self.assertAlmostEqual(summary[key_2]._model_scores[0].score, 0.7)
+    self.assertAlmostEqual(summary[key_2]._model_scores[1].score, 0.8)
     self.assertLen(summary[key_3]._model_scores, 1)
     self.assertAlmostEqual(summary[key_3]._model_scores[0].score, -0.2)
     self.assertLen(summary[key_4]._model_scores, 1)
@@ -370,6 +360,50 @@ class ModelSelectorTest(parameterized.TestCase):
             ModelSelectorTest.offline_summary,
             ModelSelectorTest.online_summary), ModelSelectorTest.summary_map)
 
+  @mock.patch.object(model_selector,
+                     '_MAXIMUM_NUMBER_OF_MODELS_TO_ONLINE_EVAL', 4)
+  def test_generate_summary_map_one_assignment(self):
+    offline_summary = (
+        model_selection_record.OfflineEvaluationByAssignmentAndEvalId())
+
+    # 5 models across two evaluation sets in the same assignment.
+    offline_summary[model_selection_record.AssignmentEvalId('a0', 0)].add_score(
+        'm0', 1.0)
+    offline_summary[model_selection_record.AssignmentEvalId('a0', 0)].add_score(
+        'm1', 0.4)
+    offline_summary[model_selection_record.AssignmentEvalId('a0', 0)].add_score(
+        'm2', -5.0)
+    offline_summary[model_selection_record.AssignmentEvalId('a0', 0)].add_score(
+        'm3', -0.1)
+    offline_summary[model_selection_record.AssignmentEvalId('a0', 1)].add_score(
+        'm3', 0.2)
+    offline_summary[model_selection_record.AssignmentEvalId('a0', 1)].add_score(
+        'm4', -2.0)
+    offline_summary[model_selection_record.AssignmentEvalId('a0', 1)].add_score(
+        'm5', -0.4)
+
+    # NOTE: online summary population is tested in
+    # test_generate_summary_map_plenty_of_models().
+    online_summary = collections.defaultdict(list, {})
+    summary_map = self._model_selector._generate_summary_map(offline_summary,
+                                                             online_summary)
+
+    expected_summary_map = model_selection_record.SummaryMap({
+        'a0': [
+            model_selection_record.EvaluationSummary(
+                model_id='m4', offline_scores={1: -2.0}, online_scores=[]),
+            model_selection_record.EvaluationSummary(
+                model_id='m5', offline_scores={1: -0.4}, online_scores=[]),
+            model_selection_record.EvaluationSummary(
+                model_id='m3', offline_scores={1: 0.2}, online_scores=[]),
+            model_selection_record.EvaluationSummary(
+                model_id='m2', offline_scores={0: -5.0}, online_scores=[]),
+        ],
+    })
+    self.assertEqual(summary_map, expected_summary_map)
+
+  @mock.patch.object(model_selector,
+                     '_MAXIMUM_NUMBER_OF_MODELS_TO_ONLINE_EVAL', 3)
   def test_generate_summary_map_plenty_of_models(self):
     offline_summary = (
         model_selection_record.OfflineEvaluationByAssignmentAndEvalId())
@@ -392,29 +426,20 @@ class ModelSelectorTest(parameterized.TestCase):
     })
 
     summary_map = model_selection_record.SummaryMap({
+        'a0': [
+            model_selection_record.EvaluationSummary(
+                model_id='m1', offline_scores={1: -64.0},
+                online_scores=[-1.0, -1.0])
+        ],
         'a2': [
             model_selection_record.EvaluationSummary(
-                model_id='m3',
-                offline_scores={0: 0.4},
+                model_id='m3', offline_scores={0: 0.4},
                 online_scores=[-1.0, 1.0])
         ],
         'a1': [
             model_selection_record.EvaluationSummary(
-                model_id='m2',
-                offline_scores={
-                    1: -20.0,
-                    0: 0.4
-                },
+                model_id='m2', offline_scores={1: -20.0},
                 online_scores=[1.0])
-        ],
-        'a0': [
-            model_selection_record.EvaluationSummary(
-                model_id='m1',
-                offline_scores={
-                    1: -64.0,
-                    0: 0.4
-                },
-                online_scores=[-1.0, -1.0])
         ]
     })
     self.assertEqual(

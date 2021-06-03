@@ -19,7 +19,7 @@ using UnityEngine;
 /// <c>FalkenGame</c> AI player that can be trained to play and test games.
 /// </summary>
 [Serializable]
-public class FalkenGame<PlayerBrainSpec>
+public class FalkenGame<PlayerBrainSpec> : MonoBehaviour
   where PlayerBrainSpec : Falken.BrainSpecBase, new()
 {
     [Tooltip("The Falken service project ID.")]
@@ -42,7 +42,7 @@ public class FalkenGame<PlayerBrainSpec>
     /// <summary>
     /// Getter for brain spec.
     /// </summary>
-    public PlayerBrainSpec BrainSpec
+    protected PlayerBrainSpec BrainSpec
     {
         get
         {
@@ -53,7 +53,7 @@ public class FalkenGame<PlayerBrainSpec>
     /// <summary>
     /// Getter for training state.
     /// </summary>
-    public Falken.Session.TrainingState TrainingState
+    protected Falken.Session.TrainingState TrainingState
     {
         get
         {
@@ -65,7 +65,7 @@ public class FalkenGame<PlayerBrainSpec>
     /// <summary>
     /// Getter for training progress.
     /// </summary>
-    public float TrainingProgress
+    protected float TrainingProgress
     {
         get
         {
@@ -76,7 +76,7 @@ public class FalkenGame<PlayerBrainSpec>
     /// <summary>
     /// Connects to Falken service and creates or loads a brain.
     /// </summary>
-    public void Init()
+    protected void Init()
     {
         Init<PlayerBrainSpec>();
     }
@@ -84,7 +84,7 @@ public class FalkenGame<PlayerBrainSpec>
     /// <summary>
     /// Connects to Falken service and creates or loads a brain spec subclass.
     /// </summary>
-    public void Init<BrainSpec>() where BrainSpec : PlayerBrainSpec, new()
+    protected void Init<BrainSpec>() where BrainSpec : PlayerBrainSpec, new()
     {
         // Connect to Falken service.
         _service = Falken.Service.Connect(falkenProjectId, falkenApiKey);
@@ -121,7 +121,7 @@ public class FalkenGame<PlayerBrainSpec>
     /// <summary>
     /// Starts a new episode.
     /// </summary>
-    public Falken.Episode CreateEpisode()
+    protected Falken.Episode CreateEpisode()
     {
         return _session?.StartEpisode();
     }
@@ -129,7 +129,7 @@ public class FalkenGame<PlayerBrainSpec>
     /// <summary>
     /// Stops a session.
     /// </summary>
-    public void StopSession()
+    protected void StopSession()
     {
         if (_session != null)
         {
@@ -142,7 +142,7 @@ public class FalkenGame<PlayerBrainSpec>
     /// <summary>
     /// Deletes the brain and disconnects from the Falken service.
     /// </summary>
-    public void Shutdown()
+    protected void Shutdown()
     {
         StopSession();
 

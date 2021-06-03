@@ -91,7 +91,7 @@ public class NegaFalkenPlayer : MonoBehaviour
     private Weapon _weapon;
     private Slider _healthSlider;
 
-    private NegaGame _game;
+    private NegaFalkenGame _game;
     private NegaBrainSpec _brainSpec = null;
     private Falken.Episode _episode = null;
     private bool _humanControlled = false;
@@ -117,7 +117,7 @@ public class NegaFalkenPlayer : MonoBehaviour
     /// <summary>
     /// Sets the current SessionController.
     /// </summary>
-    public NegaGame Game { set { _game = value; } }
+    public NegaFalkenGame Game { set { _game = value; } }
 
     /// <summary>
     /// Sets the current NegaPlayerBrainSpec.

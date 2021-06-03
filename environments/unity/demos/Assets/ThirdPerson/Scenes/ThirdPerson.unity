@@ -666,16 +666,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0d4a769e652d941aeb142dea7682aca5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  falkenProjectId: 
+  falkenApiKey: 
+  brainDisplayName: ThirdPerson Brain
+  brainId: 
+  snapshotId: 
+  falkenMaxSteps: 500
   player: {fileID: 1754845537}
   goal: {fileID: 1382576563}
   boardSize: 50
-  _falkenGame:
-    falkenProjectId: 
-    falkenApiKey: 
-    brainDisplayName: Nega Brain
-    brainId: 
-    snapshotId: 
-    falkenMaxSteps: 500
 --- !u!1001 &1382576562
 PrefabInstance:
   m_ObjectHideFlags: 0

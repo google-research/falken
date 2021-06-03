@@ -659,18 +659,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 111e294cad28c40abb02e74385582120, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  falkenProjectId: 
+  falkenApiKey: 
+  brainDisplayName: Cart Brain
+  brainId: 
+  snapshotId: 
+  falkenMaxSteps: 2000
   track: {fileID: 813079720}
   carPrefab: {fileID: 6585577476224428441, guid: ab9d4f366dc754c25b820b732549ecf1,
     type: 3}
   cameraPrefab: {fileID: 4362169072311389012, guid: a8939bc9ea6d64c8fa36f874d72f59ba,
     type: 3}
-  cartFalkenGame:
-    falkenProjectId: 
-    falkenApiKey: 
-    brainDisplayName: A Brain
-    brainId: 
-    snapshotId: 
-    falkenMaxSteps: 300
 --- !u!4 &1388423827
 Transform:
   m_ObjectHideFlags: 0

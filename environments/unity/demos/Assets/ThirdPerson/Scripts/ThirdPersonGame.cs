@@ -17,17 +17,10 @@ using System.Collections;
 
 public delegate void NotifyGoalReached();
 
-/// ThirdPersonFalkenGame class is required as a workaround given that Unity cannot
-/// serialize an attribute with a generic class type.
-[System.Serializable]
-public class ThirdPersonFalkenGame : FalkenGame<ThirdPersonBrainSpec>
-{
-}
-
 /// <summary>
 /// <c>ThirdPersonGame</c> Manages the lifecycle of the ThirdPerson demo.
 /// </summary>
-public class ThirdPersonGame : MonoBehaviour
+public class ThirdPersonGame : FalkenGame<ThirdPersonBrainSpec>
 {
     [Tooltip("Reference to the player in this game instance.")]
     public ThirdPersonPlayer player;
@@ -35,9 +28,6 @@ public class ThirdPersonGame : MonoBehaviour
     public GameObject goal;
     [Tooltip("Defines the size of the spawn region for player and goal.")]
     public float boardSize = 20f;
-
-    [Tooltip("Falken settings.")]
-    public ThirdPersonFalkenGame _falkenGame;
 
     private float _goalTolerance = 1f;
     private float _startHeight = 0f;
@@ -65,37 +55,36 @@ public class ThirdPersonGame : MonoBehaviour
         {
             case ControlType.Camera:
             {
-                _falkenGame.Init<CameraRelativeBrainSpec>();
+                Init<CameraRelativeBrainSpec>();
                 break;
             }
             case ControlType.Player:
             {
-                _falkenGame.Init<PlayerRelativeBrainSpec>();
+                Init<PlayerRelativeBrainSpec>();
                 break;
             }
             case ControlType.World:
             {
-                _falkenGame.Init<WorldRelativeBrainSpec>();
+                Init<WorldRelativeBrainSpec>();
                 break;
             }
             case ControlType.Flight:
             case ControlType.AutoFlight:
             {
-                _falkenGame.Init<FlightBrainSpec>();
+                Init<FlightBrainSpec>();
                 break;
             }
             default:
                 Debug.Log("Unsupported control type");
                 break;
         }
-        player.SetActionsAndObservations(
-            _falkenGame.BrainSpec.Actions, _falkenGame.BrainSpec.Observations);
+        player.SetActionsAndObservations(BrainSpec.Actions, BrainSpec.Observations);
         CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Success);
     }
 
     void OnDestroy()
     {
-        _falkenGame.Shutdown();
+        Shutdown();
     }
 
     void FixedUpdate()
@@ -119,7 +108,7 @@ public class ThirdPersonGame : MonoBehaviour
     private void CreateEpisodeAndResetGame(Falken.Episode.CompletionState episodeState)
     {
         _episode?.Complete(episodeState);
-        _episode = _falkenGame.CreateEpisode();
+        _episode = CreateEpisode();
         player.FalkenEpisode = _episode;
 
         bool flight = (

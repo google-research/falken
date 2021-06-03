@@ -26,9 +26,9 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
 }
 
 /// <summary>
-/// <c>SessionController</c> Manages the NegaFalken game state and related Falken state.
+/// <c>NegaGame</c> Manages the NegaFalken game state and related Falken state.
 /// </summary>
-public class SessionController : MonoBehaviour
+public class NegaGame : MonoBehaviour
 {
     #region Editor variables
     [Tooltip("Prefab that defines player one.")]
@@ -165,7 +165,7 @@ public class SessionController : MonoBehaviour
         Vector3 randomPos = spawn.GetSpawnPoint();
         Quaternion randomRot = Quaternion.AngleAxis(UnityEngine.Random.Range(0f, 360f), Vector3.up);
         NegaFalkenPlayer player = GameObject.Instantiate(prefab, randomPos, randomRot);
-        player.SessionController = this;
+        player.Game = this;
         player.HealthSlider = slider;
         player.BrainSpec = _falkenGame.BrainSpec;
         player.Episode = _falkenGame.CreateEpisode();

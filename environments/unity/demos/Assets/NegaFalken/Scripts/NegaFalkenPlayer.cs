@@ -91,7 +91,7 @@ public class NegaFalkenPlayer : MonoBehaviour
     private Weapon _weapon;
     private Slider _healthSlider;
 
-    private SessionController _controller;
+    private NegaGame _game;
     private NegaBrainSpec _brainSpec = null;
     private Falken.Episode _episode = null;
     private bool _humanControlled = false;
@@ -117,7 +117,7 @@ public class NegaFalkenPlayer : MonoBehaviour
     /// <summary>
     /// Sets the current SessionController.
     /// </summary>
-    public SessionController SessionController { set { _controller = value; } }
+    public NegaGame Game { set { _game = value; } }
 
     /// <summary>
     /// Sets the current NegaPlayerBrainSpec.
@@ -193,7 +193,7 @@ public class NegaFalkenPlayer : MonoBehaviour
     private void CalculateObservations()
     {
         var playerForward = gameObject.transform.forward;
-        var enemy = _controller.GetClosestEnemy(this);
+        var enemy = _game.GetClosestEnemy(this);
         var enemyPosition = enemy.transform.position;
 
         var playerToEnemy = enemyPosition - transform.position;

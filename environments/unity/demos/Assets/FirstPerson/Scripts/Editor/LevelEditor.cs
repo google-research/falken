@@ -12,13 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEditor;
 
-/// <summary>
-/// <c>RoomGame</c> A game where you win once you've defeated all enemies in all rooms.
-/// </summary>
-public class RoomGame : MonoBehaviour
+[CustomEditor(typeof(Level))]
+public class LevelEditor : Editor
 {
+    public override void OnInspectorGUI() {
+        base.OnInspectorGUI();
+
+        Level myLevel = (Level)target;
+
+        if (GUILayout.Button("Generate Level")) {
+            myLevel.CreateLevel();
+        }
+    }
 }

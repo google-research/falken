@@ -17,9 +17,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// <c>LevelGame</c> A FirstPerson game where the goal is to make it to the final room in the level.
+/// <c>FirstPersonGame</c> A FirstPerson game where the goal is to make it to the final room in the level.
 /// </summary>
-public class LevelGame : MonoBehaviour
+public class FirstPersonGame : MonoBehaviour
 {
     [Tooltip("The player prefab to spawn at the start of the game.")]
     public FirstPersonPlayer playerPrefab;

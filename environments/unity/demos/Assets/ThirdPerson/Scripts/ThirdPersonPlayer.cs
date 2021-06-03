@@ -144,9 +144,9 @@ public class FlightBrainSpec : ThirdPersonBrainSpec
 
 
 /// <summary>
-/// <c>ThirdPersonController</c> Provides 3P input handling, player physics, and camera control.
+/// <c>ThirdPersonPlayer</c> Provides 3P input handling, player physics, and camera control.
 /// </summary>
-public class ThirdPersonController : MonoBehaviour
+public class ThirdPersonPlayer : MonoBehaviour
 {
     [Tooltip("The camera object to control.")]
     public Camera thirdPersonCamera;

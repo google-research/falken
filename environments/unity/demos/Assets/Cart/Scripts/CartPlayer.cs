@@ -55,9 +55,9 @@ public class CartBrainSpec : Falken.BrainSpec<CartObservations, CartActions>
 }
 
 /// <summary>
-/// <c>CarController</c> Transforms player input into lower level physical vehicle controls.
+/// <c>CartPlayer</c> Transforms player input into lower level physical vehicle controls.
 /// </summary>
-public class CarController : MonoBehaviour {
+public class CartPlayer : MonoBehaviour {
     [System.Serializable]
     public class AxleInfo {
         [Tooltip("Reference to the axle's left WheelCollider.")]

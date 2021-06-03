@@ -17,10 +17,10 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// <c>LevelLayout</c> Procedurally generates a first person level.
+/// <c>Level</c> Procedurally generates a first person level.
 /// </summary>
 [ExecuteInEditMode]
-public class FirstPersonLevel : MonoBehaviour
+public class Level : MonoBehaviour
 {
     [Tooltip("Room prefab to use when creating the start of the level.")]
     public Room startPrefab;

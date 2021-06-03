@@ -25,12 +25,12 @@ public class ThirdPersonFalkenGame : FalkenGame<ThirdPersonBrainSpec>
 }
 
 /// <summary>
-/// <c>GameLogic</c> Manages the lifecycle of the ThirdPerson demo.
+/// <c>ThirdPersonGame</c> Manages the lifecycle of the ThirdPerson demo.
 /// </summary>
-public class GameLogic : MonoBehaviour
+public class ThirdPersonGame : MonoBehaviour
 {
     [Tooltip("Reference to the player in this game instance.")]
-    public ThirdPersonController player;
+    public ThirdPersonPlayer player;
     [Tooltip("Reference to the goal object the player needs to move towards.")]
     public GameObject goal;
     [Tooltip("Defines the size of the spawn region for player and goal.")]

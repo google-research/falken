@@ -31,13 +31,13 @@ public class CartGame : MonoBehaviour
     [Tooltip("The track upon which to race.")]
     public SplineTrack track;
     [Tooltip("The car prefab to instantiate at the start of the game.")]
-    public CarController carPrefab;
+    public CartPlayer carPrefab;
     [Tooltip("The chase camera prefab to instantiate at the start of the game.")]
     public CarCamera cameraPrefab;
     [Tooltip("The Falken game.")]
     public CartFalkenGame cartFalkenGame;
 
-    private CarController car;
+    private CartPlayer car;
     private CarCamera chaseCamera;
     private int nextCheckpointIndex;
     private Falken.Episode episode = null;

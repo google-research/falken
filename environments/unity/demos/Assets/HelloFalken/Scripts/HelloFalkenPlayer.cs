@@ -69,12 +69,12 @@ public class HelloBrainSpec : Falken.BrainSpec<HelloObservations, HelloActions> 
 
 
 /// <summary>
-/// <c>HF_Player</c> Demonstrates how to use Falken in a very simple game.
+/// <c>HelloFalkenPlayer</c> Demonstrates how to use Falken in a very simple game.
 /// The player can control the steering and thrust of a ship and then attempts to steer the ship
 /// to a goal object. Ship and goal transforms are randomized every time.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
-public class HF_Player : MonoBehaviour
+public class HelloFalkenPlayer : MonoBehaviour
 {
     #region Editor Variables
     [Tooltip("Maximum amount of force to apply when accelerating.")]

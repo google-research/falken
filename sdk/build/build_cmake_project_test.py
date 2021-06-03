@@ -62,7 +62,7 @@ class BuildCmakeTest(unittest.TestCase):
   def test_parse_arguments_default(self):
     """Check parsing default arguments."""
     self.assertEqual(self.args.python, sys.executable)
-    self.assertEqual(self.args.pip_packages, ['absl-py', 'pyyaml'])
+    self.assertEqual(self.args.pip_packages, [])
     self.assertEqual(self.args.number_of_threads, multiprocessing.cpu_count())
     self.assertEqual(self.args.cmake_installer,
                      CMAKE_INSTALLER_URL_BY_HOST_PLATFORM.get(sys.platform))
@@ -94,7 +94,7 @@ class BuildCmakeTest(unittest.TestCase):
         '--number_of_threads=7'
     ])
     self.assertEqual(arguments.python, sys.executable)
-    self.assertEqual(arguments.pip_packages, ['absl-py', 'pyyaml'])
+    self.assertEqual(arguments.pip_packages, [])
     self.assertEqual(arguments.number_of_threads, 7)
     self.assertEqual(arguments.cmake_installer,
                      CMAKE_INSTALLER_URL_BY_HOST_PLATFORM.get(sys.platform))
@@ -143,7 +143,7 @@ class BuildCmakeTest(unittest.TestCase):
   def test_install_pip_package(self, mock_run):
     """Test for installing pip packages."""
     build_cmake_project.install_pip_packages('python3', ['logging'])
-    mock_run.assert_called_once_with(
+    mock_run.assert_called_with(
         args='python3 -m pip install logging', check=True, shell=True)
 
   @unittest.mock.patch('os.makedirs')
@@ -152,6 +152,7 @@ class BuildCmakeTest(unittest.TestCase):
     """Test for generating configuration for target."""
     self.args.cmake_source_project_root = '/tmp/falken_src'
     self.args.cmake_build_dir = '/tmp/build_folder'
+    self.args.falken_json_config_file = '/tmp/config_file.json'
 
     runner = cmake_runner.CMakeRunner(self.installer.binary_dir,
                                       self.args.cmake_source_project_root,
@@ -164,8 +165,9 @@ class BuildCmakeTest(unittest.TestCase):
         '/tmp/build_folder/Debug', exist_ok=True)
     # Call cmake
     mock_run.assert_called_once_with(
-        args='cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -S '
-        '/tmp/falken_src -B /tmp/build_folder/Debug',
+        args='cmake -DFALKEN_JSON_CONFIG_FILE=/tmp/config_file.json '
+        '-G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -S /tmp/falken_src '
+        '-B /tmp/build_folder/Debug',
         check=True,
         shell=True)
 
@@ -257,7 +259,7 @@ class BuildCmakeTest(unittest.TestCase):
     build_cmake_project.run_tests(runner, self.args, 'Debug')
 
     mock_run.assert_called_once_with(
-        args='ctest', check=True, cwd='/tmp/falken_src', shell=True)
+        args='ctest --verbose', check=True, cwd='/tmp/falken_src', shell=True)
 
   @unittest.mock.patch('subprocess.run')
   def test_is_package_installed(self, mock_run):

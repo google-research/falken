@@ -28,6 +28,7 @@ import sys
 import typing
 import cmake_installer
 import cmake_runner
+import nasm_installer
 import shell
 
 # pylint: disable=g-import-not-at-top
@@ -60,8 +61,18 @@ EXIT_FAILURE = 1
 
 # List of required packages for windows.
 REQUIRED_PACKAGES_LINUX = [
-    'autoconf', 'automake', 'bison', 'flex', 'mono-complete'
+    'autoconf', 'automake', 'bison', 'flex', 'mono-complete', 'absl-py',
+    'pyyaml'
 ]
+
+REQUIRED_PACKAGES_WINDOWS = ['absl-py', 'pyyaml']
+
+REQUIRED_PACKAGES_MAC = ['absl-py', 'pyyaml']
+
+NASM_VERSION = '2.15.05'
+
+NASM_URL = ('https://www.nasm.us/pub/nasm/releasebuilds/'
+            f'{NASM_VERSION}/win64/nasm-{NASM_VERSION}-win64.zip')
 
 
 def parse_arguments(args: typing.List[str]) -> argparse.Namespace:
@@ -81,7 +92,7 @@ def parse_arguments(args: typing.List[str]) -> argparse.Namespace:
   parser.add_argument(
       '--pip_packages',
       nargs='*',
-      default=['absl-py', 'pyyaml'],
+      default=[],
       help='Python pip packages to install.')
   parser.add_argument(
       '--number_of_threads',
@@ -164,6 +175,10 @@ def parse_arguments(args: typing.List[str]) -> argparse.Namespace:
             'project build to archive and "archive.zip" is '
             'the name of a zip archive to create under '
             'output_dir.'))
+  parser.add_argument(
+      '--falken_json_config_file',
+      default=None,
+      help=('Configuration file for accessing Falken SDK.'))
   return parser.parse_args(args)
 
 
@@ -213,13 +228,19 @@ def install_pip_packages(python_executable: str,
   Returns:
     True if packages get installed, False otherwise.
   """
+
   if pip_packages:
-    command = ' '.join([python_executable, '-m', 'pip', 'install'] +
-                       pip_packages)
-    logging.info('Install pip packages: %s', pip_packages)
-    return run_and_check_result(command)
-  logging.info('pip packages are not installed')
-  return False
+    for package in pip_packages:
+      if not is_package_installed(package):
+        logging.info('Package %s not installed.', package)
+        command = ' '.join([python_executable, '-m', 'pip', 'install'])
+        command += ' ' + package
+        logging.info('Install pip package: %s', package)
+        if not run_and_check_result(command):
+          return False
+    return True
+  logging.debug('no python packages were provided for installation.')
+  return True
 
 
 def is_package_installed(package_name: str) -> bool:
@@ -234,43 +255,68 @@ def is_package_installed(package_name: str) -> bool:
   return run_and_check_result('dpkg-query -l ' + package_name)
 
 
-def check_requirements_linux() -> bool:
+def check_requirements_linux(args: argparse.Namespace) -> bool:
   """Checks that conditions for building on Mac are met.
+
+  Args:
+    args: arguments for building the project.
 
   Returns:
     True when execution ran successfully, False otherwise.
   """
-  for package in REQUIRED_PACKAGES_LINUX:
-    if not is_package_installed(package):
-      logging.error('Package %s not installed.', package)
-      return False
-  return True
+  return install_pip_packages(args.python, REQUIRED_PACKAGES_LINUX)
 
 
-def check_requirements_mac() -> bool:
+def check_requirements_mac(args: argparse.Namespace) -> bool:
   """Checks that conditions for building on Mac are met.
+
+  Args:
+    args: arguments for building the project.
 
   Returns:
       True when execution ran successfully, False otherwise.
   """
+  if not install_pip_packages(args.python, REQUIRED_PACKAGES_MAC):
+    return False
   return ensure_xcode_available()
 
 
-def check_requirements(platform_name: str) -> bool:
+def check_requirements_win(args: argparse.Namespace) -> bool:
+  """Checks that conditions for building on Windows are met.
+
+  Args:
+    args: arguments for building the project.
+
+  Returns:
+      True when execution ran successfully, False otherwise.
+  """
+  if not install_pip_packages(args.python, REQUIRED_PACKAGES_WINDOWS):
+    return False
+
+  # Check if Nasm is installed at it's the default location.
+  executable_found = shutil.which('nasm')
+  if executable_found is None:
+    installer = nasm_installer.NasmInstaller(NASM_URL)
+    return installer.install()
+  return True
+
+
+def check_requirements(platform_name: str, args: argparse.Namespace) -> bool:
   """Checks that requirements for building on current platform.
 
   Args:
     platform_name: name of the current platform.
+    args: arguments for building the project.
 
   Returns:
     True when requirements are fulfilled, False otherwise.
   """
   if platform_name == 'linux':
-    return check_requirements_linux()
+    return check_requirements_linux(args)
   elif platform_name == 'darwin':
-    return check_requirements_mac()
+    return check_requirements_mac(args)
   elif platform_name == 'win32':
-    return True
+    return check_requirements_win(args)
   else:
     raise ValueError(f'Platform {platform_name} is not supported')
 
@@ -292,6 +338,7 @@ def generate_target(runner: cmake_runner.CMakeRunner, args: argparse.Namespace,
         generator=args.cmake_generator,
         architecture=args.cmake_target_architecture,
         build_config=build_config,
+        falken_json_config_file=args.falken_json_config_file,
         args=args.cmake_configure_args)
   except subprocess.CalledProcessError as error:
     logging.exception('Failed to configure %s CMake project %s: %s',
@@ -400,7 +447,7 @@ def run_tests(runner: cmake_runner.CMakeRunner, args: argparse.Namespace,
     True when testing ran successfully, False otherwise.
   """
   try:
-    runner.test(args.cmake_test_regex)
+    runner.test(args=args.cmake_test_regex)
   except (subprocess.CalledProcessError, RuntimeError) as error:
     logging.exception('Tests failed for %s CMake project %s: %s', build_config,
                       args.cmake_source_project_root, error)
@@ -417,7 +464,6 @@ def build_project(args: argparse.Namespace) -> bool:
   Returns:
     True when execution ran successfully, False otherwise.
   """
-  install_pip_packages(args.python, args.pip_packages)
   os.makedirs(args.output_dir, exist_ok=True)
 
   successful = True
@@ -452,10 +498,10 @@ def build_project(args: argparse.Namespace) -> bool:
         package_project(runner, args, build_config)
 
       # Run tests.
-      # if args.cmake_test_regex:
-      #    result = run_tests(build_config)
-      #    if not result:
-      #        successful = False
+      if args.falken_json_config_file:
+        result = run_tests(runner, args, build_config)
+        if not result:
+          successful = False
 
   return successful
 
@@ -475,8 +521,7 @@ def main():
   for kv in vars(args).items():
     logging.info(kv)
 
-  # Build for the current platform.
-  if check_requirements(sys.platform):
+  if check_requirements(sys.platform, args):
     if build_project(args):
       return EXIT_SUCCESS
     return EXIT_FAILURE

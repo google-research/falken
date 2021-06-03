@@ -142,10 +142,12 @@ class CMakeRunner:
     """
     return self._build_config_dir
 
-  def configure(self, generator: typing.Optional[str] = None,
+  def configure(self,
+                generator: typing.Optional[str] = None,
                 architecture: typing.Optional[str] = None,
                 build_config: typing.Optional[str] = None,
                 properties: typing.Optional[typing.Dict[str, str]] = None,
+                falken_json_config_file: str = None,
                 args: typing.Optional[typing.List[str]] = None):
     """Configure the CMake project.
 
@@ -158,6 +160,7 @@ class CMakeRunner:
       properties: Dictionary of configuration variable key / value pairs
         to pass to CMake. Variables without a value are not passed to CMake's
         configuration command.
+      falken_json_config_file: Configuration file for accessing Falken SDK.
       args: Additional arguments to pass to CMake.
 
     Raises:
@@ -181,6 +184,9 @@ class CMakeRunner:
       for key, value in properties.items():
         if value:
           command_args.append(f'-D{key}={value}')
+    if falken_json_config_file:
+      command_args.append(
+          f'-DFALKEN_JSON_CONFIG_FILE={falken_json_config_file}')
     if args:
       command_args.extend(args)
     command_args.append(f'-G "{self._generator}"')

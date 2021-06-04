@@ -71,6 +71,10 @@ from data_store import resource_id
 # Seconds before an assignment acquisition expires.
 _ASSIGNMENT_EXPIRATION_SECONDS = 5 * 60  # Five minutes.
 
+# If activity in an assignment notification directory is older than this value,
+# then the directory will be deleted.
+_NOTIFICATION_MAX_STALENESS_SECONDS = 60 * 60  # One hour.
+
 
 class _Metronome:
   """Yields values with a maximum frequency."""
@@ -236,10 +240,22 @@ class AssignmentMonitor(_AssignmentMonitorBase):
     #   previous one.
     self._last_timestamp = {}
 
+    # Clean up old notification directories.
+    self._cleanup()
+
     # Start polling.
+    self._running = True
     self._thread = threading.Thread(
         target=self._poll_assignments_and_episode_chunks, daemon=True)
     self._thread.start()
+
+  def __del__(self):
+    """Ensure that monitor is stoppe dupon destruction."""
+    self.stop()
+
+  def stop(self):
+    """Stop monitoring assignments."""
+    self._running = False
 
   def acquire_assignment(self, assignment_id):
     """Acquires an assignment.
@@ -291,10 +307,15 @@ class AssignmentMonitor(_AssignmentMonitorBase):
   def _poll_assignments_and_episode_chunks(self):
     """Polls the notification dir using the metronome to dictate frequency."""
     for _ in self._metronome.wait_for_tick():
+      if not self._running:
+        return
+
       callback = None
 
       with self._acquired_assignment_in_process_lock:
         if self._acquired_assignment_id:
+          if not self._running:
+            return
           self._fs.refresh_lock(
               self._acquired_assignment_lock_file,
               _ASSIGNMENT_EXPIRATION_SECONDS)
@@ -416,3 +437,22 @@ class AssignmentMonitor(_AssignmentMonitorBase):
                 os.path.relpath(assignment_dir, self._notification_dir)))
 
     return assignment_ids_with_changes
+
+  def _cleanup(self):
+    """Remove assignment and session dirs that are stale."""
+    assignment_dirs = self._fs.glob(os.path.join(
+        self._notification_dir,
+        str(resource_id.FalkenResourceId(
+            project='*', brain='*', session='*', assignment='*'))))
+    session_dirs = self._fs.glob(os.path.join(
+        self._notification_dir,
+        str(resource_id.FalkenResourceId(
+            project='*', brain='*', session='*'))))
+
+    for d in assignment_dirs + session_dirs:
+      if self._fs.get_staleness(d) > 1000 * _NOTIFICATION_MAX_STALENESS_SECONDS:
+        try:
+          self._fs.remove_tree(d, ignore_errors=True)
+        except FileNotFoundError:
+          # Someone else seems to have removed it already. We're fine with that.
+          pass

@@ -249,6 +249,57 @@ class AssignmentMonitorTest(parameterized.TestCase):
     metronome.stop()
     self._fs.refresh_lock.assert_not_called()
 
+  def test_cleanup_cleans_stale(self):
+    notifier = assignment_monitor.AssignmentNotifier(self._fs)
+    notifier.trigger_assignment_notification(
+        resource_id.FalkenResourceId(
+            'projects/p0/brains/b0/sessions/s0/assignments/1234'),
+        resource_id.FalkenResourceId(
+            'projects/p0/brains/b0/sessions/s0/episodes/e0/chunks/0'))
+
+    self.assertTrue(self._fs.exists(
+        os.path.join(
+            notifier._notification_dir,
+            'projects/p0/brains/b0/sessions/s0/')))
+
+    with mock.patch.object(self._fs, 'get_staleness') as staleness_mock:
+      # Always return a stale result.
+      staleness_mock.return_value = (
+          assignment_monitor._NOTIFICATION_MAX_STALENESS_SECONDS * 1000 + 1)
+      assignment_monitor.AssignmentMonitor(
+          self._fs, lambda x: None, lambda x: None)
+
+    # Check that session was deleted.
+    self.assertFalse(self._fs.exists(
+        os.path.join(
+            notifier._notification_dir,
+            'projects/p0/brains/b0/sessions/s0/')))
+
+    # Check that brain was not deleted.
+    self.assertTrue(self._fs.exists(
+        os.path.join(
+            notifier._notification_dir,
+            'projects/p0/brains/b0')))
+
+  def test_cleanup_doesnt_clean_fresh(self):
+    notifier = assignment_monitor.AssignmentNotifier(self._fs)
+    assignment_resource_id = resource_id.FalkenResourceId(
+        'projects/p0/brains/b0/sessions/s0/assignments/1234')
+    notifier.trigger_assignment_notification(
+        assignment_resource_id,
+        resource_id.FalkenResourceId(
+            'projects/p0/brains/b0/sessions/s0/episodes/e0/chunks/0'))
+
+    self.assertTrue(self._fs.exists(
+        notifier._get_assignment_directory(assignment_resource_id)))
+
+     # Trigger cleanup by instantiating monitor.
+    assignment_monitor.AssignmentMonitor(
+        self._fs, lambda x: None, lambda x: None)
+
+    self.assertTrue(self._fs.exists(
+        notifier._get_assignment_directory(assignment_resource_id)))
+
 
 if __name__ == '__main__':
   absltest.main()

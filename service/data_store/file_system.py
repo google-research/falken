@@ -86,8 +86,9 @@ class FileSystem(object):
     """
     os.remove(self._resolve(path))
 
-  def remove_tree(self, path):
-    shutil.rmtree(self._resolve(path))
+  def remove_tree(self, path, ignore_errors=False):
+    """Removes a directory tree."""
+    shutil.rmtree(self._resolve(path), ignore_errors=ignore_errors)
 
   def get_modification_time(self, path):
     """Gives the modification time of a file.
@@ -110,7 +111,7 @@ class FileSystem(object):
     """
     result = []
     for p in braceexpand.braceexpand(pattern):
-      for f in glob.glob(os.path.join(self._root_path, p)):
+      for f in glob.glob(self._resolve(p)):
         result.append(os.path.relpath(f, self._root_path))
     return result
 

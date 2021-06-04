@@ -140,6 +140,8 @@ def main(argv):
   if len(argv) > 1:
     logging.error('Non-flag parameters are not allowed.')
 
+  check_ssl()
+
   file_dir = os.path.dirname(os.path.abspath(__file__))
   if FLAGS.generate_sdk_config:
     if len(FLAGS.project_ids) != 1:
@@ -152,7 +154,6 @@ def main(argv):
     run_generate_sdk_configuration(file_dir, project_id, api_key)
 
   logging.debug('Starting Falken services. Press ctrl-c to exit.')
-  check_ssl()
   api_process = run_api(file_dir)
   learner_process = run_learner(file_dir)
   while True:

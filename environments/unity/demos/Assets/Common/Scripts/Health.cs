@@ -25,6 +25,8 @@ public class Health : MonoBehaviour
     [Tooltip("The starting and maximum amount of health that this object can have.")]
     [Range(1, 1000)]
     public int maxHealth = 100;
+    [Tooltip("Take damage, but never die.")]
+    public bool infiniteHealth;
 
     private int health;
     private bool dead;
@@ -44,7 +46,7 @@ public class Health : MonoBehaviour
     /// Applies a specific amount of damage to the object, potentially destroying it.
     /// </summary>
     public void TakeDamage(int amount) {
-        if (!dead) {
+        if (!dead && !infiniteHealth) {
             health -= amount;
             if (health <= 0) {
                 dead = true;

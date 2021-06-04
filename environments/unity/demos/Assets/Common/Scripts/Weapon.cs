@@ -27,6 +27,8 @@ public class Weapon : MonoBehaviour
     public float maxFireRate = 0.1f;
     [Tooltip("The relative offset at which to create projectiles.")]
     public Vector3 muzzleOffset;
+    [Tooltip("The world space amount of error to add when aimiing.")]
+    public float aimError;
 
     private float nextFireTime;
 
@@ -35,11 +37,12 @@ public class Weapon : MonoBehaviour
     /// </summary>
     public bool Fire(GameObject target, Vector3 targetPos) {
         if (projectile && Time.fixedTime >= nextFireTime) {
-            Vector3 toTarget = (targetPos - transform.position).normalized;
+            Vector3 adjustedTarget = targetPos + Random.insideUnitSphere * aimError;
+            Vector3 toTarget = (adjustedTarget - transform.position).normalized;
             GameObject newProjectile = GameObject.Instantiate(projectile.gameObject,
                 transform.position + transform.rotation * muzzleOffset, transform.rotation);
             newProjectile.transform.forward = toTarget;
-            newProjectile.GetComponent<Projectile>().SetTarget(target, targetPos);
+            newProjectile.GetComponent<Projectile>().SetTarget(target, adjustedTarget);
             nextFireTime = Time.fixedTime + maxFireRate;
             return true;
         }

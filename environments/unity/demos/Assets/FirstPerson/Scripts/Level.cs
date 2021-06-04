@@ -31,6 +31,8 @@ public class Level : MonoBehaviour
     [Tooltip("The shortest number of rooms required to traverse the level.")]
     [Range(3, 100)]
     public int criticalPathLength = 3;
+    [Tooltip("Optional cityscape to update on level generation.")]
+    public Cityscape cityscape;
 
     [SerializeField]
     private List<Room> rooms = new List<Room>();
@@ -73,6 +75,17 @@ public class Level : MonoBehaviour
         currentRoom = TryAppendRoom(currentRoom, endPrefab);
         if (!currentRoom) {
             Debug.LogWarning("Unable to place end room.");
+        }
+
+        if (cityscape) {
+            Vector3 center = Vector3.zero;
+            foreach (Room room in rooms) {
+                center += room.Bounds.center;
+            }
+            center /= rooms.Count;
+            center.y = 0f;
+            cityscape.transform.position = center;
+            cityscape.CreateCityscape();
         }
     }
 

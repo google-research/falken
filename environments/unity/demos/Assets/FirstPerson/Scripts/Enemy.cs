@@ -35,6 +35,8 @@ public class Enemy : MonoBehaviour
         Vertical = Up | Down,
         /// Randomly attack Left or Right.
         Horizontal = Left | Right,
+        /// Randomly select between Up, Left, and Right.
+        HorizontalUp = Up | Horizontal,
         /// Randomly select any of the 4 attack behaviors.
         All = Vertical | Horizontal,
     };
@@ -54,11 +56,16 @@ public class Enemy : MonoBehaviour
     [Tooltip("How quickly to move while attacking.")]
     [Range(0,100)]
     public float moveDuration = 1;
+    [Tooltip("How much randomness to add to each attack timer.")]
+    [Range(0,1)]
+    public float timingVariance = 0;
     public AttackStyle attackStyle;
 
     private Vector3 initialPosition;
     private Quaternion initialRotation;
     private Weapon weapon;
+    private FirstPersonPlayer player;
+    private bool firing;
 
     private static List<Enemy> enemies = new List<Enemy>();
 
@@ -82,22 +89,43 @@ public class Enemy : MonoBehaviour
         yield return StartCoroutine(Attack());
     }
 
+    void FixedUpdate() {
+        if (firing && player) {
+            transform.LookAt(PlayerTarget(player));
+        } else {
+            transform.rotation = initialRotation;
+        }
+    }
+
     /// <summary>
     /// Defines a very simple attack sequence.
     /// </summary>
     IEnumerator Attack() {
         while (true) {
-            FirstPersonPlayer player = GetPlayer();
+            player = GetPlayer();
             if (player && Vector3.Distance(
                 player.transform.position, transform.position) <= activationRange) {
                 Vector3 attackPosition = GetAttackLocation(attackStyle);
-                yield return Move(attackPosition, 1f);
-                yield return Fire(attackDuration);
-                yield return Move(initialPosition, 1f);
+
+                Vector3 moveDirection = attackPosition - transform.position;
+                float moveDistance = moveDirection.magnitude;
+                moveDirection /= moveDistance;
+
+                Vector3 attackDirection = PlayerTarget(player) - attackPosition;
+                float attackDistance = attackDirection.magnitude;
+                attackDistance /= attackDistance;
+
                 yield return Wait(hideDuration);
-            } else {
-                yield return new WaitForFixedUpdate();
+                if (!Physics.Raycast(transform.position, moveDirection, moveDistance) &&
+                    !Physics.Raycast(attackPosition, attackDirection, attackDistance)) {
+                    firing = true;
+                    yield return Move(attackPosition, 1f);
+                    yield return Fire(attackDuration);
+                    yield return Move(initialPosition, 1f);
+                    firing = false;
+                }
             }
+            yield return new WaitForFixedUpdate();
         }
     }
 
@@ -109,7 +137,11 @@ public class Enemy : MonoBehaviour
         float elapsedTime = 0;
         while (elapsedTime < moveTime)
         {
-            transform.position = Vector3.Lerp(startingPos, goalPos, (elapsedTime / moveTime));
+            float t = elapsedTime / moveTime;
+            transform.position = new Vector3(
+                Mathf.SmoothStep(startingPos.x, goalPos.x, t),
+                Mathf.SmoothStep(startingPos.y, goalPos.y, t),
+                Mathf.SmoothStep(startingPos.z, goalPos.z, t));
             elapsedTime += Time.fixedDeltaTime;
             yield return new WaitForFixedUpdate();
         }
@@ -124,7 +156,7 @@ public class Enemy : MonoBehaviour
         while (elapsedTime < duration)
         {
             if (player) {
-                weapon.Fire(player.gameObject, player.transform.position + new Vector3(0,1,0));
+                weapon.Fire(player.gameObject, PlayerTarget(player));
             }
             elapsedTime += Time.fixedDeltaTime;
             yield return new WaitForFixedUpdate();
@@ -136,6 +168,8 @@ public class Enemy : MonoBehaviour
     /// </summary>
     IEnumerator Wait(float duration) {
         float elapsedTime = 0;
+        float variation = duration * timingVariance * 0.5f;
+        duration = Random.Range(duration - variation, duration + variation);
         while (elapsedTime < duration)
         {
             elapsedTime += Time.fixedDeltaTime;
@@ -150,6 +184,16 @@ public class Enemy : MonoBehaviour
         return FirstPersonPlayer.Players.Count > 0 ? FirstPersonPlayer.Players[0] : null;
     }
 
+    /// <summary>
+    /// Returns the target position for the specified player.
+    /// </summary>
+    private Vector3 PlayerTarget(FirstPersonPlayer player) {
+        return player.transform.position + new Vector3(0, 1.5f, 0);
+    }
+
+    /// <summary>
+    /// Computes an attack location based on the specified attackStyle
+    /// </summary>
     private Vector3 GetAttackLocation(AttackStyle attackStyle) {
         AttackStyle chosenStyle;
         switch (attackStyle) {

@@ -47,6 +47,7 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
     private NegaFalkenPlayer playerOne;
     private NegaFalkenPlayer playerTwo;
     private float _deltaTime;
+    private bool humanControlled = true;
     #endregion
 
     public NegaFalkenPlayer GetClosestEnemy(NegaFalkenPlayer player)
@@ -79,7 +80,8 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
 
         if (playerOne && Input.GetButtonDown("ToggleControl"))
         {
-            playerOne.HumanControlled = !playerOne.HumanControlled;
+            humanControlled = !humanControlled;
+            playerOne.HumanControlled = humanControlled;
         }
 
         _deltaTime += (Time.unscaledDeltaTime - _deltaTime) * 0.1f;
@@ -114,8 +116,8 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
                 "training complete" : trainingState.ToString().ToLower()) +
             $" ({percentComplete}%)";
         content += "\n" +
-            "1P: " + (playerOne.HumanControlled ? "Human" : "Falken") + "\n" +
-            "2P: " + (playerTwo.HumanControlled ? "Human" : "Falken");
+            "1P: " + (humanControlled ? "Human" : "Falken") + "\n" +
+            "2P: Falken";
 
         const int width = 100;
         GUI.Label(new Rect(Screen.width / 2 - width / 2, 10, width, 20), content, style);
@@ -145,7 +147,7 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
         }
 
         playerOne = CreatePlayer(playerOnePrefab, playerOneSpawn, playerOneSlider);
-        playerOne.HumanControlled = true;
+        playerOne.HumanControlled = humanControlled;
         playerTwo = CreatePlayer(playerTwoPrefab, playerTwoSpawn, playerTwoSlider);
         playerTwo.HumanControlled = false;
     }

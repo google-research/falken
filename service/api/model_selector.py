@@ -256,7 +256,7 @@ class ModelSelector:
   def session_progress(self):
     """Get this session's progress float, lazily initialized."""
     if not self._progress:
-      progress_per_assignment = self._data_store.calculate_assignment_progress(
+      progress_per_assignment = self._data_store.get_assignment_progress(
           self._session_resource_id)
       if not progress_per_assignment:
         self._progress = 0.0

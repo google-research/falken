@@ -271,48 +271,37 @@ class SessionDataStoreMixin:
     write_resource_id = self.write(session)
     assert session_resource_id == write_resource_id
 
-  def calculate_assignment_progress(
+  def get_assignment_progress(
       self,
       session_resource_id: resource_id.FalkenResourceId) -> Dict[str, float]:
-    """Calculate training_progress for a session.
+    """Retrieve per-assignment progress.
 
     Args:
       session_resource_id: The resource ID of the session.
 
     Returns:
-      A map from assignments to training progress in that assignment.
+      A map from assignments to training progress in that assignment,
+      expressed as a float.
     """
     last_demo_timestamp = self.read(
         session_resource_id).last_demo_data_received_micros
 
     # Fetch the models trained after the last demo was received.
-    model_res_ids, _ = self.list_by_proto_ids(
+    assignment_res_ids, _ = self.list_by_proto_ids(
         project_id=session_resource_id.project,
         brain_id=session_resource_id.brain,
         session_id=session_resource_id.session,
-        model_id='*',
-        min_timestamp_micros=last_demo_timestamp)
+        assignment_id='*')
 
-    models = [self.read(res_id) for res_id in model_res_ids]
+    assignments = [self.read(res_id) for res_id in assignment_res_ids]
 
-    # Filter out any models that aren't trained on the latest demo data.
-    # Note that we expect that the demo timestamp of a model is never higher
-    # than last_demo_timestamp. Since this is not a transactional operation,
-    # this is not guaranteed though, so we simply ignore models that trained
-    # on data that is more recent than last_demo_timestamp.
-    models = [m for m in models
-              if m.most_recent_demo_time_micros == last_demo_timestamp]
-
-    if not models:
-      return {}
-
-    per_assignment_progress = {}
-    for m in models:
-      prev_progress = per_assignment_progress.get(m.assignment, 0.0)
-      model_progress = m.training_examples_completed / m.max_training_examples
-      per_assignment_progress[m.assignment] = max(prev_progress, model_progress)
-
-    return per_assignment_progress
+    def _determine_progress(progress):
+      if progress.most_recent_demo_time_micros < last_demo_timestamp:
+        return 0.0
+      else:
+        return progress.training_progress
+    return {a.assignment_id: _determine_progress(a.progress)
+            for a in assignments}
 
 
 class DataStore(resource_store.ResourceStore,

@@ -145,16 +145,16 @@ class ModelSelectorTest(parameterized.TestCase):
         self._ds, project_id='p0', brain_id='b0', session_id='s0')
 
   def test_is_session_training(self):
-    self._ds.calculate_assignment_progress.return_value = (
+    self._ds.get_assignment_progress.return_value = (
         {'a0': 1.0, 'a1': 1.0, 'a2': 0.0})
     # Call twice.
     self.assertTrue(self._model_selector._is_session_training())
     self.assertTrue(self._model_selector._is_session_training())
     # Assert calculate_assignment_progress was only called once.
-    self._ds.calculate_assignment_progress.assert_called_once()
+    self._ds.get_assignment_progress.assert_called_once()
 
   def test_is_session_training_complete(self):
-    self._ds.calculate_assignment_progress.return_value = (
+    self._ds.get_assignment_progress.return_value = (
         {'a0': 1.0, 'a1': 1.0, 'a2': 1.0})
     self.assertFalse(self._model_selector._is_session_training())
 

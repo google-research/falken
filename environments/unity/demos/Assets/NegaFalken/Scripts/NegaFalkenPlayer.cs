@@ -116,7 +116,6 @@ public class NegaFalkenPlayer : MonoBehaviour
     public bool HumanControlled
     {
         set { _humanControlled = value; }
-        get { return _humanControlled; }
     }
 
     /// <summary>

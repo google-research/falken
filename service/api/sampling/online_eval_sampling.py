@@ -16,7 +16,7 @@
 """Algorithms to sample models for online evaluation."""
 
 import abc
-from typing import NamedTuple
+from typing import List, NamedTuple
 
 import numpy as np
 
@@ -45,7 +45,7 @@ class SamplingStrategy(abc.ABC):
   """Abstract base class for deciding which model to sample next."""
 
   @abc.abstractmethod
-  def select_next(self, model_records: list[ModelRecord]) -> int:
+  def select_next(self, model_records: List[ModelRecord]) -> int:
     """Select the next model to deploy for evaluation.
 
     Args:
@@ -59,7 +59,7 @@ class SamplingStrategy(abc.ABC):
 class UniformSampling(SamplingStrategy):
   """Select the model with the least number of total evaluations."""
 
-  def select_next(self, model_records: list[ModelRecord]) -> int:
+  def select_next(self, model_records: List[ModelRecord]) -> int:
     """Return the index of the model with the least number of evaluations."""
     totals = [record.total for record in model_records]
     return int(np.argmin(totals))  # Convert numpy int to python int.
@@ -102,7 +102,7 @@ class UCBSampling(SamplingStrategy):
   # The confidence range for the model quality estimates.
   CONFIDENCE_RANGE = 0.97
 
-  def select_next(self, model_records: list[ModelRecord]) -> int:
+  def select_next(self, model_records: List[ModelRecord]) -> int:
     """Return the model with the highest upper confidence bound."""
 
     # Calculate alpha and beta parameters of shape (len(model_records),)
@@ -135,7 +135,7 @@ class SelectionStrategy(abc.ABC):
   """Abstract base class for deciding which model to select as the winner."""
 
   @abc.abstractmethod
-  def select_best(self, model_records: list[ModelRecord]) -> int:
+  def select_best(self, model_records: List[ModelRecord]) -> int:
     """Select the winning model from evaluation data.
 
     Args:
@@ -149,7 +149,7 @@ class SelectionStrategy(abc.ABC):
 class HighestAverageSelection(SelectionStrategy):
   """Select the model with the best average score."""
 
-  def select_best(self, model_records: list[ModelRecord]) -> int:
+  def select_best(self, model_records: List[ModelRecord]) -> int:
     """Return the index of the model with the least number of evaluations."""
     success_rates = [record.success_rate for record in model_records]
     return int(np.argmax(success_rates))  # Convert numpy int to python int.

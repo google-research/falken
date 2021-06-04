@@ -282,7 +282,7 @@ class ModelSelector:
     return total_online_evals >= _NUM_ONLINE_EVALS_PER_MODEL * len(summary_map)
 
   def _get_summary_map(self) -> typing.DefaultDict[
-      str, list[model_selection_record.EvaluationSummary]]:
+      str, typing.List[model_selection_record.EvaluationSummary]]:
     """Lazily initializes map of assignment IDs to list of EvaluationSummary."""
     if not self._summary_map:
       before = time.perf_counter()
@@ -396,7 +396,8 @@ class ModelSelector:
 
   def _generate_summary_map(
       self, offline_eval_summary, online_eval_summary
-  ) -> typing.DefaultDict[str, list[model_selection_record.EvaluationSummary]]:
+  ) -> typing.DefaultDict[str, typing.List[
+      model_selection_record.EvaluationSummary]]:
     """Joins the summaries by corresponding assignment IDs and model IDs.
 
     Args:

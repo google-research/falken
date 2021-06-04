@@ -19,6 +19,11 @@ import signal
 import subprocess
 import sys
 
+# pylint: disable=unused-import,g-bad-import-order
+# NOTE: All non-standard libraries must be included after pip_installer
+import common.pip_installer
+import common.generate_protos
+
 from absl import app
 from absl import flags
 from absl import logging
@@ -27,9 +32,6 @@ from api import api_keys
 from data_store import data_store
 from data_store import file_system
 
-# pylint: disable=unused-import,g-bad-import-order
-import common.generate_protos
-import common.pip_installer
 
 FLAGS = flags.FLAGS
 

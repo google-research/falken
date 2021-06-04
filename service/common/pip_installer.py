@@ -17,26 +17,41 @@
 
 import logging
 import os
+import platform
 import subprocess
 import sys
 
 # Modules required to execute service modules and tests.
+# Each element of this list is a tuple with:
+# (pip_module_name, version_constraint, platform_constraint)
+# where:
+# - pip_module_name is the name of the module to install.
+# - version_constraint is an optional version constraint for the pip module.
+# - platform_constraint is a dictionary where the key is a platform name
+#   returned by platform.system() and the value contains a list of supported
+#   architectures for the package. If no constraints are found for the current
+#   platform it is assumed the package is available for the platform.
 _REQUIRED_PYTHON_MODULES = [
-    ('absl-py', ''),
-    ('braceexpand', ''),
-    ('numpy', ''),
-    ('tensorflow', '>=2.5.0'),
-    ('tf-agents', '==0.8.0rc1'),
-    ('grpcio-tools', ''),
-    ('googleapis-common-protos', ''),
-    ('flatbuffers', ''),
-    ('flufl.lock', ''),
+    ('absl-py', '', {}),
+    ('braceexpand', '', {}),
+    ('numpy', '', {}),
+    ('tensorflow', '>=2.5.0', {'windows': ['64bit']}),
+    ('tf-agents', '==0.8.0rc1', {}),
+    ('grpcio-tools', '', {}),
+    ('googleapis-common-protos', '', {}),
+    ('flatbuffers', '', {}),
+    ('flufl.lock', '', {}),
 ]
 
 _PIP_INSTALL_ARGS = [sys.executable, '-m', 'pip', 'install']
 _PIP_SHOW_ARGS = [sys.executable, '-m', 'pip', '-q', 'show']
 # Cache of installed modules populated by _module_installed().
 _INSTALLED_MODULE_LIST = []
+
+
+class PlatformConstraintError(RuntimeError):
+  """Raised if the current platform doesn't support a package."""
+  pass
 
 
 def _clear_installed_modules_cache():
@@ -83,10 +98,38 @@ def _install_module(module, version):
   subprocess.check_call(_PIP_INSTALL_ARGS + [f'{module}{version}'])
 
 
+def _check_platform_constraints(module, constraints):
+  """Check platform constraints for a module.
+
+  Args:
+    module: Name of the module.
+    constraints: Platform constraints dictionary, where the key is a platform
+      name returned by platform.system() and the value contains a list of
+      supported architectures for the package. If no constraints are found for
+      the current platform it is assumed the package is available for the
+      platform.
+
+  Raises:
+    PlatformConstraintError: If the platform doesn't meet the specified
+      constraints.
+  """
+  system_name = platform.system().lower()
+  architecture = platform.architecture()
+  platform_constraints = constraints.get(system_name)
+  supported = (not platform_constraints or
+               any([a for a in architecture if a in platform_constraints]))
+  if not supported:
+    raise PlatformConstraintError(
+        f'pip package {module} requires architecture {platform_constraints} '
+        f'on {system_name} but the current Python environment has '
+        f'architecture {architecture}. Try installing a different interpreter.')
+
+
 def install_dependencies():
   """Install all Python module dependencies."""
   modules_installed = False
-  for module, version in _REQUIRED_PYTHON_MODULES:
+  for module, version, constraints in _REQUIRED_PYTHON_MODULES:
+    _check_platform_constraints(module, constraints)
     if not _module_installed(module):
       _install_module(module, version)
       modules_installed = True

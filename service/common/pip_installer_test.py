@@ -17,6 +17,7 @@
 """Tests that protos are generated after importing generate_protos module."""
 
 import os
+import platform
 import subprocess
 import sys
 
@@ -68,6 +69,39 @@ class PipInstallerTest(absltest.TestCase):
     finally:
       self._uninstall_test_module()
 
+  @mock.patch.object(platform, 'architecture')
+  @mock.patch.object(platform, 'system')
+  def test_check_platform_constraints_none(self, mock_platform_system,
+                                           mock_platform_architecture):
+    """Test checking platform constraints with no constraints."""
+    mock_platform_system.return_value = 'linux'
+    mock_platform_architecture.return_value = ['x86_64']
+    pip_installer._check_platform_constraints('tensorflow',
+                                              {'windows': ['arm64']})
+
+  @mock.patch.object(platform, 'architecture')
+  @mock.patch.object(platform, 'system')
+  def test_check_platform_constraints_supported(self, mock_platform_system,
+                                                mock_platform_architecture):
+    """Test checking platform constraints with an unsupported platform."""
+    mock_platform_system.return_value = 'windows'
+    mock_platform_architecture.return_value = ['64bit', 'WindowsPE']
+    pip_installer._check_platform_constraints('tensorflow',
+                                              {'windows': ['64bit']})
+
+  @mock.patch.object(platform, 'architecture')
+  @mock.patch.object(platform, 'system')
+  def test_check_platform_constraints_unsupported(self, mock_platform_system,
+                                                  mock_platform_architecture):
+    """Test checking platform constraints with an unsupported platform."""
+    mock_platform_system.return_value = 'windows'
+    mock_platform_architecture.return_value = ['32bit', 'WindowsPE']
+    with self.assertRaisesRegex(pip_installer.PlatformConstraintError,
+                                r'.* tensorflow .* \[.64bit.\] on windows '
+                                r'.* \[.32bit.*WindowsPE.\].*'):
+      pip_installer._check_platform_constraints(
+          'tensorflow', {'windows': ['64bit']})
+
   @mock.patch.object(pip_installer, '_clear_installed_modules_cache')
   @mock.patch.object(pip_installer, '_module_installed')
   @mock.patch.object(pip_installer, '_install_module')
@@ -79,10 +113,10 @@ class PipInstallerTest(absltest.TestCase):
     pip_installer.install_dependencies()
 
     mock_module_installed.assert_has_calls([
-        mock.call(m) for m, _ in pip_installer._REQUIRED_PYTHON_MODULES
+        mock.call(m) for m, _, _ in pip_installer._REQUIRED_PYTHON_MODULES
     ])
     mock_install_module.assert_has_calls([
-        mock.call(m, v) for m, v in pip_installer._REQUIRED_PYTHON_MODULES
+        mock.call(m, v) for m, v, _ in pip_installer._REQUIRED_PYTHON_MODULES
     ])
     mock_clear_installed_modules_cache.assert_called()
 
@@ -90,7 +124,7 @@ class PipInstallerTest(absltest.TestCase):
   @mock.patch.object(pip_installer, '_module_installed')
   @mock.patch.object(pip_installer, '_install_module')
   @mock.patch.object(pip_installer, '_REQUIRED_PYTHON_MODULES',
-                     [('foo', ''), ('bar', '')])
+                     [('foo', '', {}), ('bar', '', {})])
   def test_install_missing_dependencies(self, mock_install_module,
                                         mock_module_installed,
                                         mock_clear_installed_modules_cache):
@@ -105,7 +139,7 @@ class PipInstallerTest(absltest.TestCase):
   @mock.patch.object(pip_installer, '_module_installed')
   @mock.patch.object(pip_installer, '_install_module')
   @mock.patch.object(pip_installer, '_REQUIRED_PYTHON_MODULES',
-                     [('foo', ''), ('bar', '')])
+                     [('foo', '', {}), ('bar', '', {})])
   def test_install_no_dependencies(self, mock_install_module,
                                    mock_module_installed,
                                    mock_clear_installed_modules_cache):

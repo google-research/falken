@@ -120,6 +120,13 @@ public class CartPlayer : MonoBehaviour {
         }
     }
 
+    void OnEnable() {
+        foreach (AxleInfo axleInfo in axleInfos) {
+            axleInfo.leftWheel.ConfigureVehicleSubsteps(10, 5, 5);
+            axleInfo.rightWheel.ConfigureVehicleSubsteps(10, 5, 5);
+        }
+    }
+
     void FixedUpdate()
     {
         // Get human actions.

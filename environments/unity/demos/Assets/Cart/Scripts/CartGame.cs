@@ -66,10 +66,12 @@ public class CartGame : FalkenGame<CartBrainSpec>
             Transform checkpoint = controlPoints[nextCheckpointIndex];
             Vector3 carToCheckpoint = (car.transform.position - checkpoint.position).normalized;
             if(Vector3.Dot(checkpoint.forward, carToCheckpoint) > 0) {
+                if (nextCheckpointIndex == 0) {
+                    Debug.Log("Completed a lap!");
+                }
                 ++nextCheckpointIndex;
                 if (nextCheckpointIndex >= controlPoints.Length) {
                     nextCheckpointIndex = 0;
-                    Debug.Log("Completed a lap!");
                 }
             }
 

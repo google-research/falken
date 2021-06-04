@@ -152,5 +152,4 @@ def main(unused_argv, assignment_path=None, iterations=-1):
 
 
 if __name__ == '__main__':
-  flags.mark_flag_as_required('root_dir')
   app.run(main)

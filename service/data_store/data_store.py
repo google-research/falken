@@ -16,7 +16,7 @@
 """Business logic to access Falken objects in the data store."""
 
 import hashlib
-from typing import Optional, Union, Tuple, Type
+from typing import Dict, Optional, Union, Tuple, Type
 
 from data_store import file_system
 from data_store import resource_id
@@ -273,7 +273,7 @@ class SessionDataStoreMixin:
 
   def calculate_assignment_progress(
       self,
-      session_resource_id: resource_id.FalkenResourceId) -> dict[str, float]:
+      session_resource_id: resource_id.FalkenResourceId) -> Dict[str, float]:
     """Calculate training_progress for a session.
 
     Args:

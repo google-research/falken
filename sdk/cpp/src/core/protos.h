@@ -55,6 +55,8 @@ using Episode = research::kernel::falken::common::proto::Episode;
 using EpisodeChunk = research::kernel::falken::common::proto::EpisodeChunk;
 using EpisodeState = research::kernel::falken::common::proto::EpisodeState;
 using Feeler = research::kernel::falken::common::proto::Feeler;
+using FeelerMeasurement =
+    research::kernel::falken::common::proto::FeelerMeasurement;
 using FeelerType = research::kernel::falken::common::proto::FeelerType;
 using Joystick = research::kernel::falken::common::proto::Joystick;
 using JoystickAxesMode =

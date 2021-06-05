@@ -72,6 +72,7 @@ public class CartGame : FalkenGame<CartBrainSpec>
         {
             Transform[] controlPoints = track.GetControlPoints();
             Transform checkpoint = controlPoints[nextCheckpointIndex];
+            car.NextCheckpoint = checkpoint;
             Vector3 carToCheckpoint = (car.transform.position - checkpoint.position).normalized;
             if(Vector3.Dot(checkpoint.forward, carToCheckpoint) > 0) {
                 if (nextCheckpointIndex == 0) {

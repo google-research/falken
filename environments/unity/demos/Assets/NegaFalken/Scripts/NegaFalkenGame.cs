@@ -46,8 +46,6 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
     #region Protected and private attributes
     private NegaFalkenPlayer playerOne;
     private NegaFalkenPlayer playerTwo;
-    private float _deltaTime;
-    private bool humanControlled = true;
     #endregion
 
     public NegaFalkenPlayer GetClosestEnemy(NegaFalkenPlayer player)
@@ -77,14 +75,6 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
             timeScale = Mathf.Max(timeScale / 2, 0.25f);
         }
         Time.timeScale = timeScale;
-
-        if (playerOne && Input.GetButtonDown("ToggleControl"))
-        {
-            humanControlled = !humanControlled;
-            playerOne.HumanControlled = humanControlled;
-        }
-
-        _deltaTime += (Time.unscaledDeltaTime - _deltaTime) * 0.1f;
     }
 
     void LateUpdate()
@@ -96,38 +86,19 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
         }
     }
 
-    void OnGUI()
-    {
-        // Show the current FPS and Timescale
-        GUIStyle style = new GUIStyle();
-        style.alignment = TextAnchor.UpperCenter;
-        style.normal.textColor = new Color(0.0f, 0.0f, 0.0f, 0.8f);
-
-        string content = string.Format("{0:0.} fps", 1f / _deltaTime);
-        if (System.Math.Abs(timeScale - 1.0f) > 0.01)
-        {
-            content += "\nTimescale" + timeScale + "x";
-        }
-
-        var trainingState = TrainingState;
-        int percentComplete = (int)(TrainingProgress * 100);
-        content += "\n" +
-            ((trainingState == Falken.Session.TrainingState.Complete) ?
-                "training complete" : trainingState.ToString().ToLower()) +
-            $" ({percentComplete}%)";
-        content += "\n" +
-            "1P: " + (humanControlled ? "Human" : "Falken") + "\n" +
-            "2P: Falken";
-
-        const int width = 100;
-        GUI.Label(new Rect(Screen.width / 2 - width / 2, 10, width, 20), content, style);
-    }
-
     void OnDestroy()
     {
         Shutdown();
     }
     #endregion
+
+    protected override void ControlChanged()
+    {
+        if (playerOne)
+        {
+            playerOne.HumanControlled = humanControlled;
+        }
+    }
 
     private void ResetGame()
     {

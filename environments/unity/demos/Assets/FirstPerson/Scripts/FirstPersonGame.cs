@@ -19,7 +19,7 @@ using UnityEngine;
 /// <summary>
 /// <c>FirstPersonGame</c> A FirstPerson game where the goal is to make it to the final room in the level.
 /// </summary>
-public class FirstPersonGame : MonoBehaviour
+public class FirstPersonGame : FalkenGame<FirstPersonBrainSpec>
 {
     [Tooltip("The player prefab to spawn at the start of the game.")]
     public FirstPersonPlayer playerPrefab;
@@ -28,25 +28,53 @@ public class FirstPersonGame : MonoBehaviour
     [Tooltip("The final room in the level. Entering this room wins the game.")]
     public Room endRoom;
 
-    private GameObject player;
+    private FirstPersonPlayer player;
+    private Room currentRoom;
+    private Falken.Episode episode;
 
     void Start() {
-        ResetGame();
+        Init();
+        ResetGame(false);
     }
 
     void LateUpdate() {
-        if (player && endRoom && endRoom.Bounds.Contains(player.transform.position)) {
-            Debug.Log("You win!");
-            ResetGame();
+        if (player && episode != null) {
+            if (episode.Completed) {
+                Debug.Log("Episode hit max steps.");
+                episode = CreateEpisode();
+                player.Episode = episode;
+            }
+            else if (player.CurrentRoom != currentRoom) {
+                Debug.Log("Completed room.");
+                episode.Complete(Falken.Episode.CompletionState.Success);
+                episode = CreateEpisode();
+                player.Episode = episode;
+                currentRoom = player.CurrentRoom;
+            }
+        }
+    }
+
+    void OnDestroy() {
+        Shutdown();
+    }
+
+    protected override void ControlChanged() {
+        if (player) {
+            player.HumanControlled = humanControlled;
         }
     }
 
     /// <summary>
     /// Restarts the game without reloading the level.
     /// </summary>
-    private void ResetGame() {
+    private void ResetGame(bool success) {
+        if (episode != null) {
+            episode.Complete(success ? Falken.Episode.CompletionState.Success :
+                Falken.Episode.CompletionState.Failure);
+        }
+
         if (player) {
-            GameObject.Destroy(player);
+            GameObject.Destroy(player.gameObject);
         }
 
         while (Enemy.Enemies.Count > 0) {
@@ -58,8 +86,15 @@ public class FirstPersonGame : MonoBehaviour
         }
 
         if (playerPrefab && startSpawn && endRoom) {
-            player = GameObject.Instantiate(playerPrefab.gameObject,
+            player = GameObject.Instantiate(playerPrefab,
                 startSpawn.GetSpawnPoint(), startSpawn.transform.rotation);
+
+            episode = CreateEpisode();
+            player.Episode = episode;
+            player.BrainSpec = BrainSpec;
+            player.HumanControlled = humanControlled;
+            currentRoom = player.CurrentRoom;
+
             Health playerHealth = player.GetComponent<Health>();
             if (playerHealth) {
                 playerHealth.OnKilled += PlayerKilled;
@@ -71,6 +106,6 @@ public class FirstPersonGame : MonoBehaviour
 
     private void PlayerKilled(Health killed) {
         Debug.Log("You lose!");
-        ResetGame();
+        ResetGame(false);
     }
 }

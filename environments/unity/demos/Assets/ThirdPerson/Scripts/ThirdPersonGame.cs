@@ -40,6 +40,7 @@ public class ThirdPersonGame : FalkenGame<ThirdPersonBrainSpec>
         {
             _startHeight = player.transform.position.y;
             player.Goal = goal;
+            player.HumanControlled = humanControlled;
             Vector3 goalPosition = goal.transform.position;
             goalPosition.y = _startHeight;
             goal.transform.position = goalPosition;
@@ -99,6 +100,14 @@ public class ThirdPersonGame : FalkenGame<ThirdPersonBrainSpec>
         {
             Debug.Log("Reached goal. Ending episode with success.");
             CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Success);
+        }
+    }
+
+    protected override void ControlChanged()
+    {
+        if (player)
+        {
+            player.HumanControlled = humanControlled;
         }
     }
 

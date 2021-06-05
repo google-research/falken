@@ -19,7 +19,7 @@ using UnityEngine;
 /// <c>FalkenGame</c> AI player that can be trained to play and test games.
 /// </summary>
 [Serializable]
-public class FalkenGame<PlayerBrainSpec> : MonoBehaviour
+public abstract class FalkenGame<PlayerBrainSpec> : MonoBehaviour
   where PlayerBrainSpec : Falken.BrainSpecBase, new()
 {
     [Tooltip("The Falken service project ID.")]
@@ -34,6 +34,10 @@ public class FalkenGame<PlayerBrainSpec> : MonoBehaviour
     public string snapshotId = null;
     [Tooltip("The maximum number of steps per episode.")]
     public uint falkenMaxSteps = 300;
+    [Tooltip("Determines whether Falken or the Player should be in control.")]
+    public bool humanControlled = true;
+    [Tooltip("Set to false to disable the rendering of control and training status.")]
+    public bool renderGameHUD = true;
 
     private Falken.Service _service = null;
     private Falken.BrainBase _brain = null;
@@ -149,5 +153,41 @@ public class FalkenGame<PlayerBrainSpec> : MonoBehaviour
         Debug.Log($"Shutting down brain {brainId}");
         _brain = null;
         _service = null;
+    }
+
+    protected abstract void ControlChanged();
+
+    void Update()
+    {
+        if (Input.GetButtonDown("ToggleControl"))
+        {
+            humanControlled = !humanControlled;
+            ControlChanged();
+        }
+    }
+
+    void OnGUI()
+    {
+        if (!renderGameHUD)
+        {
+            return;
+        }
+
+        // Show the current FPS and Timescale
+        GUIStyle style = new GUIStyle();
+        style.alignment = TextAnchor.UpperCenter;
+        style.normal.textColor = new Color(0.0f, 0.0f, 0.0f, 0.8f);
+
+        string content = "Control: " + (humanControlled ? "Human" : "Falken");
+
+        var trainingState = TrainingState;
+        int percentComplete = (int)(TrainingProgress * 100);
+        content += "\n" +
+            ((trainingState == Falken.Session.TrainingState.Complete) ?
+                "Training Complete" : trainingState.ToString().ToLower()) +
+            $" ({percentComplete}%)";
+
+        const int width = 100;
+        GUI.Label(new Rect(Screen.width / 2 - width / 2, 10, width, 20), content, style);
     }
 }

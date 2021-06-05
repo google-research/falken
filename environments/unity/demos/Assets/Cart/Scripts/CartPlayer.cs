@@ -84,41 +84,22 @@ public class CartPlayer : MonoBehaviour {
 
     CartBrainSpec _brainSpec = null;
     private Falken.Episode _episode = null;
-    private bool _autopilot = false;
-    private bool _stepSucceeded = true;
+    private bool _humanControlled = false;
 
     /// <summary>
     /// Sets Falken brain spec.
     /// </summary>
-    public CartBrainSpec FalkenBrainSpec
-    {
-        set
-        {
-            _brainSpec = value;
-        }
-    }
+    public CartBrainSpec FalkenBrainSpec { set { _brainSpec = value; } }
 
     /// <summary>
     /// Sets Falken episode.
     /// </summary>
-    public Falken.Episode FalkenEpisode
-    {
-        set
-        {
-            _episode = value;
-        }
-    }
+    public Falken.Episode FalkenEpisode { set { _episode = value; } }
 
     /// <summary>
-    /// Gets episode step result.
+    /// Sets human vs Falken control.
     /// </summary>
-    public bool StepSucceeded
-    {
-        get
-        {
-            return _stepSucceeded;
-        }
-    }
+    public bool HumanControlled { set { _humanControlled = value; } }
 
     void OnEnable() {
         foreach (AxleInfo axleInfo in axleInfos) {
@@ -134,26 +115,20 @@ public class CartPlayer : MonoBehaviour {
         float playerThrottle = Input.GetAxis("Gas") - Input.GetAxis("Brake");
         float playerHandbrake = Input.GetAxis("Handbrake");
 
-        if (ConnectedToFalken)
-        {
-            // TODO(jballoffet): Add autopilot mode (Falken takes over).
-            _autopilot = false;
-
+        if (_brainSpec != null && _episode != null) {
             // Set brain spec.
             SetObservations();
-            SetActions(playerSteering, playerThrottle, playerHandbrake);
+            if (_humanControlled) {
+                SetActions(playerSteering, playerThrottle, playerHandbrake);
+                Actions.ActionsSource = Falken.ActionsBase.Source.HumanDemonstration;
+            } else {
+                Actions.ActionsSource = Falken.ActionsBase.Source.BrainAction;
+            }
 
-            // Set actions origin.
-            Actions.ActionsSource = _autopilot ?
-                    Falken.ActionsBase.Source.BrainAction :
-                    Falken.ActionsBase.Source.HumanDemonstration;
+            _episode.Step();
 
-            _stepSucceeded = _episode.Step();
-
-            // If the brain is at the wheel, override the actions with the
-            // values returned by Step.
-            if (Actions.ActionsSource == Falken.ActionsBase.Source.BrainAction)
-            {
+            // If the brain is at the wheel, override the actions with the values returned by Step.
+            if (!_humanControlled) {
                 playerSteering = Actions.steering.Value;
                 playerThrottle = Actions.throttle.Value;
                 playerHandbrake = Actions.handbrake.Value;
@@ -205,14 +180,6 @@ public class CartPlayer : MonoBehaviour {
 
             visualWheel.transform.position = position;
             visualWheel.transform.rotation = rotation;
-        }
-    }
-
-    private bool ConnectedToFalken
-    {
-        get
-        {
-            return _brainSpec != null && _episode != null;
         }
     }
 

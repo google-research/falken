@@ -19,6 +19,8 @@ using UnityEngine;
 /// <summary>
 /// <c>Enemy</c> A simple npc designed to move and attack the player.
 /// </summary>
+[RequireComponent(typeof(Weapon))]
+[RequireComponent(typeof(Health))]
 public class Enemy : MonoBehaviour
 {
     public enum AttackStyle {
@@ -64,8 +66,10 @@ public class Enemy : MonoBehaviour
     private Vector3 initialPosition;
     private Quaternion initialRotation;
     private Weapon weapon;
+    private Health health;
     private FirstPersonPlayer player;
     private bool firing;
+    private IEnumerator attackRoutine;
 
     private static List<Enemy> enemies = new List<Enemy>();
 
@@ -79,6 +83,7 @@ public class Enemy : MonoBehaviour
         initialPosition = transform.position;
         initialRotation = transform.rotation;
         weapon = GetComponent<Weapon>();
+        health = GetComponent<Health>();
     }
 
     void OnDisable() {
@@ -86,14 +91,20 @@ public class Enemy : MonoBehaviour
     }
 
     IEnumerator Start() {
-        yield return StartCoroutine(Attack());
+        attackRoutine = Attack();
+        yield return StartCoroutine(attackRoutine);
     }
 
     void FixedUpdate() {
         if (firing && player) {
-            transform.LookAt(PlayerTarget(player));
+            transform.LookAt(player.TargetPos);
         } else {
             transform.rotation = initialRotation;
+        }
+
+        if (attackRoutine != null && health.Dead) {
+            StopCoroutine(attackRoutine);
+            attackRoutine = null;
         }
     }
 
@@ -111,7 +122,7 @@ public class Enemy : MonoBehaviour
                 float moveDistance = moveDirection.magnitude;
                 moveDirection /= moveDistance;
 
-                Vector3 attackDirection = PlayerTarget(player) - attackPosition;
+                Vector3 attackDirection = player.TargetPos - attackPosition;
                 float attackDistance = attackDirection.magnitude;
                 attackDistance /= attackDistance;
 
@@ -151,12 +162,11 @@ public class Enemy : MonoBehaviour
     /// Fires at the player for the specified amount of time.
     /// </summary>
     IEnumerator Fire(float duration) {
-        FirstPersonPlayer player = GetPlayer();
         float elapsedTime = 0;
         while (elapsedTime < duration)
         {
             if (player) {
-                weapon.Fire(player.gameObject, PlayerTarget(player));
+                weapon.Fire(player.gameObject, player.TargetPos);
             }
             elapsedTime += Time.fixedDeltaTime;
             yield return new WaitForFixedUpdate();
@@ -182,13 +192,6 @@ public class Enemy : MonoBehaviour
     /// </summary>
     private FirstPersonPlayer GetPlayer() {
         return FirstPersonPlayer.Players.Count > 0 ? FirstPersonPlayer.Players[0] : null;
-    }
-
-    /// <summary>
-    /// Returns the target position for the specified player.
-    /// </summary>
-    private Vector3 PlayerTarget(FirstPersonPlayer player) {
-        return player.transform.position + new Vector3(0, 1.5f, 0);
     }
 
     /// <summary>

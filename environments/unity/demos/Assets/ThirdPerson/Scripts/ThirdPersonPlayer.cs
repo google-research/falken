@@ -164,7 +164,7 @@ public class ThirdPersonPlayer : MonoBehaviour
     [Tooltip("Whether the camera is locked to have no roll.")]
     public bool lockedCamera = true;
 
-    private bool _falkenControlled;
+    private bool _humanControlled;
     private GameObject _goal;
     private float _cameraDistanceFromTarget;
     private Vector2 _cameraYawPitch = new Vector2(0, 0);
@@ -178,8 +178,14 @@ public class ThirdPersonPlayer : MonoBehaviour
     private ThirdPersonActions _actions;
     private ThirdPersonObservations _observations;
 
+    /// <summary>
+    /// Sets the current goal for this player.
+    /// </summary>
     public GameObject Goal { set { _goal = value; } }
 
+    /// <summary>
+    /// Sets the active Falken actions and observations for this player to populate.
+    /// </summary>
     public void SetActionsAndObservations(
         ThirdPersonActions actions, ThirdPersonObservations observations)
     {
@@ -187,9 +193,19 @@ public class ThirdPersonPlayer : MonoBehaviour
         _observations = observations;
     }
 
+    /// <summary>
+    /// Sets the active Falken episode.
+    /// </summary>
     public Falken.Episode FalkenEpisode { set { _episode = value; } }
 
-    // Start is called before the first frame update
+    /// <summary>
+    /// Sets this player to be human or Falken controlled.
+    /// </summary>
+    public Boolean HumanControlled { set { _humanControlled = value; } }
+
+    /// <summary>
+    /// Resets the player's camera and related controls.
+    /// </summary>
     public void Reset()
     {
         _cameraYawPitch.x = 0;
@@ -387,19 +403,16 @@ public class ThirdPersonPlayer : MonoBehaviour
     // Update is called once per frame
     void FixedUpdate()
     {
-        if (Input.GetButtonDown("ToggleControl"))
-        {
-            _falkenControlled = !_falkenControlled;
-        }
-
-        Vector2 moveInput = new Vector2(Input.GetAxis("MoveX"), Input.GetAxis("MoveY")).normalized;
-        Vector2 lookInput = new Vector2(Input.GetAxis("LookX"), Input.GetAxis("LookY")).normalized;
+        Vector2 moveInput = Vector2.ClampMagnitude(
+            new Vector2(Input.GetAxis("MoveX"), Input.GetAxis("MoveY")), 1f);
+        Vector2 lookInput = Vector2.ClampMagnitude(
+            new Vector2(Input.GetAxis("LookX"), Input.GetAxis("LookY")), 1f);
 
         if (_episode != null && !_episode.Completed)
         {
             _observations.UpdateFrom(gameObject, thirdPersonCamera.gameObject, _goal);
 
-            if (!_falkenControlled)
+            if (_humanControlled)
             {
                 _actions.joy_axis1.X = moveInput.x;
                 _actions.joy_axis1.Y = moveInput.y;
@@ -409,12 +422,16 @@ public class ThirdPersonPlayer : MonoBehaviour
             }
             else
             {
+                _actions.joy_axis1.X = 0f;
+                _actions.joy_axis1.Y = 0f;
+                _actions.joy_axis2.X = 0f;
+                _actions.joy_axis2.Y = 0f;
                 _actions.ActionsSource = Falken.ActionsBase.Source.BrainAction;
             }
 
             _episode.Step();
 
-            if (_falkenControlled)
+            if (!_humanControlled)
             {
                 moveInput.x = _actions.joy_axis1.X;
                 moveInput.y = _actions.joy_axis1.Y;
@@ -446,8 +463,6 @@ public class ThirdPersonPlayer : MonoBehaviour
 
         GUIUtility.RotateAroundPivot(angle, indicatorRect.center);
         GUI.Label(indicatorRect, "\u2191", style);  // arrow up
-
-         GUI.Label(new Rect(10, 60, 300, 50), "Falken controlled: " + _falkenControlled);
     }
     #endregion
 }

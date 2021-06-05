@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7903093439652138113}
   - component: {fileID: 7903093439653137985}
   - component: {fileID: 669356523}
+  - component: {fileID: 1800520930733483516}
   - component: {fileID: 669356522}
   - component: {fileID: 669356525}
   - component: {fileID: 5212148612514170928}
@@ -94,6 +95,25 @@ SphereCollider:
   serializedVersion: 2
   m_Radius: 1
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!95 &1800520930733483516
+Animator:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7903093439650877571}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: d7457ec30ef5e4b24880b18784d1822c, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorControllerStateOnDisable: 0
 --- !u!114 &669356522
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -108,6 +128,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHealth: 5
   infiniteHealth: 0
+  deathAnim: Base.Death
 --- !u!114 &669356525
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -139,7 +160,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   activationRange: 15
   attackDuration: 5
-  hideDuration: 2
+  hideDuration: 1
   moveDistance: 1.5
   moveDuration: 1
   timingVariance: 0.8

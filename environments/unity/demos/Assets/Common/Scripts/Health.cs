@@ -27,6 +27,8 @@ public class Health : MonoBehaviour
     public int maxHealth = 100;
     [Tooltip("Take damage, but never die.")]
     public bool infiniteHealth;
+    [Tooltip("Optional animation to play when killed.")]
+    public string deathAnim;
 
     private int health;
     private bool dead;
@@ -43,6 +45,18 @@ public class Health : MonoBehaviour
     public int CurrentHealth { get { return health; } }
 
     /// <summary>
+    /// Returns true if GameObject has been killed.
+    /// </summary>
+    public bool Dead { get { return dead; } }
+
+    /// <summary>
+    /// Callback for death animation.
+    /// </summary>
+    public void DeathAnimFinished() {
+        Destroy(gameObject);
+    }
+
+    /// <summary>
     /// Applies a specific amount of damage to the object, potentially destroying it.
     /// </summary>
     public void TakeDamage(int amount) {
@@ -52,6 +66,9 @@ public class Health : MonoBehaviour
                 dead = true;
                 if (OnKilled != null) {
                     OnKilled(this);
+                } else if (!System.String.IsNullOrEmpty(deathAnim)) {
+                    Animator animator = GetComponent<Animator>();
+                    animator.Play(deathAnim);
                 } else {
                     GameObject.Destroy(gameObject);
                 }

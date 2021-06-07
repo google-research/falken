@@ -53,6 +53,11 @@ public class Room : MonoBehaviour
     public bool Cleared { get { return enemies.Count == 0; } }
 
     /// <summary>
+    /// Returns the first valid exit (if one exists).
+    /// </summary>
+    public Door Exit { get { return exits.Length > 0 ? exits[0] : null; } }
+
+    /// <summary>
     /// Returns a random, open exit door.
     /// </summary>
     public Door GetRandomExit() {

@@ -33,6 +33,14 @@ public class CartGame : FalkenGame<CartBrainSpec>
     private int nextCheckpointIndex;
     private Falken.Episode episode = null;
 
+    protected override void ControlChanged()
+    {
+        if (car)
+        {
+            car.HumanControlled = humanControlled;
+        }
+    }
+
     void Start()
     {
         if (track && carPrefab && cameraPrefab) {
@@ -83,7 +91,7 @@ public class CartGame : FalkenGame<CartBrainSpec>
                 CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Success);
                 return;
             }
-            else if (!car.StepSucceeded)
+            else if (episode != null && episode.Completed)
             {
                 Debug.Log("Failed episode " + episode.Id);
                 CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Failure);

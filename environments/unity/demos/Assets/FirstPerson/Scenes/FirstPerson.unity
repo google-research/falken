@@ -17495,6 +17495,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: da2147a58d4d54d2e9984de184c714c7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  falkenProjectId: 
+  falkenApiKey: 
+  brainDisplayName: FirstPerson Brain
+  brainId: 
+  snapshotId: 
+  falkenMaxSteps: 1000
+  humanControlled: 1
   playerPrefab: {fileID: 4552860407420013826, guid: a8c66a6ff57884afb855c29d994bb29a,
     type: 3}
   startSpawn: {fileID: 100047519}

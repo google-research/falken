@@ -443,7 +443,9 @@ class AssignmentMonitor(_AssignmentMonitorBase):
       if chunks:
         assignment_ids_with_changes.append(
             resource_id.FalkenResourceId(
-                os.path.relpath(assignment_dir, self._notification_dir)))
+                file_system.posix_path(
+                    os.path.relpath(assignment_dir,
+                                    self._notification_dir))))
 
     return assignment_ids_with_changes
 

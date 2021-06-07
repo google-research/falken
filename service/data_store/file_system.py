@@ -33,7 +33,7 @@ class UnableToLockFileError(RuntimeError):
   pass
 
 
-def _posix_path(path):
+def posix_path(path):
   """Replace system with POSIX directory separators.
 
   Args:
@@ -83,8 +83,7 @@ class FileSystem(object):
     directory = os.path.dirname(destination_path)
 
     os.makedirs(directory, exist_ok=True)
-    source_path = os.path.join(
-        directory, '~' + os.path.basename(destination_path))
+    source_path = os.path.join(directory, os.path.basename(destination_path))
     with open(source_path, 'wb') as f:
       f.write(data)
 
@@ -123,9 +122,9 @@ class FileSystem(object):
       List of path strings found. All paths use POSIX directory separators.
     """
     result = []
-    for p in braceexpand.braceexpand(pattern):
+    for p in braceexpand.braceexpand(posix_path(pattern)):
       for f in glob.glob(self._resolve(p)):
-        result.append(_posix_path(os.path.relpath(f, self._root_path)))
+        result.append(posix_path(os.path.relpath(f, self._root_path)))
     return result
 
   def exists(self, path):
@@ -218,7 +217,7 @@ class FileSystem(object):
     Returns:
       The path to the lock file.
     """
-    return _posix_path(os.path.join(os.path.dirname(path), '.lock'))
+    return posix_path(os.path.join(os.path.dirname(path), '.lock'))
 
   def get_staleness(self, path):
     """Computes millisecond staleness of file or directory.
@@ -262,7 +261,7 @@ class FakeFileSystem(object):
     Returns:
       A string containing the contents of the file.
     """
-    return self._path_to_proto[_posix_path(path)]
+    return self._path_to_proto[posix_path(path)]
 
   def write_file(self, path, data):
     """Writes into a file.
@@ -271,7 +270,7 @@ class FakeFileSystem(object):
       path: The path of the file to write the data to.
       data: A string containing the data to write.
     """
-    self._path_to_proto[_posix_path(path)] = data
+    self._path_to_proto[posix_path(path)] = data
 
   def glob(self, pattern):
     """Encapsulates glob.glob.
@@ -284,7 +283,7 @@ class FakeFileSystem(object):
     # The fake file system doesn't support recursive globs.
     assert '**' not in pattern
     pattern = pattern.replace('*', '[^/]*')
-    pattern = _posix_path(pattern)
+    pattern = posix_path(pattern)
     return [path for path in sorted(self._path_to_proto)
             if re.match(pattern, path)]
 
@@ -296,4 +295,4 @@ class FakeFileSystem(object):
     Returns:
       A boolean for whether the file or directory exists.
     """
-    return _posix_path(path) in self._path_to_proto
+    return posix_path(path) in self._path_to_proto

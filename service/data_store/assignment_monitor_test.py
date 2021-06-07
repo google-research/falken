@@ -43,12 +43,12 @@ def patch_file_system(fs, time_increment):
   fs._file_times = {}
 
   def new_write_file(self, path, data):
-    self._file_times[path] = self._current_time
+    self._file_times[file_system.posix_path(path)] = self._current_time
     self._current_time += time_increment
     self._original_write_file(path, data)
 
   def new_get_modification_time(self, path):
-    return self._file_times[path]
+    return self._file_times[file_system.posix_path(path)]
 
   fs._original_write_file = fs.write_file
   fs.write_file = types.MethodType(new_write_file, fs)

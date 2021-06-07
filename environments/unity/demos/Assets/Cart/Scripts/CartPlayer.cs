@@ -21,12 +21,9 @@ using System.Collections.Generic;
 /// </summary>
 public class CartPlayerEntity : Falken.EntityBase
 {
-    public Falken.Number velocity = new Falken.Number(-20.0f, 50.0f);
-    public Falken.Number angleToNextTrackSegment =
-        new Falken.Number(-180.0f, 180.0f);
+    public Falken.Number speed = new Falken.Number(-20.0f, 50.0f);
     public Falken.Feelers feelers = new Falken.Feelers(
-        15.0f, 0.0f, 90.0f, 14, null);
-    public Falken.Boolean wrongDirection = new Falken.Boolean();
+        15.0f, 0.0f, 360.0f, 14, null);
 }
 
 /// <summary>
@@ -34,6 +31,8 @@ public class CartPlayerEntity : Falken.EntityBase
 /// </summary>
 public class CartObservations : Falken.ObservationsBase
 {
+    public Falken.EntityBase nextTrackSegment = new Falken.EntityBase();
+
     public CartObservations()
     {
         player = new CartPlayerEntity();
@@ -57,6 +56,7 @@ public class CartBrainSpec : Falken.BrainSpec<CartObservations, CartActions>
 /// <summary>
 /// <c>CartPlayer</c> Transforms player input into lower level physical vehicle controls.
 /// </summary>
+[RequireComponent(typeof(Rigidbody))]
 public class CartPlayer : MonoBehaviour {
     [System.Serializable]
     public class AxleInfo {
@@ -85,6 +85,8 @@ public class CartPlayer : MonoBehaviour {
     CartBrainSpec _brainSpec = null;
     private Falken.Episode _episode = null;
     private bool _humanControlled = false;
+    private Transform _nextCheckpoint = null;
+    private Rigidbody _rigidBody;
 
     /// <summary>
     /// Sets Falken brain spec.
@@ -102,9 +104,22 @@ public class CartPlayer : MonoBehaviour {
     public bool HumanControlled { set { _humanControlled = value; } }
 
     void OnEnable() {
+        _rigidBody = GetComponent<Rigidbody>();
+
         foreach (AxleInfo axleInfo in axleInfos) {
             axleInfo.leftWheel.ConfigureVehicleSubsteps(10, 5, 5);
             axleInfo.rightWheel.ConfigureVehicleSubsteps(10, 5, 5);
+        }
+    }
+
+    /// <summary>
+    /// Sets next checkpoint transform.
+    /// </summary>
+    public Transform NextCheckpoint
+    {
+        set
+        {
+            _nextCheckpoint = value;
         }
     }
 
@@ -206,11 +221,15 @@ public class CartPlayer : MonoBehaviour {
     {
         Observations.player.position = transform.position;
         Observations.player.rotation = transform.rotation;
-        // TODO(jballoffet): Compute correct values.
+        if (_nextCheckpoint != null)
+        {
+            Observations.nextTrackSegment.position = _nextCheckpoint.position;
+            Observations.nextTrackSegment.rotation = _nextCheckpoint.rotation;
+        }
+
         CartPlayerEntity entity = (CartPlayerEntity)Observations.player;
-        entity.velocity.Value = 1.0f;
-        entity.angleToNextTrackSegment.Value = 2.0f;
-        entity.wrongDirection.Value = false;
+        entity.speed.Value = _rigidBody.velocity.magnitude;
+        entity.feelers.Update(transform, Vector3.zero, true);
     }
 
     /// <summary>

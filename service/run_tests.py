@@ -146,6 +146,8 @@ def run_absltests(modules_to_test, num_shards, shard_index):
         '"shard_index" should be provided exactly if "num_shards" flag is set.')
   if shard_index is not None:
     logging.info('Running test shard %d', shard_index)
+  # Allow auto-generation and sys.path modification for protos in subprocesses.
+  os.environ['FALKEN_AUTO_GENERATE_PROTOS'] = '1'
   # Filter out the modules using --modules_to_test.
   modules_to_test_re = re.compile(modules_to_test)
   def filter_tests(tests):
@@ -188,8 +190,6 @@ def main(unused_argv):
   # Regenerate protos to ensure the tests start with a clean environment.
   generate_protos.clean_up()
   generate_protos.generate()
-  # Allow auto-generation and sys.path modification for protos in subprocesses.
-  os.environ['FALKEN_AUTO_GENERATE_PROTOS'] = '1'
   if not FLAGS.num_shards:
     sys.exit(run_absltests(FLAGS.modules_to_test, FLAGS.num_shards, None))
   else:

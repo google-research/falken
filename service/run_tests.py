@@ -129,33 +129,36 @@ def _add_module_test_classes_to_global_namespace(test_classes, module):
         globals()[name] = value
 
 
-def run_absltests(shard_index=None):
+def run_absltests(modules_to_test, num_shards, shard_index):
   """Run all absl tests in the current module and selected shard.
 
   Args:
+    modules_to_test: Regular expression used to filter tests that should be
+      executed.
+    num_shards: Total number of test shards or None if sharding is disabled.
     shard_index: If test is run in parallel with sharding, this specifies the
       integer index of the current shard. If not set, all tests will be run.
   Returns:
     An integer representing a unix status code.
   """
-  if (shard_index is not None) != bool(FLAGS.num_shards):
+  if (shard_index is not None) != bool(num_shards):
     raise ValueError(
         '"shard_index" should be provided exactly if "num_shards" flag is set.')
   if shard_index is not None:
     logging.info('Running test shard %d', shard_index)
   # Filter out the modules using --modules_to_test.
-  modules_to_test_re = re.compile(FLAGS.modules_to_test)
+  modules_to_test_re = re.compile(modules_to_test)
   def filter_tests(tests):
     return [t for t in tests if modules_to_test_re.match(t)]
   subprocess_tests = filter_tests(_DEFAULT_SUBPROCESS_TESTS)
   test_modules = filter_tests(_DEFAULT_TEST_MODULES)
   if not subprocess_tests and not test_modules:
-    raise ValueError(f'No tests match {FLAGS.modules_to_test}.')
+    raise ValueError(f'No tests match {modules_to_test}.')
 
   # Run tests that need to be run on separate subprocesses so they do not
   # affect the other tests' environments.
   for i, subprocess_test in enumerate(subprocess_tests):
-    if shard_index is None or i % FLAGS.num_shards == shard_index:
+    if shard_index is None or i % num_shards == shard_index:
       logging.info('Running subprocess test %s', subprocess_test)
       subprocess.check_call(
           [sys.executable, '-m', subprocess_test],
@@ -170,7 +173,7 @@ def run_absltests(shard_index=None):
   if shard_index is not None:
     # Setting these two flags will use the bazel sharding integration
     # inside absltest in order to shard the tests.
-    os.environ['TEST_TOTAL_SHARDS'] = str(FLAGS.num_shards)
+    os.environ['TEST_TOTAL_SHARDS'] = str(num_shards)
     os.environ['TEST_SHARD_INDEX'] = str(shard_index)
 
   try:
@@ -188,10 +191,12 @@ def main(unused_argv):
   # Allow auto-generation and sys.path modification for protos in subprocesses.
   os.environ['FALKEN_AUTO_GENERATE_PROTOS'] = '1'
   if not FLAGS.num_shards:
-    sys.exit(run_absltests())
+    sys.exit(run_absltests(FLAGS.modules_to_test, FLAGS.num_shards, None))
   else:
     with multiprocessing.Pool(FLAGS.num_shards) as pool:
-      result_statuses = pool.map(run_absltests, range(FLAGS.num_shards))
+      result_statuses = pool.starmap(
+          run_absltests, [(FLAGS.modules_to_test, FLAGS.num_shards, i)
+                          for i in range(FLAGS.num_shards)])
 
     failing_shards = []
     for i, status_code in enumerate(result_statuses):

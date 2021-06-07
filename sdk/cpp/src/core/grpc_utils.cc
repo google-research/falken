@@ -52,6 +52,8 @@ std::shared_ptr<grpc::Channel> CreateBaseChannel(
                params.ssl_target_name.c_str());
   }
   channel_args.SetUserAgentPrefix(GetUserAgent());
+  channel_args.SetInt(
+      "grpc.max_receive_message_length", 50 * 1024 * 1024);
 
   channel = grpc::CreateCustomChannel(params.address, credentials,
                                       channel_args);

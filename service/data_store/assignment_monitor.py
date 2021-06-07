@@ -244,18 +244,21 @@ class AssignmentMonitor(_AssignmentMonitorBase):
     self._cleanup()
 
     # Start polling.
-    self._running = True
     self._thread = threading.Thread(
         target=self._poll_assignments_and_episode_chunks, daemon=True)
     self._thread.start()
 
   def __del__(self):
-    """Ensure that monitor is stoppe dupon destruction."""
-    self.stop()
+    """Ensure that monitor is stopped upon destruction."""
+    if self._metronome:
+      self.shutdown()
 
-  def stop(self):
-    """Stop monitoring assignments."""
-    self._running = False
+  def shutdown(self):
+    """Shutdown monitoring assignments."""
+    self.release_assignment(raise_if_none_acquired=False)
+    self._metronome.stop()
+    self._thread.join()
+    self._metronome = None
 
   def acquire_assignment(self, assignment_id):
     """Acquires an assignment.
@@ -286,13 +289,21 @@ class AssignmentMonitor(_AssignmentMonitorBase):
       self._chunk_files_to_remove = []
       return True
 
-  def release_assignment(self):
-    """Releases the currently acquired assignment."""
+  def release_assignment(self, raise_if_none_acquired=True):
+    """Releases the currently acquired assignment.
+
+    Args:
+      raise_if_none_acquired: If True, raise an exception whenever this
+        method is call but no assignment has been acquired.
+    """
     with self._acquired_assignment_in_process_lock:
       if not self._acquired_assignment_lock_file:
-        raise ValueError(
-            'Attempted to release an assignment, but none has been acquired '
-            'yet.')
+        if raise_if_none_acquired:
+          raise ValueError(
+              'Attempted to release an assignment, but none has been acquired '
+              'yet.')
+        else:
+          return
 
       # By removing these files, we ensure they won't be sent as notifications
       # from any process, in the future.
@@ -306,34 +317,32 @@ class AssignmentMonitor(_AssignmentMonitorBase):
 
   def _poll_assignments_and_episode_chunks(self):
     """Polls the notification dir using the metronome to dictate frequency."""
-    for _ in self._metronome.wait_for_tick():
-      if not self._running:
-        return
+    try:
+      for _ in self._metronome.wait_for_tick():
+        callback = None
 
-      callback = None
+        with self._acquired_assignment_in_process_lock:
+          if self._acquired_assignment_id:
+            self._fs.refresh_lock(
+                self._acquired_assignment_lock_file,
+                _ASSIGNMENT_EXPIRATION_SECONDS)
 
-      with self._acquired_assignment_in_process_lock:
-        if self._acquired_assignment_id:
-          if not self._running:
-            return
-          self._fs.refresh_lock(
-              self._acquired_assignment_lock_file,
-              _ASSIGNMENT_EXPIRATION_SECONDS)
+            chunks = self._pop_episode_chunks(self._acquired_assignment_id)
 
-          chunks = self._pop_episode_chunks(self._acquired_assignment_id)
+            if chunks:
+              callback = lambda: self._chunk_callback(  # pylint: disable=g-long-lambda
+                  self._acquired_assignment_id, chunks)  # pylint: disable=cell-var-from-loop
+          else:
+            # TODO(b/185940506): List chunks for all assignments that aren't
+            # acquired by any other processes.
+            callback = lambda: [  # pylint: disable=g-long-lambda
+                self._assignment_callback(a)
+                for a in self._get_assignments_with_changes()]
 
-          if chunks:
-            callback = lambda: self._chunk_callback(  # pylint: disable=g-long-lambda
-                self._acquired_assignment_id, chunks)  # pylint: disable=cell-var-from-loop
-        else:
-          # TODO(b/185940506): List chunks for all assignments that aren't
-          # acquired by any other processes.
-          callback = lambda: [  # pylint: disable=g-long-lambda
-              self._assignment_callback(a)
-              for a in self._get_assignments_with_changes()]
-
-      if callback:
-        callback()
+        if callback:
+          callback()
+    except KeyboardInterrupt:
+      pass
 
   def _pop_episode_chunks(self, assignment_id):
     """Get and remove all new episode chunks for a given assignment id.

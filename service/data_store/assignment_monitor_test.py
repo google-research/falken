@@ -69,6 +69,8 @@ class AssignmentMonitorTest(parameterized.TestCase):
   def tearDown(self):
     """Clean up the temporary directory and datastore."""
     super().tearDown()
+    if self._monitor:
+      self._monitor.shutdown()
     self._monitor = None
     self._fs = None
     self._temporary_directory.cleanup()
@@ -85,8 +87,7 @@ class AssignmentMonitorTest(parameterized.TestCase):
     self._monitor.release_assignment()
     self.assertTrue(self._second_monitor.acquire_assignment(assignment_id))
 
-    self._monitor._metronome.stop()
-    self._second_monitor._metronome.stop()
+    self._second_monitor.shutdown()
 
   def test_trigger_assignment_notification_bad_resource_id(self):
     """Test triggering assignment notification with a bad resource ID."""
@@ -119,7 +120,7 @@ class AssignmentMonitorTest(parameterized.TestCase):
       chunk_callback.reset_mock()
       callback_called.clear()
 
-    self._monitor._metronome.stop()
+    self._monitor.shutdown()
     patch_file_system(self._fs, time_increment)
     self._monitor = assignment_monitor.AssignmentMonitor(
         self._fs, assignment_callback, chunk_callback)
@@ -180,7 +181,8 @@ class AssignmentMonitorTest(parameterized.TestCase):
     chunk_callback.assert_called_once_with(assignment_id_2, [chunk_id_2])
     reset_callbacks()
 
-    metronome.stop()
+    self._monitor.shutdown()
+    self._monitor = None
     assignment_callback.assert_not_called()
     chunk_callback.assert_not_called()
 
@@ -192,7 +194,7 @@ class AssignmentMonitorTest(parameterized.TestCase):
     def callback(*unused_args):
       callback_called.set()
 
-    self._monitor._metronome.stop()
+    self._monitor.shutdown()
     self._monitor = assignment_monitor.AssignmentMonitor(
         self._fs, lambda x: None, callback)
     metronome = self._monitor._metronome
@@ -215,8 +217,6 @@ class AssignmentMonitorTest(parameterized.TestCase):
     self._monitor.release_assignment()
     self.assertFalse(self._fs.exists(chunk_path))
 
-    metronome.stop()
-
   @mock.patch.object(
       assignment_monitor, '_Metronome', new=assignment_monitor._FakeMetronome)
   def test_lock_refresh(self):
@@ -225,7 +225,7 @@ class AssignmentMonitorTest(parameterized.TestCase):
     def refresh_lock_side_effect(*unused_args):
       refresh_called.set()
 
-    self._monitor._metronome.stop()
+    self._monitor.shutdown()
     self._monitor = assignment_monitor.AssignmentMonitor(
         self._fs, lambda x: None, lambda x: None)
 
@@ -246,7 +246,8 @@ class AssignmentMonitorTest(parameterized.TestCase):
       refresh_called.clear()
       self._fs.refresh_lock.reset_mock()
 
-    metronome.stop()
+    self._monitor.shutdown()
+    self._monitor = None
     self._fs.refresh_lock.assert_not_called()
 
   def test_cleanup_cleans_stale(self):
@@ -293,8 +294,9 @@ class AssignmentMonitorTest(parameterized.TestCase):
     self.assertTrue(self._fs.exists(
         notifier._get_assignment_directory(assignment_resource_id)))
 
-     # Trigger cleanup by instantiating monitor.
-    assignment_monitor.AssignmentMonitor(
+    # Trigger cleanup by instantiating monitor.
+    self._monitor.shutdown()
+    self._monitor = assignment_monitor.AssignmentMonitor(
         self._fs, lambda x: None, lambda x: None)
 
     self.assertTrue(self._fs.exists(

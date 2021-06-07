@@ -92,6 +92,10 @@ class Storage:
     self._in_progress_assignment = None
     self._stale_seconds = stale_seconds
 
+  def shutdown(self):
+    """Shuts the Storage instance down."""
+    self._assignment_monitor.shutdown()
+
   @wrap_data_store_exception
   def record_session_error(
       self,

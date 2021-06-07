@@ -116,17 +116,19 @@ _DEFAULT_TEST_MODULES = [
 ]
 
 
-def _add_module_test_classes_to_global_namespace(test_classes, module):
+def _add_module_test_classes_to_module(test_classes, search_module,
+                                       add_to_module):
   """Add test classes from the specified modules to this global namespace.
 
   Args:
     test_classes: Tuple of base classes for tests.
-    module: Module to search for test classes.
+    search_module: Module to search for test classes.
+    add_to_module: Module to add test classes to.
   """
-  for name, value in vars(module).items():
+  for name, value in vars(search_module).items():
     if inspect.isclass(value):
       if issubclass(value, test_classes):
-        globals()[name] = value
+        vars(add_to_module)[name] = value
 
 
 def run_absltests(modules_to_test, num_shards, shard_index):
@@ -145,7 +147,7 @@ def run_absltests(modules_to_test, num_shards, shard_index):
     raise ValueError(
         '"shard_index" should be provided exactly if "num_shards" flag is set.')
   if shard_index is not None:
-    logging.info('Running test shard %d', shard_index)
+    logging.info('Running test shard %d/%d', shard_index, num_shards)
   # Allow auto-generation and sys.path modification for protos in subprocesses.
   os.environ['FALKEN_AUTO_GENERATE_PROTOS'] = '1'
   # Filter out the modules using --modules_to_test.
@@ -167,10 +169,11 @@ def run_absltests(modules_to_test, num_shards, shard_index):
           cwd=os.path.dirname(__file__), env=os.environ)
 
   # Import test modules.
+  this_module = sys.modules.get(__name__)
   for module_name in test_modules:
-    _add_module_test_classes_to_global_namespace(
+    _add_module_test_classes_to_module(
         (absltest.TestCase, parameterized.TestCase),
-        importlib.import_module(module_name))
+        importlib.import_module(module_name), this_module)
 
   if shard_index is not None:
     # Setting these two flags will use the bazel sharding integration

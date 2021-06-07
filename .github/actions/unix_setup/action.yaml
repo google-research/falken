@@ -1,0 +1,7 @@
+name: 'Linux/MacOS pre-run setup'
+description: 'Common steps for Linux/MacOS pre-run image preparation'
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: echo "Placeholder, currently no setup steps are necessary"

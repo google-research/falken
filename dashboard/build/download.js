@@ -89,7 +89,7 @@ async function downloadZipAndExtract(downloadUrl, extractDirectory,
   archive.getEntries().forEach((zipEntry) => {
     if (!zipEntry.isDirectory) {
       // Convert to POSIX path separators and split into components.
-      let entryComponents = zipEntry.entryName.replace('\\', '/').split('/');
+      let entryComponents = zipEntry.entryName.replace(/\\/g, '/').split('/');
       if (entryComponents.length <= componentsToIgnore) {
         throw (`Path of ${zipEntry.entryName} in archive ${downloadUrl} is ` +
                `has too few components ${entryComponents.length} to be ` +

@@ -31,7 +31,8 @@ const { spawn } = require('child_process');
 async function spawnSubprocess(command, args, exitOnFailure=true) {
   debug([command, ...args].join(' '));
   return new Promise((resolve, reject) => {
-    spawn(command, args, { stdio: 'inherit', stderr: 'inherit' }).on(
+    spawn(command, args, { stdio: 'inherit', stderr: 'inherit',
+                           shell: true }).on(
         'exit', function(exitCode) {
           if (exitCode == 0) {
             resolve(exitCode);

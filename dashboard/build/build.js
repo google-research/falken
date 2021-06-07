@@ -133,6 +133,17 @@ export { getServiceUrl }
 }
 
 /**
+ * Escape forward slashes in a filename.
+ *
+ * @param {string} Filename string to escape.
+ *
+ * @returns {string} Escaped filename.
+ */
+function escapeFilename(filename) {
+  return filename.replace(/\\/g, '\\\\');
+}
+
+/**
  * Build the site.
  *
  * @param {string} serveMode - Can be 'watch' to build and rebuild on
@@ -143,19 +154,23 @@ export { getServiceUrl }
  * @returns {Promise} - Fullfills with undefined upon success.
  */
 async function build(serveMode, port) {
+  const escapedDashboardDirectory = escapeFilename(dashboardDirectory);
+  const escapedEntryPoint =
+    escapeFilename(path.resolve(dashboardDirectory, 'src', 'falken.js'));
+  const escapedDashboardDistDirectory = escapeFilename(dashboardDistDirectory);
   const config = `
 module.exports = {
   mode: 'development',
-  context: '${dashboardDirectory}',
-  entry: '${path.resolve(dashboardDirectory, 'src', 'falken.js')}',
+  context: '${escapedDashboardDirectory}',
+  entry: '${escapedEntryPoint}',
   output: {
     filename: 'falken.js',
-    path: '${dashboardDistDirectory}',
+    path: '${escapedDashboardDistDirectory}',
     libraryTarget: 'var',
     library: 'FalkenLib'
   },
   devServer: {
-    contentBase: '${dashboardDistDirectory}',
+    contentBase: '${escapedDashboardDistDirectory}',
     compress: true,
     port: ${port},
     // Workaround for https://github.com/webpack/webpack-dev-server/issues/2484
@@ -226,7 +241,29 @@ async function main() {
   return Promise.resolve();
 }
 
+/**
+ * Relaunches the script in a subprocess if the first script argument is a
+ * variable reference. This handle variable expansion for arguments on Windows.
+ */
+async function expandArgumentVariableOrRunMain() {
+  let executable = process.argv[0];
+  let buildScript = process.argv[1];
+  let scriptArgs = process.argv.slice(2);
+  if (scriptArgs) {
+    if (scriptArgs[0].startsWith('$npm_')) {
+      let expandedVar = process.env[scriptArgs[0].slice(1)];
+      if (expandedVar) {
+        let relaunchArgs = [`"${buildScript}"`];
+        relaunchArgs = relaunchArgs.concat(expandedVar.split(' '));
+        relaunchArgs = relaunchArgs.concat(scriptArgs.slice(1));
+        return spawnSubprocess(`"${executable}"`, relaunchArgs);
+      }
+    }
+  }
+  return main();
+}
+
 // Run main if this isn't imported as a module.
 if(!module.parent) {
-  main();
+  expandArgumentVariableOrRunMain();
 }

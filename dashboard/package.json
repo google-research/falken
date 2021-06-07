@@ -7,13 +7,13 @@
     "serve_port": "8000",
     "endpoint_url": "http://localhost:50051",
     "proxy_url": "http://localhost:50052",
-    "build_common": "node build/build.js --serve_port \"$npm_package_config_serve_port\" --endpoint_url \"$npm_package_config_endpoint_url\" --proxy_url \"$npm_package_config_proxy_url\" --build_machine \"$npm_config_build_machine\""
+    "build_common": "--serve_port \"$npm_package_config_serve_port\" --endpoint_url \"$npm_package_config_endpoint_url\" --proxy_url \"$npm_package_config_proxy_url\" --build_machine \"$npm_config_build_machine\""
   },
   "scripts": {
-    "start": "$npm_package_config_build_common --serve_mode=serve",
-    "build": "$npm_package_config_build_common",
-    "preview": "$npm_package_config_build_common --deploy=preview",
-    "publish": "$npm_package_config_build_common --deploy=public",
+    "start": "node build/build.js $npm_package_config_build_common --serve_mode=serve",
+    "build": "node build/build.js $npm_package_config_build_common",
+    "preview": "node build/build.js $npm_package_config_build_common --deploy=preview",
+    "publish": "node build/build.js $npm_package_config_build_common --deploy=public",
     "test": "npx mocha build"
   },
   "keywords": [],

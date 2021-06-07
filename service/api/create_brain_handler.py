@@ -56,7 +56,7 @@ def create_brain(request, context, data_store):
       'CreateBrain called for project %s and brain_spec %s for brain '
       'name %s.', request.project_id, request.brain_spec, request.display_name)
   try:
-    _ = specs.ProtobufNode.from_spec(request.brain_spec)
+    _ = specs.BrainSpec(request.brain_spec)
 
   except specs.InvalidSpecError as e:
     context.abort(

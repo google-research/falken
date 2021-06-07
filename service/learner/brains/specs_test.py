@@ -1484,6 +1484,13 @@ class SpecsTest(parameterized.TestCase):
     self.assertIsInstance(brain_spec.action_spec,
                           specs.ActionSpec)
 
+  def test_empty_brain_spec(self):
+    empty_brain_spec = brain_pb2.BrainSpec()
+    with self.assertRaisesWithLiteralMatch(
+        specs.InvalidSpecError,
+        'BrainSpec must have an observation spec and action spec.'):
+      specs.BrainSpec(empty_brain_spec)
+
   @parameterized.named_parameters(
       ('IllegalEntity', 'Joystick(s) reference invalid entities: '
        'joy_bar --> [\'bar\'], joy_foo --> [\'foo\'].', """

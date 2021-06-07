@@ -57,6 +57,8 @@ class BrainSpec:
     Args:
       brain_spec_pb: BrainSpec protobuf to parse and validate.
     """
+    assert isinstance(brain_spec_pb, brain_pb2.BrainSpec)
+    _ = SpecBase(brain_spec_pb)
     self.action_spec = ActionSpec(brain_spec_pb.action_spec)
     self.observation_spec = ObservationSpec(brain_spec_pb.observation_spec)
     self.validate_joystick_references()

@@ -51,7 +51,8 @@ class LearnerServiceTest(absltest.TestCase):
     learner_service.FLAGS.root_dir = os.sep + os.path.join('a', 'root')
     self.assertEqual(
         learner_service._get_permanent_storage_dir('summaries_dir'),
-        os.path.join(learner_service.FLAGS.root_dir, 'summaries_dir'))
+        os.path.abspath(os.path.join(learner_service.FLAGS.root_dir,
+                                     'summaries_dir')))
 
   @mock.patch.object(learner, 'Learner')
   def test_get_temporary_storage_dir_when_flag_set(self, unused_mock_learner):

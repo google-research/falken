@@ -21,7 +21,7 @@ using System.Collections.Generic;
 /// </summary>
 public class CartPlayerEntity : Falken.EntityBase
 {
-    public Falken.Number speed = new Falken.Number(-20.0f, 50.0f);
+    public Falken.Number velocity1D = new Falken.Number(-20.0f, 50.0f);
     public Falken.Feelers feelers = new Falken.Feelers(
         15.0f, 0.0f, 360.0f, 14, null);
 }
@@ -223,7 +223,10 @@ public class CartPlayer : MonoBehaviour
         }
 
         CartPlayerEntity entity = (CartPlayerEntity)Observations.player;
-        entity.speed.Value = _rigidBody.velocity.magnitude;
+        float velocitySign = Mathf.Sign(
+            Vector3.Dot(transform.forward, _rigidBody.velocity));
+        entity.velocity1D.Value = _rigidBody.velocity.magnitude * velocitySign;
+
         entity.feelers.Update(transform, Vector3.zero, true);
     }
 

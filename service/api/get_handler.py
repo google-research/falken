@@ -20,6 +20,7 @@ import zipfile
 
 from absl import logging
 from api import proto_conversion
+from data_store import file_system
 from data_store import resource_id
 
 # pylint: disable=g-bad-import-order
@@ -226,8 +227,8 @@ class GetModelHandler(GetHandler):
         is_file = os.path.basename(name)
         is_inside_saved_model = os.path.commonpath(
             [name, _SAVED_MODEL_PATH]) == _SAVED_MODEL_PATH
+        path = file_system.posix_path(os.path.relpath(name, _SAVED_MODEL_PATH))
         if is_file and is_inside_saved_model:
-          model_files[os.path.relpath(name, _SAVED_MODEL_PATH)] = (
-              zipped_file.read(name))
+          model_files[path] = zipped_file.read(name)
 
     return model_response

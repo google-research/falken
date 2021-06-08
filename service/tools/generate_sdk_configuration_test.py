@@ -92,7 +92,7 @@ class GenerateSdkConfigurationTest(absltest.TestCase):
           '  "project_id": "cool",\n'
           '  "service": {\n'
           '    "connection": {\n'
-          '      "address": "[::]:50051",\n'
+          '      "address": "[::1]:50051",\n'
           '      "ssl_certificate": [\n'
           '        "foo",\n'
           '        "bar",\n'

@@ -46,7 +46,7 @@ _LOCAL_CONNECTION_CONFIG = {
         # Connect to localhost.
         'environment': 'local',
         'connection': {
-            'address': '[::]:50051',
+            'address': '[::1]:50051',
         },
     },
 }
@@ -81,7 +81,7 @@ def generate_configuration(cert_lines, project_id=None, api_key=None):
       'service': {
         'environment': 'local',
         'connection': {
-          'address': '[::]:50051',
+          'address': '[::1]:50051',
           'ssl_certificate': cert_lines,
         },
       }

@@ -19,7 +19,7 @@ cmake_minimum_required(VERSION 3.17)
 
 project(falken_unity NONE)
 
-set(FALKEN_SDK_VERSION "0.0.10" CACHE STRING
+set(FALKEN_SDK_VERSION "0.0.1" CACHE STRING
   "Version of the plugin being built."
 )
 set(INSTALL_PATH "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH

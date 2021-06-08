@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 925845505}
-  m_IndirectSpecularColor: {r: 0.44657874, g: 0.49641275, b: 0.5748172, a: 1}
+  m_IndirectSpecularColor: {r: 0.4465822, g: 0.4964162, b: 0.57482, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -582,6 +582,16 @@ PrefabInstance:
     - target: {fileID: 3180024069426278712, guid: ba41cccc8e0b84e5c9801bfe2814a4ac,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3180024069426278714, guid: ba41cccc8e0b84e5c9801bfe2814a4ac,
+        type: 3}
+      propertyPath: m_AngularDrag
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3180024069426278714, guid: ba41cccc8e0b84e5c9801bfe2814a4ac,
+        type: 3}
+      propertyPath: m_UseGravity
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -2067,7 +2077,7 @@ Mesh:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: pb_Mesh-60208
+  m_Name: pb_Mesh30804
   serializedVersion: 9
   m_SubMeshes:
   - serializedVersion: 2

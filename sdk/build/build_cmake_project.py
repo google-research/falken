@@ -53,7 +53,7 @@ CMAKE_INSTALLER_URL_BY_HOST_PLATFORM = {
 }
 
 # Default configuration targets.
-CMAKE_DEFAULT_BUILD_CONFIGS = ['Debug', 'Release']
+CMAKE_VALID_BUILD_CONFIGS = ['Debug', 'Release']
 
 # Possible returning values of the script.
 EXIT_SUCCESS = 0
@@ -140,12 +140,14 @@ def parse_arguments(args: typing.List[str]) -> argparse.Namespace:
   parser.add_argument(
       '--cmake_build_configs',
       nargs='*',
-      default=CMAKE_DEFAULT_BUILD_CONFIGS,
+      default=CMAKE_VALID_BUILD_CONFIGS,
+      choices=CMAKE_VALID_BUILD_CONFIGS,
       help=('List of configurations to build.'))
   parser.add_argument(
       '--cmake_package_configs',
       nargs='*',
-      default=CMAKE_DEFAULT_BUILD_CONFIGS,
+      default=CMAKE_VALID_BUILD_CONFIGS,
+      choices=CMAKE_VALID_BUILD_CONFIGS,
       help=('List of configurations to package. This must be '
             'a superset of the list of configurations to '
             'build.'))
@@ -293,7 +295,26 @@ def check_requirements_win(args: argparse.Namespace) -> bool:
   if not install_pip_packages(args.python, REQUIRED_PACKAGES_WINDOWS):
     return False
 
-  # Check if Nasm is installed at it's the default location.
+  # Check if git accepts longer paths.
+  longer_paths_set = True
+  try:
+    response = shell.run_command(
+        'git config --get core.longpaths', capture_output=True)
+    if response.stdout != b'true\n':
+      longer_paths_set = False
+  except subprocess.CalledProcessError:
+    longer_paths_set = False
+
+  if not longer_paths_set:
+    logging.warning('Git configuration is changed to support long paths. '
+                    'This can be reverted with '
+                    '"git config --global core.longpaths false"')
+    try:
+      shell.run_command('git config --global core.longpaths true')
+    except subprocess.CalledProcessError:
+      return False
+
+  # Check if Nasm is installed at its default location.
   executable_found = shutil.which('nasm')
   if executable_found is None:
     installer = nasm_installer.NasmInstaller(NASM_URL)

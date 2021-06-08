@@ -5,9 +5,9 @@
 #
 name: build_release
 on:
-  # Triggers are still a work in progress to be able to debug
-  # TODO(b/190199633) remove workflow_dispatch once the repo is stable and testing is working
-  workflow_dispatch:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
 env:
   BUILD_SCRIPT: "sdk/build/build_cmake_project.py"
   CPP_SDK_REPO_PATH: "sdk/cpp"
@@ -258,12 +258,22 @@ jobs:
           path: ${{ env.OUTPUT_ARTIFACTS_DIR }}/*
           retention-days: 3
 
+  #
+  # Release creation
+  #
+
   upload_release_assets:
     needs:
       - cpp_sdk_multiplatform
       - unity_sdk_multiplatform
+    env:
+      RELEASE_SCRIPT: "./sdk/build/upload_release_assets.sh"
+      TAG: ${{ github.REF }}
     runs-on:  ubuntu-18.04
     steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v2
         with:
           name: cpp_sdk_multiplatform_packaged_artifacts
@@ -272,5 +282,7 @@ jobs:
         with:
           name: unity_sdk_multiplatform_packaged_artifacts
           path: ${{ env.INPUT_ARTIFACTS_DIR }}
-      - name: List of input artifacts
-        run: ls -lR ${{ env.INPUT_ARTIFACTS_DIR }}
+      - name: Upload release files
+        run: $RELEASE_SCRIPT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

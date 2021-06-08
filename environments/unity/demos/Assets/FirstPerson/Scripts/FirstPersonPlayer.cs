@@ -27,7 +27,7 @@ public class FirstPersonEntity : Falken.EntityBase {
 /// Player-specific entity.
 /// </summary>
 public class FirstPersonPlayerEntity : FirstPersonEntity {
-    public Falken.Feelers feelers = new Falken.Feelers(10.0f, 0.0f, 360.0f, 14, null);
+    public Falken.Feelers feelers = new Falken.Feelers(10.0f, 0.0f, 360.0f, 15, null);
 }
 
 /// <summary>

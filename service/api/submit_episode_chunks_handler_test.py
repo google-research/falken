@@ -95,7 +95,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
     mock_ds = mock.Mock()
     mock_ds.resource_id_from_proto_ids.return_value = self._session_resource_id
     mock_selector = selector.return_value
-    mock_selector.session_progress().return_value = 0.5
+    type(mock_selector).session_progress = mock.PropertyMock(return_value=0.5)
     mock_selector.get_training_state.return_value = (
         session_pb2.SessionInfo.TRAINING)
     mock_selector.select_next_model.return_value = resource_id.FalkenResourceId(
@@ -107,7 +107,7 @@ class SubmitEpisodeChunksHandlerTest(parameterized.TestCase):
         falken_service_pb2.SubmitEpisodeChunksResponse(
             session_info=session_pb2.SessionInfo(
                 model_id='m0', state=session_pb2.SessionInfo.TRAINING,
-                training_progress=mock_selector.session_progress.return_value)))
+                training_progress=0.5)))
 
   @mock.patch.object(submit_episode_chunks_handler,
                      '_check_episode_data_with_brain_spec')

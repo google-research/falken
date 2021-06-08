@@ -97,8 +97,8 @@ class ModelExporterTest(parameterized.TestCase):
     self._model_exporter.start()
 
   def tearDown(self):
-    del self._tmp_data_store_root
-    del self._tmp_export_path
+    self._tmp_data_store_root.cleanup()
+    self._tmp_export_path.cleanup()
     super(ModelExporterTest, self).tearDown()
 
   def setup_valid_checkpoint(self, checkpoint_path, compile_graph=False):
@@ -168,7 +168,7 @@ class ModelExporterTest(parameterized.TestCase):
   def test_export_invalid_checkpoint(self):
     self.initialize_and_start_model_exporter(True)
     invalid_checkpoint_path = os.path.join(self.tmp_models_path,
-                                           'invalid/checkpoint/')
+                                           'invalid', 'checkpoint')
     with self.assertRaises(ValueError):
       self._model_exporter.export_model(
           invalid_checkpoint_path, self._eval_tuples, self._stats, 'model_id',
@@ -179,7 +179,7 @@ class ModelExporterTest(parameterized.TestCase):
   def test_export_model(self, synchronous_export):
     self.initialize_and_start_model_exporter(synchronous_export)
 
-    checkpoint_path_0 = os.path.join(self.tmp_models_path, '0/checkpoint')
+    checkpoint_path_0 = os.path.join(self.tmp_models_path, '0', 'checkpoint')
     self.setup_valid_checkpoint(checkpoint_path_0)
 
     self._model_exporter.export_model(
@@ -188,7 +188,7 @@ class ModelExporterTest(parameterized.TestCase):
         max_training_examples=100, most_recent_demo_time_micros=0)
     self.assertTrue(self._model_exporter._export_model_thread.is_alive())
 
-    checkpoint_path_1 = os.path.join(self.tmp_models_path, '1/checkpoint')
+    checkpoint_path_1 = os.path.join(self.tmp_models_path, '1', 'checkpoint')
     self.setup_valid_checkpoint(checkpoint_path_1,
                                 compile_graph=True)
     model_1_eval_tuples = [(4, 0.9), (5, 0.1)]
@@ -237,7 +237,7 @@ class ModelExporterTest(parameterized.TestCase):
     self.initialize_and_start_model_exporter(synchronous_export)
     mock_export_model.side_effect = ValueError()
 
-    checkpoint_path = os.path.join(self.tmp_models_path, '0/checkpoint/')
+    checkpoint_path = os.path.join(self.tmp_models_path, '0', 'checkpoint')
     self.setup_valid_checkpoint(checkpoint_path)
     with self.assertRaises(ValueError):
       self._model_exporter.export_model(
@@ -265,7 +265,7 @@ class ModelExporterTest(parameterized.TestCase):
 
   def test_assignment_progress_updated(self):
     self.initialize_and_start_model_exporter(True)
-    checkpoint_path_0 = os.path.join(self.tmp_models_path, '0/checkpoint')
+    checkpoint_path_0 = os.path.join(self.tmp_models_path, '0', 'checkpoint')
     self.setup_valid_checkpoint(checkpoint_path_0, True)
     self._model_exporter.export_model(
         checkpoint_path_0, self._eval_tuples, self._stats, 'model_id_0',

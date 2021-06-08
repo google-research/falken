@@ -57,9 +57,11 @@ public class CartBrainSpec : Falken.BrainSpec<CartObservations, CartActions>
 /// <c>CartPlayer</c> Transforms player input into lower level physical vehicle controls.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
-public class CartPlayer : MonoBehaviour {
+public class CartPlayer : MonoBehaviour
+{
     [System.Serializable]
-    public class AxleInfo {
+    public class AxleInfo
+    {
         [Tooltip("Reference to the axle's left WheelCollider.")]
         public WheelCollider leftWheel;
         [Tooltip("Reference to the axle's right WheelCollider.")]
@@ -84,7 +86,7 @@ public class CartPlayer : MonoBehaviour {
 
     CartBrainSpec _brainSpec = null;
     private Falken.Episode _episode = null;
-    private bool _humanControlled = false;
+    private bool _humanControlled = true;
     private Transform _nextCheckpoint = null;
     private Rigidbody _rigidBody;
 
@@ -103,47 +105,40 @@ public class CartPlayer : MonoBehaviour {
     /// </summary>
     public bool HumanControlled { set { _humanControlled = value; } }
 
-    void OnEnable() {
+    /// <summary>
+    /// Sets next checkpoint transform.
+    /// </summary>
+    public Transform NextCheckpoint { set { _nextCheckpoint = value; } }
+
+    public void OnEnable()
+    {
         _rigidBody = GetComponent<Rigidbody>();
 
-        foreach (AxleInfo axleInfo in axleInfos) {
+        foreach (AxleInfo axleInfo in axleInfos)
+        {
             axleInfo.leftWheel.ConfigureVehicleSubsteps(10, 5, 5);
             axleInfo.rightWheel.ConfigureVehicleSubsteps(10, 5, 5);
         }
     }
 
-    /// <summary>
-    /// Sets next checkpoint transform.
-    /// </summary>
-    public Transform NextCheckpoint
-    {
-        set
-        {
-            _nextCheckpoint = value;
-        }
-    }
-
-    void FixedUpdate()
+    public void FixedUpdate()
     {
         // Get human actions.
         float playerSteering = Input.GetAxis("Steering");
         float playerThrottle = Input.GetAxis("Gas") - Input.GetAxis("Brake");
         float playerHandbrake = Input.GetAxis("Handbrake");
 
-        if (_brainSpec != null && _episode != null) {
+        if (_brainSpec != null && _episode != null && !_episode.Completed)
+        {
             // Set brain spec.
             SetObservations();
-            if (_humanControlled) {
-                SetActions(playerSteering, playerThrottle, playerHandbrake);
-                Actions.ActionsSource = Falken.ActionsBase.Source.HumanDemonstration;
-            } else {
-                Actions.ActionsSource = Falken.ActionsBase.Source.BrainAction;
-            }
+            SetActions(playerSteering, playerThrottle, playerHandbrake);
 
             _episode.Step();
 
             // If the brain is at the wheel, override the actions with the values returned by Step.
-            if (!_humanControlled) {
+            if (!_humanControlled)
+            {
                 playerSteering = Actions.steering.Value;
                 playerThrottle = Actions.throttle.Value;
                 playerHandbrake = Actions.handbrake.Value;
@@ -159,17 +154,21 @@ public class CartPlayer : MonoBehaviour {
     /// <param name="throttle">Controls the car speed, from -1 (backwards) to 1 (forwards).</param>
     /// <param name="handbrake">The strength of the brakes, from 0 (none) to 1 (full).</param>
     /// </summary>
-    private void Drive(float steering, float throttle, float handbrake) {
+    private void Drive(float steering, float throttle, float handbrake)
+    {
         float steeringAngle = maxSteeringAngle * steering;
         float motorTorque = maxMotorTorque * throttle;
         float brakeTorque = maxBrakeTorque * handbrake;
 
-        foreach (AxleInfo axleInfo in axleInfos) {
-            if (axleInfo.steering) {
+        foreach (AxleInfo axleInfo in axleInfos)
+        {
+            if (axleInfo.steering)
+            {
                 axleInfo.leftWheel.steerAngle = steeringAngle;
                 axleInfo.rightWheel.steerAngle = steeringAngle;
             }
-            if (axleInfo.motor) {
+            if (axleInfo.motor)
+            {
                 axleInfo.leftWheel.motorTorque = motorTorque;
                 axleInfo.rightWheel.motorTorque = motorTorque;
                 axleInfo.leftWheel.brakeTorque = brakeTorque;
@@ -184,9 +183,11 @@ public class CartPlayer : MonoBehaviour {
     /// <summary>
     /// Updates wheel visuals to match physics properties.
     /// </summary>
+    /// <param name="collider">Wheel to update.</param>
     private void ApplyLocalPositionToVisuals(WheelCollider collider)
     {
-        if (collider.transform.childCount > 0) {
+        if (collider.transform.childCount > 0)
+        {
             Transform visualWheel = collider.transform.GetChild(0);
 
             Vector3 position;
@@ -198,24 +199,18 @@ public class CartPlayer : MonoBehaviour {
         }
     }
 
-    private CartObservations Observations
-    {
-        get
-        {
-            return _brainSpec.Observations;
-        }
-    }
-
-    private CartActions Actions
-    {
-        get
-        {
-            return _brainSpec.Actions;
-        }
-    }
+    /// <summary>
+    /// Gets the brain observations.
+    /// </summary>
+    private CartObservations Observations { get { return _brainSpec.Observations; } }
 
     /// <summary>
-    /// Sets the observations.
+    /// Gets the brain actions.
+    /// </summary>
+    private CartActions Actions { get { return _brainSpec.Actions; } }
+
+    /// <summary>
+    /// Sets the brain observations.
     /// </summary>
     private void SetObservations()
     {
@@ -233,12 +228,26 @@ public class CartPlayer : MonoBehaviour {
     }
 
     /// <summary>
-    /// Sets the actions.
+    /// Sets the brain actions.
     /// </summary>
+    /// <param name="steering">Action that controls the car direction.</param>
+    /// <param name="throttle">Action that controls the car speed.</param>
+    /// <param name="handbrake">Action that controls the strength of the brakes.</param>
     private void SetActions(float steering, float throttle, float handbrake)
     {
-        Actions.steering.Value = steering;
-        Actions.throttle.Value = throttle;
-        Actions.handbrake.Value = handbrake;
+        if (_humanControlled)
+        {
+            Actions.steering.Value = steering;
+            Actions.throttle.Value = throttle;
+            Actions.handbrake.Value = handbrake;
+            Actions.ActionsSource = Falken.ActionsBase.Source.HumanDemonstration;
+        }
+        else
+        {
+            Actions.steering.Value = 0.0f;
+            Actions.throttle.Value = 0.0f;
+            Actions.handbrake.Value = 0.0f;
+            Actions.ActionsSource = Falken.ActionsBase.Source.BrainAction;
+        }
     }
 }

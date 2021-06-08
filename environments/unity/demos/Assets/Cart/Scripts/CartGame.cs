@@ -33,18 +33,12 @@ public class CartGame : FalkenGame<CartBrainSpec>
     private int nextCheckpointIndex;
     private Falken.Episode episode = null;
 
-    protected override void ControlChanged()
+    public void Start()
     {
-        if (car)
+        if (track && carPrefab && cameraPrefab)
         {
-            car.HumanControlled = humanControlled;
-        }
-    }
-
-    void Start()
-    {
-        if (track && carPrefab && cameraPrefab) {
-            if (Camera.main) {
+            if (Camera.main)
+            {
                 Camera.main.gameObject.SetActive(false);
             }
             Transform[] controlPoints = track.GetControlPoints();
@@ -54,7 +48,9 @@ public class CartGame : FalkenGame<CartBrainSpec>
                 startingPoint.rotation);
             chaseCamera.target = car.GetComponent<Rigidbody>();
             nextCheckpointIndex = 1;
-        } else {
+        }
+        else
+        {
             Debug.Log("CartGame is not configured properly. Please set a track, car, and camera.");
         }
 
@@ -62,11 +58,10 @@ public class CartGame : FalkenGame<CartBrainSpec>
         Init();
         car.FalkenBrainSpec = BrainSpec;
 
-        // Create a new episode.
-        CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Success);
+        ResetGame(true);
     }
 
-    void FixedUpdate()
+    public void FixedUpdate()
     {
         if (track && car)
         {
@@ -74,40 +69,53 @@ public class CartGame : FalkenGame<CartBrainSpec>
             Transform checkpoint = controlPoints[nextCheckpointIndex];
             car.NextCheckpoint = checkpoint;
             Vector3 carToCheckpoint = (car.transform.position - checkpoint.position).normalized;
-            if(Vector3.Dot(checkpoint.forward, carToCheckpoint) > 0) {
-                if (nextCheckpointIndex == 0) {
+            if(Vector3.Dot(checkpoint.forward, carToCheckpoint) > 0)
+            {
+                if (nextCheckpointIndex == 0)
+                {
                     Debug.Log("Completed a lap!");
+                    ResetGame(true);
                 }
                 ++nextCheckpointIndex;
-                if (nextCheckpointIndex >= controlPoints.Length) {
+                if (nextCheckpointIndex >= controlPoints.Length)
+                {
                     nextCheckpointIndex = 0;
                 }
             }
 
-            // TODO(jballoffet): Add condition for successful episode.
-            bool atGoal = false;
-            if (atGoal)
-            {
-                Debug.Log("Succeeded episode " + episode.Id);
-                CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Success);
-                return;
-            }
-            else if (episode != null && episode.Completed)
+            // Checks whether the episode has been completed w/o reaching the goal.
+            if (episode != null && episode.Completed)
             {
                 Debug.Log("Failed episode " + episode.Id);
-                CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Failure);
-                return;
+                ResetGame(false);
             }
         }
     }
 
-    /// <summary>
-    /// Completes the current episode if any and creates a new one.
-    /// </summary>
-    private void CreateEpisodeAndResetGame(
-        Falken.Episode.CompletionState episodeState)
+    public void OnDestroy()
     {
-        episode?.Complete(episodeState);
+        Shutdown();
+    }
+
+    /// <summary>
+    /// Determines whether Falken or the human player should be in control.
+    /// </summary>
+    protected override void ControlChanged()
+    {
+        if (car)
+        {
+            car.HumanControlled = humanControlled;
+        }
+    }
+
+    /// <summary>
+    /// Restarts the game.
+    /// </summary>
+    private void ResetGame(bool success)
+    {
+        episode?.Complete(success ? Falken.Episode.CompletionState.Success :
+                Falken.Episode.CompletionState.Failure);
+
         episode = CreateEpisode();
         car.FalkenEpisode = episode;
     }

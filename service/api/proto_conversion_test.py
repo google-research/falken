@@ -103,9 +103,7 @@ class ProtoConversionTest(absltest.TestCase):
 
   def test_set_field_wrong_type(self):
     common_brain = brain_pb2.Brain()
-    with self.assertRaisesWithLiteralMatch(
-        TypeError,
-        'seconds: 1\n has type Timestamp, but expected one of: bytes, unicode'):
+    with self.assertRaises(TypeError):
       proto_conversion.ProtoConverter._set_field(
           common_brain, 'project_id', timestamp_pb2.Timestamp(seconds=1))
 

@@ -124,7 +124,7 @@ class FileSystem:
     if not path.startswith(base):
       raise ValueError(f'{path} is not inside {base}')
     rel_path = path[len(base):]
-    if rel_path and rel_path[0] == '/':
+    if rel_path and rel_path[0] in (os.path.sep, os.path.altsep):
       rel_path = rel_path[1:]
     return rel_path
 

@@ -196,6 +196,10 @@ def main(unused_argv):
   if not FLAGS.num_shards:
     sys.exit(run_absltests(FLAGS.modules_to_test, FLAGS.num_shards, None))
   else:
+    # Disable CUDA when running tests in parallel to avoid GPU memory
+    # starvation.
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
     with multiprocessing.Pool(FLAGS.num_shards) as pool:
       result_statuses = pool.starmap(
           run_absltests, [(FLAGS.modules_to_test, FLAGS.num_shards, i)

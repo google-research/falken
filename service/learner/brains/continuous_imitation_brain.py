@@ -18,9 +18,11 @@
 import glob
 import math
 import os
+import platform
 import random
 import shutil
 import time
+import uuid
 
 from learner.brains import demonstration_buffer
 from learner.brains import eval_datastore
@@ -32,6 +34,9 @@ from learner.brains import saved_model_to_tflite_model
 from learner.brains import specs
 from log import falken_logging
 import tensorflow as tf
+# Used to workaround https://github.com/tensorflow/tensorflow/issues/41380
+from tensorflow.python.framework import errors as tf_errors
+from tensorflow.python.lib.io import file_io as tf_file_io
 from tf_agents.agents.behavioral_cloning import behavioral_cloning_agent
 from tf_agents.policies import greedy_policy
 from tf_agents.policies import policy_saver
@@ -256,6 +261,40 @@ def _generate_random_steps(number_of_frames, brain_spec):
         timestamp_micros=i)
 
 
+def _atomic_write_string_to_file(filename, contents, overwrite=True):
+  """Write a string to a file.
+
+  Args:
+    filename: File to write.
+    contents: What to write to the file.
+    overwrite: Whether to overwrite the target file.
+
+  Raises:
+    tf_errors.OpError: If it's not possible to write the file.
+  """
+  if not tf_file_io.has_atomic_move(filename):
+    tf_file_io.write_string_to_file(filename, contents)
+  else:
+    temp_pathname = filename + '.tmp' + uuid.uuid4().hex
+    tf_file_io.write_string_to_file(temp_pathname, contents)
+    try:
+      if overwrite and os.path.exists(filename):
+        os.remove(filename)
+      tf_file_io.rename(temp_pathname, filename, overwrite)
+    except tf_errors.OpError:
+      tf_file_io.delete_file(temp_pathname)
+      raise
+
+
+def _patch_atomic_write_string_to_file():
+  """Patch for TensorFlow 2.5.0 to workaround file saving bug on Windows.
+
+  See https://github.com/tensorflow/tensorflow/issues/41380
+  """
+  if platform.system().lower().startswith('windows'):
+    tf_file_io.atomic_write_string_to_file = _atomic_write_string_to_file
+
+
 class ContinuousImitationBrain:
   """An ML powered brain that continuously learns from demonstration.
 
@@ -314,6 +353,8 @@ class ContinuousImitationBrain:
       ValueError: if any of the paths isn't set.
     """
     assert spec_pb
+    _patch_atomic_write_string_to_file()
+
     _ = brain_id
     self.spec_pb = spec_pb
     self.brain_spec = specs.BrainSpec(spec_pb)

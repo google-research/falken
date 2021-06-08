@@ -28,9 +28,8 @@ FLAGS = flags.FLAGS
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-flags.DEFINE_string(
-    'cert', os.path.join(os.path.dirname(THIS_DIR), 'cert.pem'),
-    'Path to a certificate file use to validate the service.')
+flags.DEFINE_string('ssl_dir', THIS_DIR,
+                    'Path containing the SSL cert.')
 flags.DEFINE_string('project_id', None, 'Falken project to use.')
 flags.DEFINE_string('api_key', None,
                     'API key to authenticate the Falken project.')
@@ -105,7 +104,7 @@ def main(unused_argv):
   with open(FLAGS.config_json, 'wt') as config_json_file:
     config_json_file.write(
         json.dumps(generate_configuration(
-            read_file_to_lines(FLAGS.cert),
+            read_file_to_lines(os.path.join(FLAGS.ssl_dir, 'cert.pem')),
             project_id=FLAGS.project_id,
             api_key=FLAGS.api_key), sort_keys=True, indent=2))
     full_path = os.path.join(os.getcwd(), FLAGS.config_json)

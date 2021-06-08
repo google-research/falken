@@ -134,7 +134,8 @@ def run_generate_sdk_configuration(
   logging.info('Writing config for project %s, api_key %s', project_id, api_key)
   subprocess.run(
       [sys.executable, '-m', 'tools.generate_sdk_configuration',
-       '--project_id', project_id, '--api_key', api_key],
+       '--project_id', project_id, '--api_key', api_key, '--ssl_dir',
+       FLAGS.ssl_dir],
       check=True, cwd=current_path)
 
 

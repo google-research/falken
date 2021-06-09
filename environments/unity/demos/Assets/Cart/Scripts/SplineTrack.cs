@@ -184,6 +184,7 @@ public class SplineTrack : MonoBehaviour
         QuadMesh curbMesh = new QuadMesh();
         float uvIncrement = splineLength / points.Length;
         float prevV = 0f;
+        const float lowerCurbY = -20f;
         for (int i = 0; i < points.Length - 1; ++i) {
             int prevControlIndex = i / resolution;
             int nextControlIndex = (prevControlIndex + 1) % controlPoints.Length;
@@ -223,10 +224,10 @@ public class SplineTrack : MonoBehaviour
 
             // Left Curb
             Vector3 leftInnerBottom = left;
-            leftInnerBottom.y = 0f;
+            leftInnerBottom.y = lowerCurbY;
             Vector3 leftInnerTop = left + curbOffsetY;
             Vector3 nextLeftInnerBottom = nextLeft;
-            nextLeftInnerBottom.y = 0f;
+            nextLeftInnerBottom.y = lowerCurbY;
             Vector3 nextLeftInnerTop = nextLeft + curbOffsetY;
             Vector3[] leftCurbFaceVerts = {
                 leftInnerBottom, leftInnerTop, nextLeftInnerTop, nextLeftInnerBottom
@@ -252,9 +253,9 @@ public class SplineTrack : MonoBehaviour
             curbMesh.AddQuad(leftCurbTopVerts, curbTopNormals, leftCurbTopUVs, transform);
 
             Vector3 leftOuterBottom = leftOuterTop;
-            leftOuterBottom.y = 0f;
+            leftOuterBottom.y = lowerCurbY;
             Vector3 nextLeftOuterBottom = nextLeftOuterTop;
-            nextLeftOuterBottom.y = 0f;
+            nextLeftOuterBottom.y = lowerCurbY;
             Vector3[] leftCurbBackVerts = {
                 leftOuterTop, leftOuterBottom, nextLeftOuterBottom, nextLeftOuterTop
             };
@@ -265,10 +266,10 @@ public class SplineTrack : MonoBehaviour
 
             // Right Curb
             Vector3 rightInnerBottom = right;
-            rightInnerBottom.y = 0f;
+            rightInnerBottom.y = lowerCurbY;
             Vector3 rightInnerTop = right + curbOffsetY;
             Vector3 nextRightInnerBottom = nextRight;
-            nextRightInnerBottom.y = 0f;
+            nextRightInnerBottom.y = lowerCurbY;
             Vector3 nextRightInnerTop = nextRight + curbOffsetY;
             Vector3[] rightCurbFaceVerts = {
                 rightInnerBottom, nextRightInnerBottom, nextRightInnerTop, rightInnerTop
@@ -294,9 +295,9 @@ public class SplineTrack : MonoBehaviour
             curbMesh.AddQuad(rightCurbTopVerts, curbTopNormals, rightCurbTopUVs, transform);
 
             Vector3 rightOuterBottom = rightOuterTop;
-            rightOuterBottom.y = 0f;
+            rightOuterBottom.y = lowerCurbY;
             Vector3 nextRightOuterBottom = nextRightOuterTop;
-            nextRightOuterBottom.y = 0f;
+            nextRightOuterBottom.y = lowerCurbY;
             Vector3[] rightCurbBackVerts = {
                     rightOuterTop, nextRightOuterTop, nextRightOuterBottom, rightOuterBottom
             };

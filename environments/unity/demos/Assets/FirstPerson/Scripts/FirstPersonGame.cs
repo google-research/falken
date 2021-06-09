@@ -45,11 +45,16 @@ public class FirstPersonGame : FalkenGame<FirstPersonBrainSpec>
                 player.Episode = episode;
             }
             else if (player.CurrentRoom != currentRoom) {
-                Debug.Log("Completed room.");
-                episode.Complete(Falken.Episode.CompletionState.Success);
-                episode = CreateEpisode();
-                player.Episode = episode;
-                currentRoom = player.CurrentRoom;
+                if (player.CurrentRoom == endRoom) {
+                    Debug.Log("Completed level. You win!");
+                    ResetGame(true);
+                } else {
+                    Debug.Log("Completed room.");
+                    episode.Complete(Falken.Episode.CompletionState.Success);
+                    episode = CreateEpisode();
+                    player.Episode = episode;
+                    currentRoom = player.CurrentRoom;
+                }
             }
         }
     }

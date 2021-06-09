@@ -22,9 +22,6 @@ using JPBotelho;
 /// <c>SplineTrack</c> Race track representation and tools for quickly creating new tracks.
 /// </summary>
 [ExecuteInEditMode]
-[RequireComponent(typeof(MeshFilter))]
-[RequireComponent(typeof(MeshRenderer))]
-[RequireComponent(typeof(MeshCollider))]
 public class SplineTrack : MonoBehaviour
 {
     [Tooltip("True creates a circular track. False creates a linear track.")]
@@ -47,6 +44,14 @@ public class SplineTrack : MonoBehaviour
     [Tooltip("The resolution of the track mesh. Higher numbers create smoother geometry.")]
     [Range(1, 100)]
     public int resolution = 10;
+    [Tooltip("The material to apply to the road.")]
+    public Material roadMat;
+    [Tooltip("The layer for the road.")]
+    public LayerMask roadLayer;
+    [Tooltip("The material to apply to the curb.")]
+    public Material curbMat;
+    [Tooltip("The layer for the curb.")]
+    public LayerMask curbLayer;
 
         /// <summary>
     /// Returns the control points that define the track.
@@ -55,6 +60,9 @@ public class SplineTrack : MonoBehaviour
 
     [SerializeField] [HideInInspector]
     private Transform[] controlPoints;
+
+    private GameObject road;
+    private GameObject curb;
 
 #if UNITY_EDITOR
     private CatmullRom spline;
@@ -70,6 +78,13 @@ public class SplineTrack : MonoBehaviour
                     GameObject.DestroyImmediate(controlPoints[i].gameObject);
                 }
             }
+        }
+
+        if (road) {
+            DestroyImmediate(road);
+        }
+        if (curb) {
+            DestroyImmediate(curb);
         }
 
         float theta = 0f;
@@ -101,6 +116,9 @@ public class SplineTrack : MonoBehaviour
             controlPoint.transform.localRotation = Quaternion.identity;
             controlPoints[i] = controlPoint.transform;
         }
+
+        road = CreateSubObject("Road", roadMat, roadLayer);
+        curb = CreateSubObject("Curb", curbMat, curbLayer);
 
         dirty = true;
     }
@@ -278,7 +296,29 @@ public class SplineTrack : MonoBehaviour
             curbMesh.AddQuad(rightCurbBackVerts, rightCurbBackNormals, rightCurbFaceUVs, transform);
         }
 
-        MeshFilter meshFilter = GetComponent<MeshFilter>();
+        SetSubObject(road, roadMesh);
+        SetSubObject(curb, curbMesh);
+    }
+
+    /// <summary>
+    /// Creates a sub-object (i.e. road or curb)
+    /// </summary>
+    private GameObject CreateSubObject(string name, Material material, LayerMask layer) {
+        GameObject subObject = new GameObject(name);
+        subObject.transform.parent = transform;
+        subObject.layer = layer >> 1;
+        subObject.AddComponent<MeshFilter>();
+        subObject.AddComponent<MeshCollider>();
+        MeshRenderer renderer = subObject.AddComponent<MeshRenderer>();
+        renderer.sharedMaterial = material;
+        return subObject;
+    }
+
+    /// <summary>
+    /// Updates the mesh of a sub-object.
+    /// </summary>
+    private void SetSubObject(GameObject subObject, QuadMesh quadMesh) {
+        MeshFilter meshFilter = subObject.GetComponent<MeshFilter>();
         Mesh mesh = meshFilter.sharedMesh;
         if (mesh) {
             mesh.Clear();
@@ -286,10 +326,8 @@ public class SplineTrack : MonoBehaviour
             mesh = new Mesh();
             meshFilter.sharedMesh = mesh;
         }
-        mesh.subMeshCount = 2;
-        roadMesh.AddToMesh(ref mesh, 0);
-        curbMesh.AddToMesh(ref mesh, 1);
-        MeshCollider meshCollider = GetComponent<MeshCollider>();
+        quadMesh.AddToMesh(ref mesh);
+        MeshCollider meshCollider = subObject.GetComponent<MeshCollider>();
         meshCollider.sharedMesh = mesh;
     }
 #endif // UNITY_EDITOR

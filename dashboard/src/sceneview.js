@@ -95,9 +95,6 @@ function createFeelerGeo(field, stepIndex, xform, feelersVertices,
   // spec data with the values at the specified stepIndex.
   for (let i = 0; i < field.angles.length; ++i) {
     let angle = field.angles[i];
-    if (field.degrees) {
-      angle *= Math.PI / 180;
-    }
     const distance = field.feelerCurves[i].steps[stepIndex];
     const start = new THREE.Vector3(0, 0, 0);
     const end = new THREE.Vector3(Math.sin(angle) * distance,

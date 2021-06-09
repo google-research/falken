@@ -406,14 +406,10 @@ class FeelersCurve extends AttributeCurve {
     this.minimum = spec.distance.minimum;
     this.maximum = spec.distance.maximum;
     this.angles = spec.yawAnglesList;
-    this.degrees = false;
     this.feelerCurves = [];
     for (let i = 0; i < this.count; ++i) {
       this.feelerCurves[i] =
           new NumberCurve(prefix, name + "_" + i, spec.distance);
-      if (Math.abs(this.angles[i]) > Math.PI) {
-        this.degrees = true;
-      }
     }
     this.color = FEELER_COLORS[feelerColorIndex];
     feelerColorIndex = (++feelerColorIndex) % FEELER_COLORS.length;

@@ -35,6 +35,9 @@ public class Projectile : MonoBehaviour
     [Tooltip("Maximum turning speed (only for homing projectiles).")]
     [Range(0, 1000)]
     public float maxTurnSpeed = 1;
+    [Tooltip("Effect to spawn on impact")]
+    public Transform impactEffect;
+
 
     private float length;
     private float expirationTime;
@@ -85,6 +88,11 @@ public class Projectile : MonoBehaviour
                     health.TakeDamage(damage);
                 }
             }
+            Transform impact = Instantiate(impactEffect, hit.point, Quaternion.identity);
+            impact.forward = hit.normal;
+
+            // TO DO: This should turn off the mesh renderer and particle systems
+            // but delay briefly before being destroyed so the particles can fade out
             GameObject.Destroy(gameObject);
         }
         transform.position = newPosition;

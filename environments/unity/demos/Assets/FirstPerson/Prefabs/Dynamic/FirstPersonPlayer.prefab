@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f74ff8f3e4b304eef97a8ba559b3cb59, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  projectile: {fileID: 638497250885825657, guid: 8d611e7a2b8b749808e5323c456b9961,
+  projectile: {fileID: 638497250885825657, guid: c520303d65d2644f49b1dae6577204ab,
     type: 3}
   maxFireRate: 0.1
   muzzleOffset: {x: 0, y: 0, z: 0.2}
@@ -332,6 +332,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHealth: 20
   infiniteHealth: 0
+  deathAnim: 
 --- !u!1 &4552860408241211176
 GameObject:
   m_ObjectHideFlags: 0

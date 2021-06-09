@@ -60,8 +60,9 @@ public class SplineTrack : MonoBehaviour
 
     [SerializeField] [HideInInspector]
     private Transform[] controlPoints;
-
+    [SerializeField] [HideInInspector]
     private GameObject road;
+    [SerializeField] [HideInInspector]
     private GameObject curb;
 
 #if UNITY_EDITOR
@@ -157,6 +158,7 @@ public class SplineTrack : MonoBehaviour
                 controlPoints[i].rotation = Quaternion.LookRotation(tangent.normalized,
                     controlPoints[i].up);
             }
+
             CreateTrackMesh();
             dirty = false;
         }
@@ -220,10 +222,14 @@ public class SplineTrack : MonoBehaviour
             Vector3[] curbTopNormals = { Vector3.up, Vector3.up, Vector3.up, Vector3.up };
 
             // Left Curb
+            Vector3 leftInnerBottom = left;
+            leftInnerBottom.y = 0f;
             Vector3 leftInnerTop = left + curbOffsetY;
+            Vector3 nextLeftInnerBottom = nextLeft;
+            nextLeftInnerBottom.y = 0f;
             Vector3 nextLeftInnerTop = nextLeft + curbOffsetY;
             Vector3[] leftCurbFaceVerts = {
-                left, leftInnerTop, nextLeftInnerTop, nextLeft
+                leftInnerBottom, leftInnerTop, nextLeftInnerTop, nextLeftInnerBottom
             };
             Vector3[] leftCurbFaceNormals = {
                 -normal, -normal, -nextNormal, -nextNormal
@@ -258,10 +264,14 @@ public class SplineTrack : MonoBehaviour
             curbMesh.AddQuad(leftCurbBackVerts, leftCurbBackNormals, leftCurbFaceUVs, transform);
 
             // Right Curb
+            Vector3 rightInnerBottom = right;
+            rightInnerBottom.y = 0f;
             Vector3 rightInnerTop = right + curbOffsetY;
+            Vector3 nextRightInnerBottom = nextRight;
+            nextRightInnerBottom.y = 0f;
             Vector3 nextRightInnerTop = nextRight + curbOffsetY;
             Vector3[] rightCurbFaceVerts = {
-                right, nextRight, nextRightInnerTop, rightInnerTop
+                rightInnerBottom, nextRightInnerBottom, nextRightInnerTop, rightInnerTop
             };
             Vector3[] rightCurbFaceNormals = {
                 normal, nextNormal, nextNormal, normal

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # Lint as: python3
-
 """Run commands in the system shell."""
 
 import logging
@@ -34,11 +33,50 @@ def run_command(command_line: str, **kwargs) -> subprocess.CompletedProcess:
   Raises:
     subprocess.CalledProcessError if the process fails.
   """
-  run_kwargs: typing.Dict[str, typing.Any] = {'check': True}
+  # kwargs = {'check', 'True'}
+  logging.info(command_line)
+  if 'check' not in kwargs:
+    kwargs['check'] = True
+  parsed_commands = parse_arguments(command_line, **kwargs)
+  # pylint: disable=subprocess-run-check
+  return subprocess.run(**parsed_commands)
+
+
+def run_command_detached(command_line: str,
+                         **kwargs) -> subprocess.CompletedProcess:
+  """Run a command in the shell, without waiting for the command to finish.
+
+  Args:
+    command_line: Command line to execute.
+    **kwargs: Additional arguments for subprocess.run().
+
+  Returns:
+    Result from the command.
+
+  Raises:
+    subprocess.CalledProcessError if the process fails.
+  """
+  logging.info(command_line)
+  parsed_commands = parse_arguments(command_line, **kwargs)
+  # pylint: disable=subprocess-run-check
+  return subprocess.Popen(**parsed_commands)
+
+
+def parse_arguments(command_line: str, **kwargs):
+  """Run a command in the shell, without waiting for the command to finish.
+
+  Args:
+    command_line: Command line to execute.
+    **kwargs: Additional arguments for subprocess.run().
+
+  Returns:
+    Result from the command.
+
+  Raises:
+    subprocess.CalledProcessError if the process fails.
+  """
+  run_kwargs: typing.Dict[str, typing.Any] = {'shell': True}
   if kwargs:
     run_kwargs.update(kwargs)
   run_kwargs['args'] = command_line
-  run_kwargs['shell'] = True
-  logging.info(command_line)
-  # pylint: disable=subprocess-run-check
-  return subprocess.run(**run_kwargs)
+  return run_kwargs

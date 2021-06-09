@@ -15,7 +15,6 @@
 #!/usr/bin/python
 
 # Lint as: python3
-
 """Build a CMake project."""
 
 import argparse
@@ -29,6 +28,7 @@ import typing
 import cmake_installer
 import cmake_runner
 import nasm_installer
+import service_runner
 import shell
 
 # pylint: disable=g-import-not-at-top
@@ -181,6 +181,11 @@ def parse_arguments(args: typing.List[str]) -> argparse.Namespace:
       '--falken_json_config_file',
       default=None,
       help=('Configuration file for accessing Falken SDK.'))
+  parser.add_argument(
+      '--falken_service_path',
+      default=os.path.abspath(
+          os.path.join(os.path.dirname(__file__), '..', '..', 'service')),
+      help=('Path to service folder of falken service.'))
   return parser.parse_args(args)
 
 
@@ -235,7 +240,8 @@ def install_pip_packages(python_executable: str,
     for package in pip_packages:
       if not is_package_installed(package):
         logging.info('Package %s not installed.', package)
-        command = ' '.join([python_executable, '-m', 'pip', 'install'])
+        command = ' '.join(
+            [python_executable, '-m', 'pip', 'install', '--user'])
         command += ' ' + package
         logging.info('Install pip package: %s', package)
         if not run_and_check_result(command):
@@ -487,6 +493,14 @@ def build_project(args: argparse.Namespace) -> bool:
   """
   os.makedirs(args.output_dir, exist_ok=True)
 
+  # Start Falken service.
+  falken_service_runner = service_runner.ServiceRunner(args.falken_service_path,
+                                                       args.python)
+
+  json_config = falken_service_runner.start_service()
+  if args.falken_json_config_file is None:
+    args.falken_json_config_file = json_config
+
   successful = True
   with cmake_installer.CMakeInstaller(args.cmake_installer) as installer:
     runner = cmake_runner.CMakeRunner(installer.binary_dir,
@@ -524,6 +538,8 @@ def build_project(args: argparse.Namespace) -> bool:
         if not result:
           successful = False
 
+  # Kill Falken service.
+  falken_service_runner.stop_service()
   return successful
 
 

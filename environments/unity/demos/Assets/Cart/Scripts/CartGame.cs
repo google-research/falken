@@ -41,8 +41,7 @@ public class CartGame : FalkenGame<CartBrainSpec>
             {
                 Camera.main.gameObject.SetActive(false);
             }
-            Transform[] controlPoints = track.GetControlPoints();
-            Transform startingPoint = controlPoints[0];
+            var startingPoint = StartPoint;
             car = GameObject.Instantiate(carPrefab, startingPoint.position, startingPoint.rotation);
             chaseCamera = GameObject.Instantiate(cameraPrefab, startingPoint.position,
                 startingPoint.rotation);
@@ -109,6 +108,11 @@ public class CartGame : FalkenGame<CartBrainSpec>
     }
 
     /// <summary>
+    /// Gets the start point.
+    /// </summary>
+    private Transform StartPoint { get { return track.GetControlPoints()[0]; } }
+
+    /// <summary>
     /// Restarts the game.
     /// </summary>
     private void ResetGame(bool success)
@@ -118,5 +122,14 @@ public class CartGame : FalkenGame<CartBrainSpec>
 
         episode = CreateEpisode();
         car.FalkenEpisode = episode;
+
+        // Moves the car to the start point in case the episode wasn't successful.
+        if (!success)
+        {
+            var startPoint = StartPoint;
+            car.transform.position = startPoint.position;
+            car.transform.rotation = startPoint.rotation;
+            nextCheckpointIndex = 1;
+        }
     }
 }

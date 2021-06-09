@@ -33,9 +33,6 @@ FALKEN_INPUT_ARTIFACTS_DIR="./artifacts/input"
 # release data file location
 RELEASE_DATA_FILE="./release_data.txt"
 
-# Extract the tagname from the REF in an externally set envvar TAG
-TAG_NAME="${TAG##*/}"
-
 #
 # Create the release data file. This file has in the first line
 # the title of the release, and the rest of the body is the message.
@@ -47,7 +44,7 @@ echo >> ${RELEASE_DATA_FILE}
 
 # This is a workaround because actions/checkout@v2 does not preserve
 # tag annotations. See https://github.com/actions/checkout/issues/290
-git fetch -f origin ${TAG}:${TAG}
+git fetch -f origin ${TAG_REF}:${TAG_REF}
 # Add the tag annotation to the release data file as message
 git tag -l --format="%(contents)" ${TAG_NAME} >> ${RELEASE_DATA_FILE}
 

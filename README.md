@@ -1,5 +1,9 @@
 # Falken
 
+![Main branch](https://github.com/google-research/falken/actions/workflows/build_on_push.yaml/badge.svg)
+![Daily test run](https://github.com/google-research/falken/actions/workflows/build_and_test.yaml/badge.svg)
+![Latest release](https://github.com/google-research/falken/actions/workflows/build_release.yaml/badge.svg)
+
 Falken provides developers with a service that allows them to train AI that can
 play their games. Unlike traditional RL frameworks that learn through rewards
 or batches of offline training, Falken is based on training AI via realtime,

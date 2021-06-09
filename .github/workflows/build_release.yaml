@@ -32,8 +32,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - uses: ./.github/actions/unix_setup
       - name: Build release and pack it
+        shell: bash
         run: >
+          RELEASE_NAME=$(python3 sdk/build/extract_release_name.py ${{ github.ref }}) &&
           python3 ./$BUILD_SCRIPT
+          --cmake_configure_args="-DFALKEN_SDK_VERSION=${RELEASE_NAME}"
           --cmake_source_project_root $CPP_SDK_REPO_PATH
           --cmake_build_configs Release
           --cmake_package_configs Release
@@ -52,8 +55,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - uses: ./.github/actions/unix_setup
       - name: Build release and pack it
+        shell: bash
         run: >
+          RELEASE_NAME=$(python3 sdk/build/extract_release_name.py ${{ github.ref }}) &&
           python3 ./$BUILD_SCRIPT
+          --cmake_configure_args="-DFALKEN_SDK_VERSION=${RELEASE_NAME}"
           --cmake_configure_args="-DPYTHON=$(which python3)"
           --cmake_source_project_root $CPP_SDK_REPO_PATH
           --cmake_build_configs Release
@@ -74,10 +80,12 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - uses: ./.github/actions/windows_setup
       - name: Build both debug and release, and pack both
-        shell: cmd
+        shell: bash
         run: >
-          python3 %BUILD_SCRIPT%
-          --cmake_source_project_root %CPP_SDK_REPO_PATH%
+          RELEASE_NAME=$(python3 sdk/build/extract_release_name.py ${{ github.ref }}) &&
+          python3 ${BUILD_SCRIPT}
+          --cmake_configure_args="-DFALKEN_SDK_VERSION=${RELEASE_NAME}"
+          --cmake_source_project_root ${CPP_SDK_REPO_PATH}
           --cmake_build_configs Release
           --cmake_package_configs Release
       - uses: actions/upload-artifact@v2
@@ -96,10 +104,12 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - uses: ./.github/actions/windows_setup
       - name: Build both debug and release, and pack both
-        shell: cmd
+        shell: bash
         run: >
-          python3 %BUILD_SCRIPT%
-          --cmake_source_project_root %CPP_SDK_REPO_PATH%
+          RELEASE_NAME=$(python3 sdk/build/extract_release_name.py ${{ github.ref }}) &&
+          python3 ${BUILD_SCRIPT}
+          --cmake_configure_args="-DFALKEN_SDK_VERSION=${RELEASE_NAME}"
+          --cmake_source_project_root ${CPP_SDK_REPO_PATH}
           --cmake_build_configs Debug
           --cmake_package_configs Debug
       - uses: actions/upload-artifact@v2
@@ -123,8 +133,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - uses: ./.github/actions/unix_setup
       - name: Build release and pack it
+        shell: bash
         run: >
+          RELEASE_NAME=$(python3 sdk/build/extract_release_name.py ${{ github.ref }}) &&
           python3 ./$BUILD_SCRIPT
+          --cmake_configure_args="-DFALKEN_SDK_VERSION=${RELEASE_NAME}"
           --cmake_source_project_root $UNITY_SDK_REPO_PATH
           --cmake_build_configs Release
           --cmake_package_configs Release
@@ -147,8 +160,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - uses: ./.github/actions/unix_setup
       - name: Build release and pack it
+        shell: bash
         run: >
+          RELEASE_NAME=$(python3 sdk/build/extract_release_name.py ${{ github.ref }}) &&
           python3 ./$BUILD_SCRIPT
+          --cmake_configure_args="-DFALKEN_SDK_VERSION=${RELEASE_NAME}"
           --cmake_configure_args="-DPYTHON=$(which python3)"
           --cmake_source_project_root $UNITY_SDK_REPO_PATH
           --cmake_build_configs Release
@@ -173,14 +189,16 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - uses: ./.github/actions/windows_setup
       - name: Build release and pack it
-        shell: cmd
+        shell: bash
         run: >
-          python3 %BUILD_SCRIPT%
-          --cmake_source_project_root %UNITY_SDK_REPO_PATH%
+          RELEASE_NAME=$(python3 sdk/build/extract_release_name.py ${{ github.ref }}) &&
+          python3 ${BUILD_SCRIPT}
+          --cmake_configure_args="-DFALKEN_SDK_VERSION=${RELEASE_NAME}"
+          --cmake_source_project_root ${UNITY_SDK_REPO_PATH}
           --cmake_build_configs Release
           --cmake_package_configs Release
-          --zip_artifacts %ASSETS_DIR_IN_BUILD%:%ASSETS_ZIP_FILE%
-          --copy_artifacts %UNITY_PACKAGE_FILE_IN_BUILD%
+          --zip_artifacts ${ASSETS_DIR_IN_BUILD}:${ASSETS_ZIP_FILE}
+          --copy_artifacts ${UNITY_PACKAGE_FILE_IN_BUILD}
       - uses: actions/upload-artifact@v2
         with:
           name: ${{ github.job }}_artifacts
@@ -268,7 +286,7 @@ jobs:
       - unity_sdk_multiplatform
     env:
       RELEASE_SCRIPT: "./sdk/build/upload_release_assets.sh"
-      TAG: ${{ github.REF }}
+      TAG_REF: ${{ github.REF }}
     runs-on:  ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
@@ -283,6 +301,9 @@ jobs:
           name: unity_sdk_multiplatform_packaged_artifacts
           path: ${{ env.INPUT_ARTIFACTS_DIR }}
       - name: Upload release files
-        run: $RELEASE_SCRIPT
+        run: >
+          TAG_NAME=$(python3 sdk/build/extract_release_name.py ${{ github.ref }}) &&
+          export TAG_NAME &&
+          $RELEASE_SCRIPT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

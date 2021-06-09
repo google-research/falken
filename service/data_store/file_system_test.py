@@ -53,22 +53,25 @@ class FileSystemTest(parameterized.TestCase):
 
   def test_glob(self):
     """Tests FileSystem.glob."""
-    files = ['dirA1/dirB1/p1.pb', 'dirA1/dirB2/p1.pb', 'dirA2/dirC1/p1.pb']
+    # Glob should return POSIX paths.
+    files = ['dirA1/dirB1/p1.pb',
+             'dirA1/dirB2/p1.pb',
+             'dirA2/dirC1/p1.pb']
     for f in files:
       self._fs.write_file(f, self._text)
 
-    found_files = self._fs.glob('dir*/dir*/p1.pb')
+    found_files = self._fs.glob(os.path.join('dir*', 'dir*', 'p1.pb'))
     self.assertEqual(set(files), set(found_files))
 
   def test_exists(self):
     """Tests FileSystem.exists."""
-    path = 'dirA/dirB/file.pb'
+    path = os.path.join('dirA', 'dirB', 'file.pb')
     self._fs.write_file(path, self._text)
     self.assertTrue(self._fs.exists(path))
 
   def test_remove_file(self):
     """Tests FileSystem.remove_file."""
-    path = 'dirA/dirB/file.pb'
+    path = os.path.join('dirA', 'dirB', 'file.pb')
     self._fs.write_file(path, self._text)
     self.assertTrue(self._fs.exists(path))
     self._fs.remove_file(path)
@@ -76,7 +79,8 @@ class FileSystemTest(parameterized.TestCase):
 
   def test_get_modification_time(self):
     """Tests FileSystem.get_modification_file."""
-    paths = ['dirA/file1.pb', 'dirA/file2.pb']
+    paths = [os.path.join('dirA', 'file1.pb'),
+             os.path.join('dirA', 'file2.pb')]
     for path in paths:
       self._fs.write_file(path, self._text)
       # Ensure next file is in a different millisecond.
@@ -86,7 +90,7 @@ class FileSystemTest(parameterized.TestCase):
 
   def test_lock(self):
     """Tests locking system."""
-    path = 'dir1/to_lock.txt'
+    path = os.path.join('dir1', 'to_lock.txt')
     with self._fs.lock_file_context(path):
       self.assertTrue(self._fs.exists(self._fs._get_lock_path(path)))
       with self.assertRaises(file_system.UnableToLockFileError):
@@ -95,9 +99,20 @@ class FileSystemTest(parameterized.TestCase):
 
     self.assertFalse(self._fs.exists(self._fs._get_lock_path(path)))
 
+  def test_lock_with_timeout(self):
+    """Try locking a path that is already locked using a timeout."""
+    path = os.path.join('dir1', 'to_lock.txt')
+    with self._fs.lock_file_context(path):
+      current_time = time.time()
+      with self.assertRaises(file_system.UnableToLockFileError):
+        with self._fs.lock_file_context(path, timeout=1):
+          pass
+      elapsed_time = time.time() - current_time
+      self.assertGreater(elapsed_time, 0.5)
+
   @mock.patch.object(time, 'time')
   def test_get_staleness(self, time_mock):
-    path = 'dirA/dirB/file.pb'
+    path = os.path.join('dirA', 'dirB', 'file.pb')
     self._fs.write_file(path, self._text)
 
     # Check that youngest mtime is being found recursively.
@@ -114,7 +129,7 @@ class FileSystemTest(parameterized.TestCase):
           1000)
 
   def test_remove_tree(self):
-    path = 'dirA/dirB/file.pb'
+    path = os.path.join('dirA', 'dirB', 'file.pb')
     self._fs.write_file(path, self._text)
     self.assertTrue(self._fs.exists(path))
     self._fs.remove_tree('dirA')

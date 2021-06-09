@@ -48,6 +48,8 @@ def posix_path(path):
 class FileSystem(object):
   """Encapsulates file system operations so they can be faked in tests."""
 
+  _READ_WRITE_LOCK_TIMEOUT_IN_SECONDS = 60
+
   def __init__(self, root_path):
     """Initializes the file system object with a given root path.
 
@@ -58,7 +60,8 @@ class FileSystem(object):
 
   def _resolve(self, path):
     absolute_path = os.path.realpath(os.path.join(self._root_path, path))
-    assert absolute_path.startswith(self._root_path)
+    if not absolute_path.startswith(self._root_path):
+      raise ValueError(f'{absolute_path} does not start with {self._root_path}')
     return absolute_path
 
   def read_file(self, path):
@@ -69,8 +72,10 @@ class FileSystem(object):
     Returns:
       A bytes-like object containing the contents of the file.
     """
-    with open(self._resolve(path), 'rb') as f:
-      return f.read()
+    with self.lock_file_context(
+        path, timeout=self._READ_WRITE_LOCK_TIMEOUT_IN_SECONDS):
+      with open(self._resolve(path), 'rb') as f:
+        return f.read()
 
   def write_file(self, path, data):
     """Writes into a file.
@@ -80,14 +85,11 @@ class FileSystem(object):
       data: A bytes-like object containing the data to write.
     """
     destination_path = self._resolve(path)
-    directory = os.path.dirname(destination_path)
-
-    os.makedirs(directory, exist_ok=True)
-    source_path = os.path.join(directory, os.path.basename(destination_path))
-    with open(source_path, 'wb') as f:
-      f.write(data)
-
-    shutil.move(source_path, destination_path)
+    os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+    with self.lock_file_context(
+        path, timeout=self._READ_WRITE_LOCK_TIMEOUT_IN_SECONDS):
+      with open(destination_path, 'wb') as f:
+        f.write(data)
 
   def remove_file(self, path):
     """Removes a file.
@@ -137,7 +139,7 @@ class FileSystem(object):
     """
     return os.path.exists(self._resolve(path))
 
-  def lock_file(self, path, expire_after=60*60):
+  def lock_file(self, path, expire_after=60*60, timeout=0):
     """Locks a file.
 
      Lock is shared with other files in the same directory (excluding
@@ -147,6 +149,7 @@ class FileSystem(object):
       path: Path of file or directory to lock.
       expire_after: How many seconds to wait for the lock to expire.
         Default is one hour.
+      timeout: Seconds to wait to acquire the file.
     Returns:
       A flufl.Lock object that can be unlocked with unlock_file.
     """
@@ -155,15 +158,15 @@ class FileSystem(object):
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
-    lock = flufl.lock.Lock(path)
-    lock.lifetime = datetime.timedelta(seconds=expire_after)
+    lock = flufl.lock.Lock(
+        path, lifetime=datetime.timedelta(seconds=expire_after))
     try:
-      # Return immediately if we can't get the lock.
-      lock.lock(timeout=0)
+      # Return after timeout if we can't get the lock.
+      lock.lock(timeout=timeout)
       if not lock.is_locked:
         raise UnableToLockFileError(lock_failure_text)
-    except (flufl.lock.TimeOutError, flufl.lock.AlreadyLockedError):
-      raise UnableToLockFileError(lock_failure_text)
+    except (flufl.lock.TimeOutError, flufl.lock.AlreadyLockedError) as e:
+      raise UnableToLockFileError(f'{lock_failure_text}: {e}')
 
     return lock
 
@@ -187,7 +190,7 @@ class FileSystem(object):
       lock.unlock()
 
   @contextlib.contextmanager
-  def lock_file_context(self, path, expire_after=60*60):
+  def lock_file_context(self, path, expire_after=60*60, timeout=0):
     """Gives a context manager that locks the given file.
 
      Lock is shared with other files in the same directory (excluding
@@ -197,13 +200,14 @@ class FileSystem(object):
       path: Path of file or directory to lock.
       expire_after: How many seconds to wait for the lock to expire.
         Default is one hour.
+      timeout: Seconds to wait to acquire the file.
     Yields:
       Uses an empty yield only for the purposes of implementing the context
       manager.
     """
     lock = None
     try:
-      lock = self.lock_file(path, expire_after)
+      lock = self.lock_file(path, expire_after=expire_after, timeout=timeout)
       yield
     finally:
       if lock:

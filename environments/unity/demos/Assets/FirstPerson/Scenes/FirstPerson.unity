@@ -664,7 +664,6 @@ MonoBehaviour:
   bounds:
     m_Center: {x: -15.0000105, y: 2.25, z: -31.500015}
     m_Extent: {x: 5.0000086, y: 2.75, z: 5.5000076}
-  enemies: []
 --- !u!4 &25990164
 Transform:
   m_ObjectHideFlags: 0
@@ -3657,7 +3656,6 @@ MonoBehaviour:
   bounds:
     m_Center: {x: -46.500023, y: 2.25005, z: -15.000011}
     m_Extent: {x: 2.5, y: 2.75005, z: 5}
-  enemies: []
 --- !u!4 &159761815
 Transform:
   m_ObjectHideFlags: 0
@@ -4504,7 +4502,6 @@ MonoBehaviour:
   bounds:
     m_Center: {x: -17.500004, y: 2.25005, z: 16.5}
     m_Extent: {x: 7.5000057, y: 2.75005, z: 7.5000057}
-  enemies: []
 --- !u!4 &205644553
 Transform:
   m_ObjectHideFlags: 0
@@ -9599,7 +9596,6 @@ MonoBehaviour:
   bounds:
     m_Center: {x: -30.000011, y: 2.25005, z: 16.499998}
     m_Extent: {x: 5.000004, y: 2.75005, z: 2.500002}
-  enemies: []
 --- !u!4 &389982441
 Transform:
   m_ObjectHideFlags: 0
@@ -14115,7 +14111,6 @@ MonoBehaviour:
   bounds:
     m_Center: {x: -2.9999933, y: 2.25005, z: 12.000004}
     m_Extent: {x: 7.0000086, y: 2.75005, z: 7.000004}
-  enemies: []
 --- !u!4 &656481812
 Transform:
   m_ObjectHideFlags: 0
@@ -17502,10 +17497,11 @@ MonoBehaviour:
   snapshotId: 
   falkenMaxSteps: 1000
   humanControlled: 1
+  renderGameHUD: 1
   playerPrefab: {fileID: 4552860407420013826, guid: a8c66a6ff57884afb855c29d994bb29a,
     type: 3}
-  startSpawn: {fileID: 100047519}
-  endRoom: {fileID: 25990163}
+  level: {fileID: 1182567164}
+  singleRoomMode: 0
 --- !u!4 &796184788
 Transform:
   m_ObjectHideFlags: 0
@@ -21328,7 +21324,6 @@ MonoBehaviour:
   bounds:
     m_Center: {x: -42.500023, y: 2.25005, z: 12.499993}
     m_Extent: {x: 7.5000076, y: 2.75005, z: 7.5000067}
-  enemies: []
 --- !u!4 &938519228
 Transform:
   m_ObjectHideFlags: 0
@@ -25635,7 +25630,6 @@ MonoBehaviour:
   bounds:
     m_Center: {x: -46.500023, y: 2.25005, z: -2.5000114}
     m_Extent: {x: 7.5, y: 2.75005, z: 7.5}
-  enemies: []
 --- !u!4 &1039937943
 Transform:
   m_ObjectHideFlags: 0
@@ -42472,7 +42466,6 @@ MonoBehaviour:
   bounds:
     m_Center: {x: -42.00003, y: 2.25005, z: -27.000013}
     m_Extent: {x: 7.0000076, y: 2.75005, z: 7.000002}
-  enemies: []
 --- !u!4 &1476303417
 Transform:
   m_ObjectHideFlags: 0
@@ -52039,7 +52032,6 @@ MonoBehaviour:
   bounds:
     m_Center: {x: 0, y: 2.25, z: 0}
     m_Extent: {x: 5.0000024, y: 2.75, z: 5.0000024}
-  enemies: []
 --- !u!4 &1756832747
 Transform:
   m_ObjectHideFlags: 0
@@ -66869,7 +66861,6 @@ MonoBehaviour:
   bounds:
     m_Center: {x: -27.50002, y: 2.25005, z: -31.500013}
     m_Extent: {x: 7.500005, y: 2.75005, z: 7.5000057}
-  enemies: []
 --- !u!4 &2112362326
 Transform:
   m_ObjectHideFlags: 0

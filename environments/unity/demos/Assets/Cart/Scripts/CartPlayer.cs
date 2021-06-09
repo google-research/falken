@@ -23,7 +23,7 @@ public class CartPlayerEntity : Falken.EntityBase
 {
     public Falken.Number velocity1D = new Falken.Number(-20.0f, 50.0f);
     public Falken.Feelers feelers = new Falken.Feelers(
-        15.0f, 0.0f, 360.0f, 14, null);
+        15.0f, 0.0f, 360.0f, 15, null);
 }
 
 /// <summary>

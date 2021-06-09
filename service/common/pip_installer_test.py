@@ -52,7 +52,7 @@ class PipInstallerTest(absltest.TestCase):
     try:
       self._uninstall_test_module()
       self.assertFalse(pip_installer._module_installed(self._TEST_MODULE))
-      subprocess.check_call([sys.executable, '-m', 'pip', 'install',
+      subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--user',
                              self._TEST_MODULE])
       pip_installer._clear_installed_modules_cache()
       self.assertTrue(pip_installer._module_installed(self._TEST_MODULE))

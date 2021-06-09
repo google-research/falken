@@ -43,8 +43,7 @@ _REQUIRED_PYTHON_MODULES = [
     ('flufl.lock', '', {}),
 ]
 
-_PIP_INSTALL_ARGS = [sys.executable, '-m', 'pip', 'install']
-_PIP_SHOW_ARGS = [sys.executable, '-m', 'pip', '-q', 'show']
+_PIP_INSTALL_ARGS = [sys.executable, '-m', 'pip', 'install', '--user']
 # Cache of installed modules populated by _module_installed().
 _INSTALLED_MODULE_LIST = []
 

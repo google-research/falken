@@ -32,7 +32,6 @@ public class Room : MonoBehaviour
     [SerializeField] [HideInInspector]
     private Bounds bounds;
 
-    [SerializeField] [HideInInspector]
     private List<Enemy> enemies = new List<Enemy>();
 
     private static List<Room> rooms = new List<Room>();
@@ -70,10 +69,23 @@ public class Room : MonoBehaviour
         return validExits.Count > 0 ? validExits[Random.Range(0, validExits.Count)] : null;
     }
 
+    /// <summary>
+    /// Adds an enemy to this room.
+    /// </summary>
+    public void AddEnemy(Enemy enemy) {
+        enemies.Add(enemy);
+    }
+
+    /// <summary>
+    /// Removes an enemy from this room.
+    /// </summary>
+    public void RemoveEnemy(Enemy enemy) {
+        enemies.Remove(enemy);
+    }
+
     void OnEnable() {
         rooms.Add(this);
         ComputeBounds();
-        CollectEnemies();
     }
 
     void OnDisable() {
@@ -83,7 +95,6 @@ public class Room : MonoBehaviour
 #if UNITY_EDITOR
     void Update() {
         ComputeBounds();
-        CollectEnemies();
     }
 
     /// <summary>
@@ -103,19 +114,6 @@ public class Room : MonoBehaviour
                         boundsInit = true;
                     }
                 }
-            }
-        }
-    }
-
-    /// <summary>
-    /// <c>Room</c> Generates a list of enemies in this room.
-    /// </summary>
-    private void CollectEnemies() {
-        enemies.Clear();
-        foreach(Transform child in transform) {
-            Enemy enemy = child.GetComponent<Enemy>();
-            if (enemy) {
-                enemies.Add(enemy);
             }
         }
     }

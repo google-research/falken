@@ -68,10 +68,16 @@ public class Enemy : MonoBehaviour
     private Weapon weapon;
     private Health health;
     private FirstPersonPlayer player;
+    private Room room;
     private bool firing;
     private IEnumerator attackRoutine;
 
     private static List<Enemy> enemies = new List<Enemy>();
+
+    /// <summary>
+    /// Returns true if the enemy is firing.
+    /// </summary>
+    public bool Firing { get { return firing; } }
 
     /// <summary>
     /// Returns a list of all enabled Enemies in the world.
@@ -84,9 +90,23 @@ public class Enemy : MonoBehaviour
         initialRotation = transform.rotation;
         weapon = GetComponent<Weapon>();
         health = GetComponent<Health>();
+
+        room = null;
+        int nRooms = Room.Rooms.Count;
+        Vector3 position = transform.position;
+        for (int i = 0; i < nRooms; ++i) {
+            if (Room.Rooms[i].Bounds.Contains(position)) {
+                 room = Room.Rooms[i];
+                 room.AddEnemy(this);
+                 break;
+            }
+        }
     }
 
     void OnDisable() {
+        if (room) {
+            room.RemoveEnemy(this);
+        }
         enemies.Remove(this);
     }
 

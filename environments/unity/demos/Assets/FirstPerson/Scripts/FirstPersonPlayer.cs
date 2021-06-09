@@ -33,14 +33,15 @@ public class FirstPersonPlayerEntity : FirstPersonEntity {
 /// <summary>
 /// Enemy-specific entity.
 /// </summary>
-public class FirstPersonEnemyEntity : FirstPersonEntity {
-    public enum EnemyState {
-        Dead,
-        Hidden,
-        Visible
+public class FirstPersonGoalEntity : FirstPersonEntity {
+    public enum GoalState {
+        Exit,
+        HiddenEnemy,
+        BlockedEnemy,
+        VisibleEnemy
     }
 
-    public Falken.Category state = new Falken.Category(System.Enum.GetNames(typeof(EnemyState)));
+    public Falken.Category state = new Falken.Category(System.Enum.GetNames(typeof(GoalState)));
 }
 
 /// <summary>
@@ -48,14 +49,12 @@ public class FirstPersonEnemyEntity : FirstPersonEntity {
 /// </summary>
 public class FirstPersonObservations : Falken.ObservationsBase {
     public FirstPersonEntity camera;
-    public FirstPersonEnemyEntity currentEnemy;
-    public FirstPersonEntity exit;
+    public FirstPersonGoalEntity goal;
 
     public FirstPersonObservations() {
         player = new FirstPersonPlayerEntity();
         camera = new FirstPersonEntity();
-        currentEnemy = new FirstPersonEnemyEntity();
-        exit = new FirstPersonEntity();
+        goal = new FirstPersonGoalEntity();
     }
 }
 
@@ -204,26 +203,26 @@ public class FirstPersonPlayer : MonoBehaviour
             playerEntity.feelers.Update(transform, feelersOffset, true);
             observations.camera.UpdateFrom(playerCamera.transform);
 
-
-            if (currentRoom) {
+            if (currentRoom && currentRoom.Cleared) {
                 if (currentRoom.Exit) {
-                    observations.exit.UpdateFrom(currentRoom.Exit.transform);
+                    observations.goal.UpdateFrom(currentRoom.Exit.transform);
                 } else {
-                    observations.exit.position = currentRoom.Bounds.center;
-                    observations.exit.rotation = Quaternion.identity;
+                    observations.goal.position = currentRoom.Bounds.center;
+                    observations.goal.rotation = Quaternion.identity;
                 }
-            } else {
-                observations.exit.UpdateFrom(transform);
-            }
-
-            if (currentEnemy) {
-                observations.currentEnemy.UpdateFrom(currentEnemy.transform);
-                observations.currentEnemy.state.Value = enemyVisible ?
-                    (int)FirstPersonEnemyEntity.EnemyState.Visible :
-                    (int)FirstPersonEnemyEntity.EnemyState.Hidden;
-            } else {
-                observations.currentEnemy.UpdateFrom(transform);
-                observations.currentEnemy.state.Value = (int)FirstPersonEnemyEntity.EnemyState.Dead;
+                observations.goal.state.Value = (int)FirstPersonGoalEntity.GoalState.Exit;
+            } else if (currentEnemy) {
+                observations.goal.UpdateFrom(currentEnemy.transform);
+                if (enemyVisible) {
+                    observations.goal.state.Value =
+                        (int)FirstPersonGoalEntity.GoalState.VisibleEnemy;
+                } else if (currentEnemy.Firing) {
+                    observations.goal.state.Value =
+                        (int)FirstPersonGoalEntity.GoalState.BlockedEnemy;
+                } else {
+                    observations.goal.state.Value =
+                        (int)FirstPersonGoalEntity.GoalState.HiddenEnemy;
+                }
             }
 
             FirstPersonActions actions = brainSpec.Actions;
@@ -291,14 +290,19 @@ public class FirstPersonPlayer : MonoBehaviour
             GUI.skin.box.normal.background = background;
         }
 
-        if (currentRoom) {
+        if (currentRoom && currentRoom.Cleared) {
             DrawHUDText("Exit", Color.green, currentRoom.Exit ?
                 currentRoom.Exit.transform.position : currentRoom.Bounds.center);
-        }
-
-        if (currentEnemy) {
-            DrawHUDText("Enemy", enemyVisible ? Color.red : Color.black,
-                currentEnemy.transform.position);
+        } else if (currentEnemy) {
+            Color enemyColor;
+            if (enemyVisible) {
+                enemyColor = Color.red;
+            } else if (currentEnemy.Firing) {
+                enemyColor = Color.yellow;
+            } else {
+                enemyColor = Color.black;
+            }
+            DrawHUDText("Enemy", enemyColor, currentEnemy.transform.position);
         }
     }
 

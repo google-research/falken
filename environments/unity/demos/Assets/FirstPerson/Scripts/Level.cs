@@ -38,6 +38,28 @@ public class Level : MonoBehaviour
     private List<Room> rooms = new List<Room>();
 
     /// <summary>
+    /// Returns the first room in the level.
+    /// </summary>
+    public Room StartRoom { get { return rooms.Count > 0 ? rooms[0] : null; } }
+
+    /// <summary>
+    /// Returns the final room in the level.
+    /// </summary>
+    public Room EndRoom { get { return rooms.Count > 0 ? rooms[rooms.Count - 1] : null; } }
+
+    /// <summary>
+    /// Returns a random room inside the level.
+    /// </summary>
+    public Room RandomInteriorRoom {
+        get {
+            if (rooms.Count > 2) {
+                return rooms[Random.Range(1, rooms.Count - 1)];
+            }
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Creates a random new level based on the above parameters.
     /// </summary>
     public void CreateLevel() {

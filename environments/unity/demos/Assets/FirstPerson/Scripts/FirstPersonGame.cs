@@ -23,10 +23,10 @@ public class FirstPersonGame : FalkenGame<FirstPersonBrainSpec>
 {
     [Tooltip("The player prefab to spawn at the start of the game.")]
     public FirstPersonPlayer playerPrefab;
-    [Tooltip("The location within which to spawn the player.")]
-    public PlayerSpawn startSpawn;
-    [Tooltip("The final room in the level. Entering this room wins the game.")]
-    public Room endRoom;
+    [Tooltip("The level for this game to play.")]
+    public Level level;
+    [Tooltip("When true the game picks a single room and ends when you clear it.")]
+    public bool singleRoomMode;
 
     private FirstPersonPlayer player;
     private Room currentRoom;
@@ -41,11 +41,21 @@ public class FirstPersonGame : FalkenGame<FirstPersonBrainSpec>
         if (player && episode != null) {
             if (episode.Completed) {
                 Debug.Log("Episode hit max steps.");
-                episode = CreateEpisode();
-                player.Episode = episode;
+                if (singleRoomMode) {
+                    ResetGame(false);
+                } else {
+                    episode = CreateEpisode();
+                    player.Episode = episode;
+                }
+            }
+            else if (singleRoomMode) {
+                if (currentRoom.Cleared) {
+                    Debug.Log("Room cleared. You win!");
+                    ResetGame(true);
+                }
             }
             else if (player.CurrentRoom != currentRoom) {
-                if (player.CurrentRoom == endRoom) {
+                if (player.CurrentRoom == level.EndRoom) {
                     Debug.Log("Completed level. You win!");
                     ResetGame(true);
                 } else {
@@ -90,7 +100,16 @@ public class FirstPersonGame : FalkenGame<FirstPersonBrainSpec>
             EnemySpawn.EnemySpawns[i].Activate();
         }
 
-        if (playerPrefab && startSpawn && endRoom) {
+        if (playerPrefab && level) {
+            PlayerSpawn startSpawn = null;
+            if (singleRoomMode) {
+                while (startSpawn == null) {
+                    startSpawn = level.RandomInteriorRoom.playerSpawn;
+                }
+            } else {
+                startSpawn = level.StartRoom.playerSpawn;
+            }
+
             player = GameObject.Instantiate(playerPrefab,
                 startSpawn.GetSpawnPoint(), startSpawn.transform.rotation);
 

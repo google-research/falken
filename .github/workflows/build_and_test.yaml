@@ -8,11 +8,7 @@
 #
 name: build_and_test
 on:
-  # Triggers are still a work in progress to be able to debug
-  schedule:
-    # * is a special character in YAML so you have to quote this string
-    - cron:  '30 6 * * *'
-  # TODO(b/190199633) remove workflow_dispatch once the repo is stable and testing is working
+  # Only trigger manually
   workflow_dispatch:
 env:
   BUILD_SCRIPT: "sdk/build/build_cmake_project.py"
@@ -38,6 +34,7 @@ jobs:
           python3 ./$BUILD_SCRIPT
           --cmake_source_project_root $CPP_SDK_REPO_PATH
           --cmake_build_configs Debug
+          --run-tests
 
   cpp_sdk_macos:
     runs-on: macos-11
@@ -53,22 +50,7 @@ jobs:
           --cmake_configure_args="-DPYTHON=$(which python3)"
           --cmake_source_project_root $CPP_SDK_REPO_PATH
           --cmake_build_configs Debug
-
-  cpp_sdk_windows:
-    runs-on: windows-2016
-    steps:
-      - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - uses: ./.github/actions/windows_setup
-      - name: Build debug
-        shell: cmd
-        run: >
-          python3 %BUILD_SCRIPT%
-          --cmake_source_project_root %CPP_SDK_REPO_PATH%
-          --cmake_build_configs Debug
+          --run-tests
 
   #
   # Unity SDK builds
@@ -88,6 +70,7 @@ jobs:
           python3 ./$BUILD_SCRIPT
           --cmake_source_project_root $UNITY_SDK_REPO_PATH
           --cmake_build_configs Debug
+          --run-tests
 
   unity_sdk_macos:
     needs: cpp_sdk_macos
@@ -104,20 +87,5 @@ jobs:
           --cmake_configure_args="-DPYTHON=$(which python3)"
           --cmake_source_project_root $UNITY_SDK_REPO_PATH
           --cmake_build_configs Debug
+          --run-tests
 
-  unity_sdk_windows:
-    needs: cpp_sdk_windows
-    runs-on: windows-2016
-    steps:
-      - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - uses: ./.github/actions/windows_setup
-      - name: Build debug
-        shell: cmd
-        run: >
-          python3 %BUILD_SCRIPT%
-          --cmake_source_project_root %UNITY_SDK_REPO_PATH%
-          --cmake_build_configs Debug

@@ -84,6 +84,7 @@ class ServiceRunner:
       if self._service_subprocess.poll() is not None:
         raise RuntimeError('Falken service finished before stopping it.')
       os.killpg(os.getpgid(self._service_subprocess.pid), signal.SIGINT)
+      self._service_subprocess.wait(self._service_wait_time)
 
   def __wait_for_service(self, timeout):
     """Blocks until service is ready to use.

@@ -79,8 +79,7 @@ class BuildCmakeTest(unittest.TestCase):
     self.assertEqual(self.args.cmake_build_dir,
                      os.path.join(os.getcwd(), 'build'))
     self.assertEqual(self.args.cmake_build_configs, CMAKE_DEFAULT_BUILD_CONFIGS)
-    self.assertEqual(self.args.cmake_package_configs,
-                     CMAKE_DEFAULT_BUILD_CONFIGS)
+    self.assertIsNone(self.args.cmake_package_configs)
     self.assertEqual(self.args.cmake_package_generator, 'ZIP')
     self.assertIsNone(self.args.cmake_test_regex)
     self.assertEqual(self.args.output_dir, 'output')
@@ -111,8 +110,7 @@ class BuildCmakeTest(unittest.TestCase):
     self.assertEqual(arguments.cmake_build_dir,
                      os.path.join(os.getcwd(), 'build'))
     self.assertEqual(arguments.cmake_build_configs, CMAKE_DEFAULT_BUILD_CONFIGS)
-    self.assertEqual(arguments.cmake_package_configs,
-                     CMAKE_DEFAULT_BUILD_CONFIGS)
+    self.assertIsNone(arguments.cmake_package_configs)
     self.assertEqual(arguments.cmake_package_generator, '7Z')
     self.assertIsNone(arguments.cmake_test_regex)
     self.assertEqual(arguments.output_dir, 'output')
@@ -144,7 +142,7 @@ class BuildCmakeTest(unittest.TestCase):
     """Test for installing pip packages."""
     build_cmake_project.install_pip_packages('python3', ['logging'])
     mock_run.assert_called_with(
-        args='python3 -m pip install logging', check=True, shell=True)
+        args='python3 -m pip install --user logging', check=True, shell=True)
 
   @unittest.mock.patch('os.makedirs')
   @unittest.mock.patch('subprocess.run')
@@ -153,6 +151,7 @@ class BuildCmakeTest(unittest.TestCase):
     self.args.cmake_source_project_root = '/tmp/falken_src'
     self.args.cmake_build_dir = '/tmp/build_folder'
     self.args.falken_json_config_file = '/tmp/config_file.json'
+    self.args.cmake_generator = 'Unix Makefiles'
 
     runner = cmake_runner.CMakeRunner(self.installer.binary_dir,
                                       self.args.cmake_source_project_root,
@@ -160,9 +159,6 @@ class BuildCmakeTest(unittest.TestCase):
 
     build_cmake_project.generate_target(runner, self.args, 'Debug')
 
-    # Create folder.
-    mock_make_dirs.assert_called_once_with(
-        '/tmp/build_folder/Debug', exist_ok=True)
     # Call cmake
     mock_run.assert_called_once_with(
         args='cmake -DFALKEN_JSON_CONFIG_FILE=/tmp/config_file.json '

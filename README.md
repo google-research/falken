@@ -1,7 +1,6 @@
 # Falken
 
 ![Main branch](https://github.com/google-research/falken/actions/workflows/build_on_push.yaml/badge.svg)
-![Daily test run](https://github.com/google-research/falken/actions/workflows/build_and_test.yaml/badge.svg)
 ![Latest release](https://github.com/google-research/falken/actions/workflows/build_release.yaml/badge.svg)
 
 **NOTE**: This is not an officially supported Google product.

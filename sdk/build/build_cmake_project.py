@@ -146,7 +146,6 @@ def parse_arguments(args: typing.List[str]) -> argparse.Namespace:
   parser.add_argument(
       '--cmake_package_configs',
       nargs='*',
-      default=CMAKE_VALID_BUILD_CONFIGS,
       choices=CMAKE_VALID_BUILD_CONFIGS,
       help=('List of configurations to package. This must be '
             'a superset of the list of configurations to '
@@ -186,6 +185,10 @@ def parse_arguments(args: typing.List[str]) -> argparse.Namespace:
       default=os.path.abspath(
           os.path.join(os.path.dirname(__file__), '..', '..', 'service')),
       help=('Path to service folder of falken service.'))
+  parser.add_argument(
+      '--run-tests',
+      action='store_true',
+      help=('Start service and run project tests.'))
   return parser.parse_args(args)
 
 
@@ -497,9 +500,10 @@ def build_project(args: argparse.Namespace) -> bool:
   falken_service_runner = service_runner.ServiceRunner(args.falken_service_path,
                                                        args.python)
 
-  json_config = falken_service_runner.start_service()
-  if args.falken_json_config_file is None:
-    args.falken_json_config_file = json_config
+  if args.run_tests:
+    json_config = falken_service_runner.start_service()
+    if args.falken_json_config_file is None:
+      args.falken_json_config_file = json_config
 
   successful = True
   with cmake_installer.CMakeInstaller(args.cmake_installer) as installer:
@@ -533,7 +537,7 @@ def build_project(args: argparse.Namespace) -> bool:
         package_project(runner, args, build_config)
 
       # Run tests.
-      if args.falken_json_config_file:
+      if args.run_tests:
         result = run_tests(runner, args, build_config)
         if not result:
           successful = False

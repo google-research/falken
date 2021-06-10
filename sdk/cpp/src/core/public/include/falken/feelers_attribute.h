@@ -52,6 +52,13 @@ class FALKEN_EXPORT FeelersAttribute : public AttributeBase {
  public:
   /// Construct a feelers attribute.
   ///
+  /// @details Given that the feeler categories are not stored in the service as
+  ///     strings but as enum values instead, when a brain is loaded, generic
+  ///     names will be retrieved. For instance, if the categories were
+  ///     {"floor", "wall", "carpet"}, the mapping between stored and retrieved
+  ///     values would be {"carpet": "0", "floor": "1", "wall": "2"}, since all
+  ///     attributes are stored in alphabetical order.
+  ///
   /// @param container Container where to add the new feelers attribute.
   /// @param name Feelers attribute name.
   /// @param number_of_feelers Number of feelers that are attached to an entity.

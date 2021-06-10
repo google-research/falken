@@ -29,6 +29,7 @@
 
 #include <algorithm>
 #include <string>
+#include <vector>
 
 #include "main.h"
 
@@ -47,6 +48,7 @@
 extern "C" int common_main(int argc, const char* argv[]);
 
 static bool quit = false;
+static std::string g_temporary_directory;  // NOLINT
 
 #ifdef _WIN32
 static BOOL WINAPI SignalHandler(DWORD event) {
@@ -96,8 +98,36 @@ void LogError(const char* format, ...) {
 WindowContext GetWindowContext() { return nullptr; }
 
 // Returns the temporary directory path.
-// TODO(b/182802651): Add implementation for Windows, macOS and Linux.
-const char* GetTemporaryDirectoryPath() { return ""; }
+const char* GetTemporaryDirectoryPath() {
+  if (!g_temporary_directory.empty()) {
+    return g_temporary_directory.c_str();
+  }
+
+#ifdef _MSC_VER
+  std::vector<char> temporary_directory(MAX_PATH);
+  auto len = GetTempPathA(MAX_PATH, &temporary_directory[0]);
+  if (len != 0 && len <= MAX_PATH) {
+    g_temporary_directory =
+        std::string(temporary_directory.begin(), temporary_directory.end());
+  } else {
+    DWORD error = GetLastError();
+    LogMessage("Failed to get temporary directory (error=0x%08x)",
+               static_cast<int>(error));
+  }
+#else
+  const char* temporary_directory = getenv("TMPDIR");
+  if (!temporary_directory) {
+    temporary_directory = "/tmp";
+    LogMessage(
+        "Using %s as the root temporary directory as TMPDIR & P_tmpdir"
+        "(Linux) returned no value.",
+        temporary_directory);
+  }
+  g_temporary_directory.assign(temporary_directory);
+#endif  // _MSC_VER
+
+  return g_temporary_directory.c_str();
+}
 
 // Change the current working directory to the directory containing the
 // specified file.

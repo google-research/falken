@@ -36,7 +36,7 @@ to use .NET 4.x or above.
 1. Open the Unity project.
 1. Go to the Menu, Assets --> Import Package --> Custom Package and import the
 falken.unitypackage downloaded from the
-Releases](https://github.com/google-research/falken/releases) page or
+[Releases](https://github.com/google-research/falken/releases) page or
 [built](../../../sdk/unity/README.md).
 1. Open the scene file for the demo that you're interested in playing.
    Options for scenes to load are:

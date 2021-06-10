@@ -5,12 +5,12 @@ Use the C++ SDK if you are integrating with a C++ game or a game built on a C++
 game engine.
 
 To use the SDK, you must be running the service, as described in the
-[service instructions](../../../service/README.md).
+[service instructions](../../service/README.md).
 
 Download the C++ SDK on the
 [Releases](https://github.com/google-research/falken/releases/) page, or if you
 make changes, build it yourself by following the
-[Build the C++ SDK instructions](#build-the-c_sdk).
+[Build the C++ SDK instructions](#build-the-c-sdk).
 
 ## Build and Run the Hello Falken Sample
 
@@ -125,7 +125,7 @@ It is therefore important to correctly configure these action types to obtain
 good performance. Below are a few examples of common control schemes modeled
 as Joystick actions. Note that if any Joystick action references a camera,
 a camera entity needs to be provided as part of the observation;
-see [next section](#third-person-camera_relative-controls-e_g_dark-souls_mario64-etc).
+see [next section](#third-person-camera-relative-controls-eg-dark-souls-mario64-etc).
 
 #### Third Person Camera-relative controls (e.g., Dark Souls, Mario64 etc.)
 

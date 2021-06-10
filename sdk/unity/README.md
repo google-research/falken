@@ -4,7 +4,7 @@ The Unity SDK is one of the two supported Falken SDKs (C++, Unity).
 Use the Unity SDK if you are integrating with a game built on Unity.
 
 To use the SDK, you must be running the service, as described in the
-[service instructions](../../../service/README.md).
+[service instructions](../../service/README.md).
 
 Download the Unity SDK on the
 [Releases](https://github.com/google-research/falken/releases/) page,

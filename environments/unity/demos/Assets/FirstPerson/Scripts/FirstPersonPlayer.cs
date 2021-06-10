@@ -12,9 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Comment out to use manually computed egocentric actions and observations.
+#define EGO_EXP
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+
+public enum FPGoalState {
+    Exit,
+    HiddenEnemy,
+    BlockedEnemy,
+    VisibleEnemy
+}
 
 public class FirstPersonEntity : Falken.EntityBase {
     public void UpdateFrom(Transform transform) {
@@ -34,27 +44,29 @@ public class FirstPersonPlayerEntity : FirstPersonEntity {
 /// Enemy-specific entity.
 /// </summary>
 public class FirstPersonGoalEntity : FirstPersonEntity {
-    public enum GoalState {
-        Exit,
-        HiddenEnemy,
-        BlockedEnemy,
-        VisibleEnemy
-    }
-
-    public Falken.Category state = new Falken.Category(System.Enum.GetNames(typeof(GoalState)));
+    public Falken.Category state = new Falken.Category(System.Enum.GetNames(typeof(FPGoalState)));
+#if !EGO_EXP
+    public Falken.Number distance = new Falken.Number(0f, 100f);
+    public Falken.Number angleHoriz = new Falken.Number(-1f, 1f);
+    public Falken.Number angleVert = new Falken.Number(-1, 1f);
+#endif
 }
 
 /// <summary>
 /// Observations to allow
 /// </summary>
 public class FirstPersonObservations : Falken.ObservationsBase {
-    public FirstPersonEntity camera;
     public FirstPersonGoalEntity goal;
+#if EGO_EXP
+    public FirstPersonEntity camera;
+#endif
 
     public FirstPersonObservations() {
         player = new FirstPersonPlayerEntity();
-        camera = new FirstPersonEntity();
         goal = new FirstPersonGoalEntity();
+#if EGO_EXP
+        camera = new FirstPersonEntity();
+#endif
     }
 }
 
@@ -62,10 +74,17 @@ public class FirstPersonObservations : Falken.ObservationsBase {
 /// Reflects actions to/from the Falken service.
 /// </summary>
 public class FirstPersonActions : Falken.ActionsBase {
+#if EGO_EXP
     public Falken.Joystick move = new Falken.Joystick(
         Falken.AxesMode.DirectionXZ, Falken.ControlledEntity.Player, Falken.ControlFrame.Player);
     public Falken.Joystick look = new Falken.Joystick(
         Falken.AxesMode.DeltaPitchYaw, Falken.ControlledEntity.Camera);
+#else
+    public Falken.Number moveX = new Falken.Number(-1f, 1f);
+    public Falken.Number moveY = new Falken.Number(-1f, 1f);
+    public Falken.Number lookX = new Falken.Number(-1f, 1f);
+    public Falken.Number lookY = new Falken.Number(-1f, 1f);
+#endif
     public Falken.Boolean fire = new Falken.Boolean();
 }
 
@@ -201,7 +220,6 @@ public class FirstPersonPlayer : MonoBehaviour
             playerEntity.UpdateFrom(transform);
             Vector3 feelersOffset = new Vector3(0.0f, 0.5f, 0.0f);
             playerEntity.feelers.Update(transform, feelersOffset, true);
-            observations.camera.UpdateFrom(playerCamera.transform);
 
             if (currentRoom && currentRoom.Cleared) {
                 if (currentRoom.Exit) {
@@ -210,34 +228,58 @@ public class FirstPersonPlayer : MonoBehaviour
                     observations.goal.position = currentRoom.Bounds.center;
                     observations.goal.rotation = Quaternion.identity;
                 }
-                observations.goal.state.Value = (int)FirstPersonGoalEntity.GoalState.Exit;
+                observations.goal.state.Value = (int)FPGoalState.Exit;
             } else if (currentEnemy) {
                 observations.goal.UpdateFrom(currentEnemy.transform);
                 if (enemyVisible) {
-                    observations.goal.state.Value =
-                        (int)FirstPersonGoalEntity.GoalState.VisibleEnemy;
+                    observations.goal.state.Value = (int)FPGoalState.VisibleEnemy;
                 } else if (currentEnemy.Firing) {
-                    observations.goal.state.Value =
-                        (int)FirstPersonGoalEntity.GoalState.BlockedEnemy;
+                    observations.goal.state.Value = (int)FPGoalState.BlockedEnemy;
                 } else {
-                    observations.goal.state.Value =
-                        (int)FirstPersonGoalEntity.GoalState.HiddenEnemy;
+                    observations.goal.state.Value = (int)FPGoalState.HiddenEnemy;
                 }
             }
 
+#if EGO_EXP
+            observations.camera.UpdateFrom(playerCamera.transform);
+#else
+            Vector3 playerToGoal = observations.goal.position - playerCamera.transform.position;
+            observations.goal.distance.Value = playerToGoal.magnitude;
+            playerToGoal /= observations.goal.distance.Value;
+
+            playerToGoal = playerCamera.transform.InverseTransformDirection(playerToGoal);
+            observations.goal.angleHoriz.Value = playerToGoal.x;
+            observations.goal.angleVert.Value = playerToGoal.y;
+            Debug.Log("X: " + playerToGoal.x + " Y: " + playerToGoal.y);
+#endif
+
             FirstPersonActions actions = brainSpec.Actions;
             if (humanControlled) {
+#if EGO_EXP
                 actions.move.X = move.x;
                 actions.move.Y = move.y;
                 actions.look.X = look.x;
                 actions.look.Y = look.y;
+#else
+                actions.moveX.Value = move.x;
+                actions.moveY.Value = move.y;
+                actions.lookX.Value = look.x;
+                actions.lookY.Value = look.y;
+#endif
                 actions.fire.Value = fire;
                 actions.ActionsSource = Falken.ActionsBase.Source.HumanDemonstration;
             } else {
+#if EGO_EXP
                 actions.move.X = 0f;
                 actions.move.Y = 0f;
                 actions.look.X = 0f;
                 actions.look.Y = 0f;
+#else
+                actions.moveX.Value = 0f;
+                actions.moveY.Value = 0f;
+                actions.lookX.Value = 0f;
+                actions.lookY.Value = 0f;
+#endif
                 actions.fire.Value = false;
                 actions.ActionsSource = Falken.ActionsBase.Source.BrainAction;
             }
@@ -245,10 +287,17 @@ public class FirstPersonPlayer : MonoBehaviour
             episode.Step();
 
             if (!humanControlled) {
+#if EGO_EXP
                 move.x = actions.move.X;
                 move.y = actions.move.Y;
                 look.x = actions.look.X;
                 look.y = actions.look.Y;
+#else
+                move.x = actions.moveX.Value;
+                move.y = actions.moveY.Value;
+                look.x = actions.lookX.Value;
+                look.y = actions.lookY.Value;
+#endif
                 jump = false;
                 fire = actions.fire.Value;
             }

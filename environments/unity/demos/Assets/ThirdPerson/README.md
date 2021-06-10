@@ -3,7 +3,7 @@
 The goal of this sample is to demonstrate what a Falken integration might look like in a game with a third person camera view.
 
 You must be running the service, as described in the
-[service instructions](../../../service/README.md)
+[service instructions](../../../../../service/README.md)
 before building and running the Unity demos.
 
 ## Prerequisites
@@ -34,7 +34,7 @@ to use .NET 4.x or above.
 1. Go to the Menu, Assets --> Import Package --> Custom Package and import the
 falken.unitypackage downloaded from the
 [Releases](https://github.com/googleresearch/falken/releases) page or
-[built](../../../sdk/unity/README.md).
+[built](../../../../../sdk/unity/README.md).
 1. Open `environments/unity/demos/Assets/ThirdPerson/Scenes/ThirdPerson.unity`.
 1. Press the Play button
 

@@ -22,9 +22,15 @@ before building and running Hello Falken C++.
    mkdir build
    cd build
    ```
-1. Create build files:
+1. Copy the `falken_config.json` generated from launching the service to the
+   `build` directory.
+   ```
+   cp ../../../../service/tools/falken_config.json falken_config.json
+   ```
+1. Configure the build:
    Point `<FALKEN_SDK_DIR>` in the commands below at the directory where you
-   downloaded or built the Falken C++ SDK.
+   [downloaded](https://github.com/google-research/falken/releases/) or
+   [built](../../../sdk/cpp/README.md) the Falken C++ SDK.
 
    The directory that you specify should contain a `Findfalken.cmake` file.
 
@@ -42,11 +48,6 @@ before building and running Hello Falken C++.
     ```
     cmake -DCMAKE_MODULE_PATH="<FALKEN_SDK_DIR>" ..
     ```
-1. Copy the `falken_config.json` generated from launching the service to the
-   `build` directory.
-   ```
-   cp ../../../../service/tools/falken_config.json falken_config.json
-   ```
 1. Build the project:
    *Note* the number of parallel build tasks `4` is required on macOS when
    building with Xcode other platforms this can be omitted.

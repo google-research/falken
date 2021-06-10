@@ -23,7 +23,8 @@ running the Hello Falken sample by following
 Once you verified your setup is working properly with Hello Falken, now it's
 time to integrate the Falken SDK with your game.
 
-Make sure you've familiarized yourself with [Falken Concepts](../../README.md).
+Make sure you've familiarized yourself with
+[Falken Concepts](../../README.md#concepts).
 
 ### Import the SDK
 
@@ -157,7 +158,7 @@ struct TwinStickControls : public falken::ActionsBase {
             move,
             falken::kControlledEntityPlayer, // Controls player-XZ movement.
             falken::kControlFrameWorld),     // Input is world-relative.
-        FALKEN_JOYSTICK_DIRECTION_XZ( // Controls XZ aim direction
+        FALKEN_JOYSTICK_DIRECTION_XZ( // Controls XZ aim direction.
             aim,
             falken::kControlledEntityPlayer, // Controls player-XZ aim.
             falken::kControlFrameWorld)      // Input is world-relative.

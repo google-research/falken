@@ -22,7 +22,7 @@ building and running one of the Unity samples by following
 Once you verified your setup is working properly with a sample, now it's
 time to integrate the Falken SDK with your game.
 
-Make sure you've familiarized yourself with [Falken Concepts](../../README.md).
+Make sure you've familiarized yourself with [Falken Concepts](../../README.md#concepts).
 
 ### Import the SDK
 
@@ -100,14 +100,14 @@ public class TwinStickControls : Falken.ActionsBase
     public Falken.Joystick move = new Falken.Joystick(
         "move",
         Falken.AxesMode.DirectionXZ,
-        Falken.ControlledEntity.Player, // Movement on the player XZ plane
-        Falken.ControlFrame.World); // Input is a world-space XZ direction
+        Falken.ControlledEntity.Player, // Movement on the player XZ plane.
+        Falken.ControlFrame.World); // Input is a world-space XZ direction.
 
     public Falken.Joystick aim = new Falken.Joystick(
         "aim",
         Falken.AxesMode.DirectionXZ,
-        Falken.ControlledEntity.Player, // Aiming on the player XZ plane
-        Falken.ControlFrame.World); // Input is a world-space XZ direction
+        Falken.ControlledEntity.Player, // Aiming on the player XZ plane.
+        Falken.ControlFrame.World); // Input is a world-space XZ direction.
 }
 ```
 
@@ -224,10 +224,10 @@ session.CreateEpisode();
 ### Step the Episode
 
 ```
-// Set attributes in MyObservations instance from game state
+// Set attributes in MyObservations instance from game state.
 if (humanControlled)
 {
-    // Set attributes in MyActions instance from human player
+    // Set attributes in MyActions instance from human player.
 }
 
 Falken.ActionData actionData = session.StepEpisode(
@@ -238,7 +238,7 @@ Falken.ActionData actionData = session.StepEpisode(
 if (humanControlled && actionData != null)
 {
     actions.FromActionData(actionData);
-    // Apply actions to your game
+    // Apply actions to your game.
 }
 ```
 
@@ -246,7 +246,7 @@ if (humanControlled && actionData != null)
 
 ```
 session.FinishEpisode(Falken.EpisodeState.Success);
-// Game specific reset logic
+// Game specific reset logic.
 ```
 
 ### Ending one Session. Starting a new Session.

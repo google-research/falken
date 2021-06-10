@@ -20,7 +20,7 @@ to use .NET 4.x or above.
    `environments/demos/Assets/StreamingAssets` directory.
    1. Windows:
    ```
-   copy service/tools/falken_config.json environments/unity/demos/Assets/ StreamingAssets/falken_config.json
+   copy service\tools\falken_config.json environments\unity\demos\Assets\StreamingAssets\falken_config.json
    ```
    1. macOS:
    ```

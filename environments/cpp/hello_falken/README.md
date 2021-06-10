@@ -26,7 +26,7 @@ before building and running Hello Falken C++.
    `build` directory.
    1. Windows:
    ```
-   copy ../../../../service/tools/falken_config.json falken_config.json
+   copy ..\..\..\..\service\tools\falken_config.json falken_config.json
    ```
    1. macOS:
    ```

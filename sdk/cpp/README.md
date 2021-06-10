@@ -364,7 +364,7 @@ that directory:
    ```
    1. Linux
    ```
-   cpack -G ZIP
+   cpack -G ZIP -C Release
    ```
 
 Build artifacts are stored under `build/lib` (Linux / macOS) and `build/bin`

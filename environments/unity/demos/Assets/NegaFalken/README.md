@@ -4,7 +4,7 @@ The goal of this sample is to demonstrate what a Falken vs. Falken game
 integration may look like.
 
 You must be running the service, as described in the
-[service instructions](../../../service/README.md)
+[service instructions](../../../../../service/README.md)
 before building and running the Unity demos.
 
 ## Prerequisites
@@ -35,7 +35,7 @@ to use .NET 4.x or above.
 1. Go to the Menu, Assets --> Import Package --> Custom Package and import the
 falken.unitypackage downloaded from the
 [Releases](https://github.com/google-research/falken/releases) page or
- [built](../../../sdk/unity/README.md).
+ [built](../../../../../sdk/unity/README.md).
 1. Open `environments/unity/demos/Assets/NegaFalken/Scenes/NegaFalken.unity`.
 1. Press the Play button
 

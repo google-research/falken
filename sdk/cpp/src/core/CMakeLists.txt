@@ -38,6 +38,10 @@ else()
   option(FALKEN_ENABLE_CPP_UNIT_TESTS "Build tests for this project" ON)
 endif()
 
+option(FALKEN_ENABLE_CPP_SERVICE_TESTS
+  "Build service tests for this project" OFF
+)
+
 find_package(absl REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(grpc REQUIRED)
@@ -994,22 +998,25 @@ if(FALKEN_ENABLE_CPP_UNIT_TESTS)
   cpp_build_test("${CORE_SOURCE_DIR}/semaphore_test.cc")
   cpp_build_test("${CORE_SOURCE_DIR}/resource_id_test.cc")
 
-  set(FLAGS "")
-  #
-  if(NOT "${FALKEN_PROJECT_ID}" STREQUAL "")
-    list(APPEND FLAGS "--project_id" "${FALKEN_PROJECT_ID}")
+  if(FALKEN_ENABLE_CPP_SERVICE_TESTS)
+    set(FLAGS "")
+    #
+    if(NOT "${FALKEN_PROJECT_ID}" STREQUAL "")
+      list(APPEND FLAGS "--project_id" "${FALKEN_PROJECT_ID}")
+    endif()
+    if(NOT "${FALKEN_API_KEY}" STREQUAL "")
+      list(APPEND FLAGS "--api_key" "${FALKEN_API_KEY}")
+    endif()
+    if(NOT "${FALKEN_JSON_CONFIG_FILE}" STREQUAL "")
+      list(APPEND FLAGS "--json_config_file" "${FALKEN_JSON_CONFIG_FILE}")
+    endif()
+    cpp_build_test("${CORE_SOURCE_DIR}/service_test.cc"
+      DISABLE_TEST_DISCOVERY
+      TEST_ARGS
+        ${FLAGS}
+    )
   endif()
-  if(NOT "${FALKEN_API_KEY}" STREQUAL "")
-    list(APPEND FLAGS "--api_key" "${FALKEN_API_KEY}")
-  endif()
-  if(NOT "${FALKEN_JSON_CONFIG_FILE}" STREQUAL "")
-    list(APPEND FLAGS "--json_config_file" "${FALKEN_JSON_CONFIG_FILE}")
-  endif()
-  cpp_build_test("${CORE_SOURCE_DIR}/service_test.cc"
-    DISABLE_TEST_DISCOVERY
-    TEST_ARGS
-      ${FLAGS}
-  )
+
   cpp_build_test("${CORE_SOURCE_DIR}/specs_test.cc")
   cpp_build_test("${CORE_SOURCE_DIR}/status_converter_test.cc")
   cpp_build_test("${CORE_SOURCE_DIR}/status_macros_test.cc")

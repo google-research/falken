@@ -244,13 +244,21 @@ public class FirstPersonPlayer : MonoBehaviour
             observations.camera.UpdateFrom(playerCamera.transform);
 #else
             Vector3 playerToGoal = observations.goal.position - playerCamera.transform.position;
-            observations.goal.distance.Value = playerToGoal.magnitude;
-            playerToGoal /= observations.goal.distance.Value;
+            if (!float.IsNaN(playerToGoal.magnitude))
+            {
+                observations.goal.distance.Value = playerToGoal.magnitude;
+                playerToGoal /= observations.goal.distance.Value;
 
-            playerToGoal = playerCamera.transform.InverseTransformDirection(playerToGoal);
-            observations.goal.angleHoriz.Value = playerToGoal.x;
-            observations.goal.angleVert.Value = playerToGoal.y;
-            Debug.Log("X: " + playerToGoal.x + " Y: " + playerToGoal.y);
+                playerToGoal = playerCamera.transform.InverseTransformDirection(playerToGoal);
+                observations.goal.angleHoriz.Value = playerToGoal.x;
+                observations.goal.angleVert.Value = playerToGoal.y;
+                Debug.Log("X: " + playerToGoal.x + " Y: " + playerToGoal.y);
+            } else {
+                // No goal available.
+                observations.goal.distance.Value = 0f;
+                observations.goal.angleHoriz.Value = 0f;
+                observations.goal.angleVert.Value = 0f;
+            }
 #endif
 
             FirstPersonActions actions = brainSpec.Actions;

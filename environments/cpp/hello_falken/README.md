@@ -54,8 +54,17 @@ before building and running Hello Falken C++.
    This can be changed to a number that matches the number of CPUs in your
    system to speed up builds.
 
+   1. Windows
    ```
-   cmake --build . -j 4
+   cmake --build . --config Release -j
+   ```
+   2. macOS
+   ```
+   cmake --build . --config Release -j
+   ```
+   3. Linux
+   ```
+   cmake --build . -j
    ```
 1. Run the executable:
    1. Windows:

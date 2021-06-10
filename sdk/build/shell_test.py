@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # Lint as: python3
-
 """Tests for the shell command runner."""
 
 import os
@@ -36,22 +35,39 @@ class ShellTest(unittest.TestCase):
   def test_run_command(self, mock_run):
     """Run a command."""
     shell.run_command('echo hello world')
-    mock_run.assert_called_once_with(args='echo hello world', shell=True,
-                                     check=True)
+    mock_run.assert_called_once_with(
+        args='echo hello world', shell=True, check=True)
 
   @unittest.mock.patch('subprocess.run')
   def test_run_command_no_check(self, mock_run):
     """Run a command without throwing an exception on a failure."""
     shell.run_command('echo hello world', check=False)
-    mock_run.assert_called_once_with(args='echo hello world', shell=True,
-                                     check=False)
+    mock_run.assert_called_once_with(
+        args='echo hello world', shell=True, check=False)
 
   @unittest.mock.patch('subprocess.run')
   def test_run_command_with_cwd(self, mock_run):
     """Run a command in a different directory."""
     shell.run_command('echo hello world', cwd='hawaii')
-    mock_run.assert_called_once_with(args='echo hello world', shell=True,
-                                     check=True, cwd='hawaii')
+    mock_run.assert_called_once_with(
+        args='echo hello world', shell=True, check=True, cwd='hawaii')
+
+  @unittest.mock.patch('subprocess.Popen')
+  def test_run_command_detached(self, mock_run):
+    """Run a command."""
+    # Run the command and wait to finish.
+    status = shell.run_command_detached('echo hello world')
+    status.communicate()
+    mock_run.assert_called_once_with(args='echo hello world', shell=True)
+
+  @unittest.mock.patch('subprocess.Popen')
+  def test_run_command_detached_with_cwd(self, mock_run):
+    """Run a command in a different directory."""
+    status = shell.run_command_detached('echo hello world', cwd='hawaii')
+    status.communicate()
+    mock_run.assert_called_once_with(
+        args='echo hello world', shell=True, cwd='hawaii')
+
 
 if __name__ == '__main__':
   unittest.main()

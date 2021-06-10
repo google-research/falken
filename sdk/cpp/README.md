@@ -344,7 +344,7 @@ that directory:
    ```
    1. macOS
    ```
-   cmake --build . --config Release -j
+   cmake --build . --config Release -j 4
    ```
    1. Linux
    ```

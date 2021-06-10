@@ -85,10 +85,10 @@ before building and running Hello Falken C++.
 
  * The goal is to steer the blue triangle ship into the red diamond goal, using
    WASD or arrow keys to control the steering and throttle of the ship.
- * After successfully getting to the goal a few times, press the spacebar to
+ * After successfully getting to the goal a few times, press the space bar to
    have Falken take over and automatically steer the ship to the goal.
- * If Falken runs into trouble, you can press spacebar to take control, correct
-   the problem, and then press spacebar again to return control to Falken.
+ * If Falken runs into trouble, you can press space bar to take control, correct
+   the problem, and then press space bar again to return control to Falken.
    Falken will learn from these “corrections” which you should see in ~30
    seconds.
  * Press R to reset the board.

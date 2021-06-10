@@ -78,7 +78,9 @@ class LearnerTest(parameterized.TestCase):
 
   def tearDown(self):
     """Clean up the DataStore instance."""
-    self.storage = None
+    if self.storage:
+      self.storage.shutdown()
+      self.storage = None
     self.data_store = None
     self.assignment_notifier = None
     self._data_store_file_system = None

@@ -238,21 +238,25 @@ public class FirstPersonPlayer : MonoBehaviour
                 } else {
                     observations.goal.state.Value = (int)FPGoalState.HiddenEnemy;
                 }
+            } else {
+                // Edge case handling based on order of update issues.
+                observations.goal.UpdateFrom(playerCamera.transform);
+                observations.goal.state.Value = (int)FPGoalState.Exit;
             }
 
 #if EGO_EXP
             observations.camera.UpdateFrom(playerCamera.transform);
 #else
             Vector3 playerToGoal = observations.goal.position - playerCamera.transform.position;
-            if (!float.IsNaN(playerToGoal.magnitude))
+            float distanceSqr = playerToGoal.sqrMagnitude;
+            if (distanceSqr > Mathf.Epsilon)
             {
-                observations.goal.distance.Value = playerToGoal.magnitude;
+                observations.goal.distance.Value = Mathf.Sqrt(distanceSqr);
                 playerToGoal /= observations.goal.distance.Value;
 
                 playerToGoal = playerCamera.transform.InverseTransformDirection(playerToGoal);
                 observations.goal.angleHoriz.Value = playerToGoal.x;
                 observations.goal.angleVert.Value = playerToGoal.y;
-                Debug.Log("X: " + playerToGoal.x + " Y: " + playerToGoal.y);
             } else {
                 // No goal available.
                 observations.goal.distance.Value = 0f;

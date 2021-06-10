@@ -40,7 +40,7 @@ android {
     versionCode 1
     versionName '1.0'
     ndk {
-      abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86_64'
+      abiFilters 'arm64-v8a'
     }
     externalNativeBuild.cmake {
       arguments "-DFALKEN_CPP_SDK_DIR=$gradle.falken_cpp_sdk_dir"
@@ -48,6 +48,7 @@ android {
   }
   externalNativeBuild.cmake {
     path 'CMakeLists.txt'
+    version "$FALKEN_CMAKE_VERSION"
   }
   buildTypes {
     release {
@@ -57,3 +58,15 @@ android {
     }
   }
 }
+
+// Copy Falken library into generated APK.
+task extractNdk(type: Copy)  {
+  if (file("${gradle.falken_cpp_sdk_dir}/lib/Android/Release/libfalken_cpp_sdk.so").exists()) {
+    copy {
+      from "${gradle.falken_cpp_sdk_dir}/lib/Android/Release/libfalken_cpp_sdk.so"
+      into "libs/arm64-v8a/"
+    }
+  }
+}
+
+build.dependsOn(extractNdk)

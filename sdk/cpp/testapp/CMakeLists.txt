@@ -100,7 +100,7 @@ if(ANDROID)
       "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
 
   # Define the target as a shared library, as that is what gradle expects.
-  set(target_name "android_test_app")
+  set(target_name "android_main")
   add_library(${target_name} SHARED
     ${SAMPLE_ANDROID_SRCS}
     ${SAMPLE_COMMON_SRCS}

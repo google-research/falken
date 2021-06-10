@@ -24,6 +24,15 @@ before building and running Hello Falken C++.
    ```
 1. Copy the `falken_config.json` generated from launching the service to the
    `build` directory.
+   1. Windows:
+   ```
+   copy ../../../../service/tools/falken_config.json falken_config.json
+   ```
+   1. macOS:
+   ```
+   cp ../../../../service/tools/falken_config.json falken_config.json
+   ```
+   1. Linux:
    ```
    cp ../../../../service/tools/falken_config.json falken_config.json
    ```

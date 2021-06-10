@@ -19,18 +19,15 @@ to use .NET 4.x or above.
    `environments/demos/Assets/StreamingAssets` directory.
    1. Windows:
    ```
-   copy service/tools/falken_config.json environments/unity/demos/Assets/
-   StreamingAssets/falken_config.json
+   copy service/tools/falken_config.json environments/unity/demos/Assets/StreamingAssets/falken_config.json
    ```
    1. macOS:
    ```
-   cp service/tools/falken_config.json environments/unity/demos/Assets/
-   StreamingAssets/falken_config.json
+   cp service/tools/falken_config.json environments/unity/demos/Assets/ StreamingAssets/falken_config.json
    ```
    1. Linux:
    ```
-   cp service/tools/falken_config.json environments/unity/demos/Assets/
-   StreamingAssets/falken_config.json
+   cp service/tools/falken_config.json environments/unity/demos/Assets/ StreamingAssets/falken_config.json
    ```
 1. Add the environments/demos/ directory as a project in Unity Hub.
 1. Open the Unity project.

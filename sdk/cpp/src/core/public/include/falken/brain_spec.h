@@ -78,6 +78,16 @@ namespace falken {
 ///     service_->CreateBrain("my_brain", brain_spec_base);
 /// @endcode
 ///
+/// NOTE: When a brain is created at runtime, all the attributes provided
+/// will be copied to internal objects. This means that changes applied to
+/// external attributes will not affect the contents of the brain.
+/// Following the example above, this change will not have any effect
+/// in the brain.
+///
+/// @code{.cpp}
+/// speed.set_number(7.0f);
+/// @endcode
+
 /// See {@code BrainSpec} for an example using a templated class.
 class FALKEN_EXPORT BrainSpecBase {
   friend class BrainSpecProtoConverter;

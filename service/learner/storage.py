@@ -17,6 +17,7 @@
 
 import datetime
 import queue
+import threading
 import time
 from typing import List, Optional
 import uuid
@@ -88,8 +89,11 @@ class Storage:
     self._assignment_monitor = assignment_monitor.AssignmentMonitor(
         file_system, self._enqueue_pending_assignment,
         self._episode_chunk_notification)
-    self._pending_assignments = queue.Queue()
+    self._pending_assignment_ids = queue.Queue()
+    self._pending_assignment_ids_set = set()
+    self._pending_assignment_ids_set_lock = threading.Lock()
     self._in_progress_assignment = None
+    self._in_progress_assignment_id = None
     self._stale_seconds = stale_seconds
 
   def shutdown(self):
@@ -354,13 +358,15 @@ class Storage:
     Args:
       assignment: ResourceId instance that references an assignment.
     """
-    self._pending_assignments.put(assignment)
+    with self._pending_assignment_ids_set_lock:
+      if assignment not in self._pending_assignment_ids_set:
+        self._pending_assignment_ids_set.add(assignment)
+        self._pending_assignment_ids.put(assignment)
 
   @property
   def _number_of_pending_assignments(self) -> int:
     """Get the number of pending assignments."""
-    return self._pending_assignments.qsize() + (
-        1 if self._in_progress_assignment else 0)
+    return len(self._pending_assignment_ids_set)
 
   def _episode_chunk_notification(
       self, assignment: resource_id.ResourceId,
@@ -401,7 +407,7 @@ class Storage:
     while (self._in_progress_assignment is None and
            (remaining is None or remaining >= 0)):
       try:
-        assignment_resource_id = self._pending_assignments.get(
+        assignment_resource_id = self._pending_assignment_ids.get(
             timeout=remaining)
       except queue.Empty:
         assignment_resource_id = None
@@ -410,6 +416,7 @@ class Storage:
           self._assignment_monitor.acquire_assignment(assignment_resource_id)):
         self._in_progress_assignment = self._data_store.read(
             assignment_resource_id)
+        self._in_progress_assignment_id = assignment_resource_id
         break
       elif remaining is None:
         break
@@ -438,8 +445,11 @@ class Storage:
     """Mark the currently acquired assignment as done / complete."""
     assert self._in_progress_assignment
     falken_logging.info('Recording assignment done.')
-    self._assignment_monitor.release_assignment()
-    self._in_progress_assignment = None
+    with self._pending_assignment_ids_set_lock:
+      self._pending_assignment_ids_set.remove(self._in_progress_assignment_id)
+      self._assignment_monitor.release_assignment()
+      self._in_progress_assignment_id = None
+      self._in_progress_assignment = None
     falken_logging.info('Recorded assignment done.')
 
   def create_session_and_assignment(self, project_id: str, brain_id: str,

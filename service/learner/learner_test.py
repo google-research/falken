@@ -116,7 +116,7 @@ class LearnerTest(parameterized.TestCase):
     self.data_store.write(session)
 
   @staticmethod
-  def wait_for_assignment_count(learner, expected_count, timeout=6):
+  def wait_for_assignment_count(learner, expected_count, timeout=60):
     """Wait for enqeueud assignments.
 
     Args:

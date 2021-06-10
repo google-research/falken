@@ -334,12 +334,12 @@ class StorageTest(parameterized.TestCase):
     """Test receiving an enqueued assignment with no timeout."""
     with mock.patch.object(time, 'time') as mock_time:
       mock_time.side_effect = self._fake_time_callable(1)
-      mock_pending_assignments = mock.Mock()
-      mock_pending_assignments.get.return_value = None
-      self.storage._pending_assignments = mock_pending_assignments
+      mock_pending_assignment_ids = mock.Mock()
+      mock_pending_assignment_ids.get.return_value = None
+      self.storage._pending_assignment_ids = mock_pending_assignment_ids
 
       self.assertIsNone(self.storage.receive_assignment(timeout=timeout))
-      mock_pending_assignments.get.assert_has_calls(expected_calls)
+      mock_pending_assignment_ids.get.assert_has_calls(expected_calls)
 
   @parameterized.named_parameters(
       ('Already Acquired', False),

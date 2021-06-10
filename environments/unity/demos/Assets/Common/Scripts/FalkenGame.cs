@@ -34,6 +34,8 @@ public abstract class FalkenGame<PlayerBrainSpec> : MonoBehaviour
     public string snapshotId = null;
     [Tooltip("The maximum number of steps per episode.")]
     public uint falkenMaxSteps = 300;
+    [Tooltip("The type of session to create.")]
+    public Falken.Session.Type sessionType = Falken.Session.Type.InteractiveTraining;
     [Tooltip("Determines whether Falken or the Player should be in control.")]
     public bool humanControlled = true;
     [Tooltip("Set to false to disable the rendering of control and training status.")]
@@ -118,8 +120,12 @@ public abstract class FalkenGame<PlayerBrainSpec> : MonoBehaviour
         brainId = _brain.Id;
 
         // Create session.
-        _session = _brain.StartSession(Falken.Session.Type.InteractiveTraining,
-                                       falkenMaxSteps);
+        _session = _brain.StartSession(sessionType, falkenMaxSteps);
+
+        if (humanControlled && sessionType != Falken.Session.Type.InteractiveTraining) {
+            humanControlled = false;
+            ControlChanged();
+        }
     }
 
     /// <summary>
@@ -159,7 +165,8 @@ public abstract class FalkenGame<PlayerBrainSpec> : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetButtonDown("ToggleControl"))
+        if (Input.GetButtonDown("ToggleControl") &&
+            sessionType == Falken.Session.Type.InteractiveTraining)
         {
             humanControlled = !humanControlled;
             ControlChanged();

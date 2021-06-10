@@ -36,11 +36,6 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
     public Slider playerOneSlider;
     [Tooltip("Reference to Canvas element for player two health.")]
     public Slider playerTwoSlider;
-    [Tooltip("Target application framerate.")]
-    public int targetFPS = 60;
-    [Tooltip("Set to run game faster or slower than realtime.")]
-    [Range(0.1f, 10)]
-    public float timeScale = 1;
     #endregion
 
     #region Protected and private attributes
@@ -56,25 +51,8 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
     #region Unity Callbacks
     void Start()
     {
-        // Try to render at this specified framerate.
-        Application.targetFrameRate = targetFPS;
-
         Init();
         ResetGame();
-    }
-
-    void Update()
-    {
-        // Update simulation time.
-        if (Input.GetKeyDown(UnityEngine.KeyCode.Equals))
-        {
-            timeScale = Mathf.Min(timeScale * 2, 64);
-        }
-        else if (Input.GetKeyDown(UnityEngine.KeyCode.Minus))
-        {
-            timeScale = Mathf.Max(timeScale / 2, 0.25f);
-        }
-        Time.timeScale = timeScale;
     }
 
     void LateUpdate()

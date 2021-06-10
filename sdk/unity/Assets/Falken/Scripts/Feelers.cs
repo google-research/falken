@@ -246,6 +246,13 @@ namespace Falken
         /// <summary>
         /// Create an empty Falken.Feelers that will be bound later
         /// using a field from a class that contains this attribute.
+        ///
+        /// Given that the feeler categories are not stored in the service as
+        /// strings but as enum values instead, when a brain is loaded, generic
+        /// names will be retrieved. For instance, if the categories were
+        /// {"floor", "wall", "carpet"}, the mapping between stored and retrieved
+        /// values would be {"carpet": "0", "floor": "1", "wall": "2"}, since all
+        /// attributes are stored in alphabetical order.
         /// </summary>
         /// <param name="length">Length of each feeler.</param>
         /// <param name="thickness">Thickness value for spherical raycast.
@@ -261,6 +268,13 @@ namespace Falken
 
         /// <summary>
         /// Create a dynamic Falken.Feelers.
+        ///
+        /// Given that the feeler categories are not stored in the service as
+        /// strings but as enum values instead, when a brain is loaded, generic
+        /// names will be retrieved. For instance, if the categories were
+        /// {"floor", "wall", "carpet"}, the mapping between stored and retrieved
+        /// values would be {"carpet": "0", "floor": "1", "wall": "2"}, since all
+        /// attributes are stored in alphabetical order.
         /// </summary>
         /// <param name="name">Name of the feelers attribute.</param>
         /// <param name="length">Length of each feeler.</param>

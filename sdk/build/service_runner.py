@@ -81,9 +81,9 @@ class ServiceRunner:
       String with the location of json configuration file.
     """
     if self._service_subprocess is not None:
-      if self._service_subprocess.poll() is None:
+      if self._service_subprocess.poll() is not None:
         raise RuntimeError('Falken service finished before stopping it.')
-      os.killpg(os.getpgid(self._service_subprocess), signal.SIGINT)
+      os.killpg(os.getpgid(self._service_subprocess.pid), signal.SIGINT)
 
   def __wait_for_service(self, timeout):
     """Blocks until service is ready to use.

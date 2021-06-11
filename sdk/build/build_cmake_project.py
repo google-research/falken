@@ -118,8 +118,7 @@ def parse_arguments(args: typing.List[str]) -> argparse.Namespace:
             'time.'))
   parser.add_argument(
       '--cmake_configure_args',
-      nargs='*',
-      default=[],
+      action='append',
       help='Additional args to pass to CMake configuration.')
   parser.add_argument(
       '--cmake_generator',
@@ -189,6 +188,10 @@ def parse_arguments(args: typing.List[str]) -> argparse.Namespace:
       '--run-tests',
       action='store_true',
       help=('Start service and run project tests.'))
+  parser.add_argument(
+      '--start-service',
+      action='store_true',
+      help=('When running tests, start the service.'))
   return parser.parse_args(args)
 
 
@@ -500,7 +503,7 @@ def build_project(args: argparse.Namespace) -> bool:
   falken_service_runner = service_runner.ServiceRunner(args.falken_service_path,
                                                        args.python)
 
-  if args.run_tests:
+  if args.run_tests and args.start_service:
     json_config = falken_service_runner.start_service()
     if args.falken_json_config_file is None:
       args.falken_json_config_file = json_config

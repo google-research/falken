@@ -69,7 +69,7 @@ class BuildCmakeTest(unittest.TestCase):
     self.assertEqual(self.args.cmake_source_project_root,
                      os.path.join(os.getcwd(), 'git', 'falken'))
     self.assertEqual(self.args.cmake_copybara_variable, 'FALKEN_DIR')
-    self.assertEqual(self.args.cmake_configure_args, [])
+    self.assertIsNone(self.args.cmake_configure_args)
     self.assertEqual(self.args.cmake_generator,
                      cmake_runner.CMakeRunner.default_generator())
     self.assertEqual(

@@ -11,6 +11,12 @@ env:
   CPP_SDK_REPO_PATH: "sdk/cpp"
   UNITY_SDK_REPO_PATH: "sdk/unity"
   PYTHON_VERSION: 3.7
+  TEST_OPTIONS: >
+    --cmake_configure_args="-DFALKEN_ENABLE_CPP_UNIT_TESTS=ON"
+    --cmake_configure_args="-DFALKEN_ENABLE_CPP_SERVICE_TESTS=OFF"
+    --cmake_configure_args="-DFALKEN_CPP_SDK_BUILD_TESTAPP=OFF"
+    --cmake_configure_args="-DFALKEN_RUN_CSHARP_TESTS=OFF"
+    --cmake_configure_args="-DFALKEN_TESTAPP_ENABLE_TEST=OFF"
 jobs:
 
   #
@@ -31,6 +37,7 @@ jobs:
           --cmake_source_project_root $CPP_SDK_REPO_PATH
           --cmake_build_configs Debug
           --run-tests
+          ${TEST_OPTIONS}
 
   cpp_sdk_macos:
     runs-on: macos-11
@@ -47,6 +54,7 @@ jobs:
           --cmake_source_project_root $CPP_SDK_REPO_PATH
           --cmake_build_configs Debug
           --run-tests
+          ${TEST_OPTIONS}
 
   #
   # Unity SDK builds
@@ -67,6 +75,7 @@ jobs:
           --cmake_source_project_root $UNITY_SDK_REPO_PATH
           --cmake_build_configs Debug
           --run-tests
+          ${TEST_OPTIONS}
 
   unity_sdk_macos:
     needs: cpp_sdk_macos
@@ -84,4 +93,5 @@ jobs:
           --cmake_source_project_root $UNITY_SDK_REPO_PATH
           --cmake_build_configs Debug
           --run-tests
+          ${TEST_OPTIONS}
 

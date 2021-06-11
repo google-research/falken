@@ -77,5 +77,8 @@
         "com.google.falken/Falken/Scripts/Gen/std": "b4b92f64021d4fc694b1ed4a4d1cec59",
         "com.google.falken/Falken/Tests": "8e38485670934c22bd3c9b4c7aca7429",
         "com.google.falken/package.json": "673308f1c1244ba0a11a6a8bf50db539"
+    },
+    "0.0.2": {
+        "Falken/Editor/falken_version-0.0.2_manifest.txt": "bea0b49956fd41f3ae9bef72807ec1d6"
     }
 }

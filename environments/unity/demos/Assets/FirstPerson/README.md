@@ -44,6 +44,11 @@ falken.unitypackage downloaded from the
 The goal of this game is to navigate the player various rooms using arrow or
 WASD keys, aim using the mouse, and destroy all enemies using left mouse click.
 
+The Falken player can only see the enemy or room exit that have "enemy" or
+"exit" hovering over them respectively. You should destroy labeled enemies in
+each room before proceeding to the room's exit. Clear all of the rooms to win
+the game.
+
 Play the game for a few rounds, and press the
 `t` key for Falken to take over.
 

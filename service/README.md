@@ -10,6 +10,15 @@ Install the following dependencies:
 - [pip](https://pip.pypa.io/en/stable/installing/)
 - [openssl](https://wiki.openssl.org/index.php/Binaries)
 
+## Windows-Only: Enable long file paths
+
+Falken creates and uses long file paths, so make sure to allow paths above
+the 260 character path limit by editing the registry:
+
+1. From the Windows start menu, open the Registry Editor (regedit).
+1. Navigate to `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem`.
+1. Change the value of `LongPathsEnabled` to `1`.
+
 ## Set up directories (Optional)
 
 Falken runs on your local file system.

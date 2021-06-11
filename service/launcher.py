@@ -15,6 +15,7 @@
 # Lint as: python3
 """Launches Falken services."""
 import os
+import platform
 import signal
 import subprocess
 import sys
@@ -166,8 +167,11 @@ def main(argv):
       logging.debug('Cleaning up...')
       if FLAGS.clean_up_protos:
         common.generate_protos.clean_up()
-      api_process.send_signal(signal.SIGINT)
-      learner_process.send_signal(signal.SIGINT)
+      signal_to_send = (
+          signal.CTRL_C_EVENT
+          if platform.system().lower() == 'windows' else signal.SIGINT)
+      api_process.send_signal(signal_to_send)
+      learner_process.send_signal(signal_to_send)
       break
 
 

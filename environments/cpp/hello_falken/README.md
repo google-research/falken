@@ -16,6 +16,10 @@ before building and running Hello Falken C++.
 
 1. Install [CMake](https://cmake.org/install)
    (version 3.17 or higher is required)
+1. If you are running on Linux and do not have OpenGL installed:
+   ```
+   sudo apt-get install libopengl-dev
+   ```
 1. Make a new subdirectory called build and go into that directory:
    ```
    cd environments/cpp/hello_falken
@@ -79,11 +83,11 @@ before building and running Hello Falken C++.
 1. Run the executable:
    1. Windows:
    ```
-   .\Debug\HelloFalken.exe
+   .\Release\HelloFalken.exe
    ```
    2. macOS (Xcode):
    ```
-   ./Debug/HelloFalken
+   ./Release/HelloFalken
    ```
    3. Linux:
    ```

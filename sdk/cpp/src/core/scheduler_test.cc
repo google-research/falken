@@ -259,12 +259,14 @@ TEST_F(SchedulerTest, RepeatCallbackWithDelay) {
   auto end = std::chrono::system_clock::now();
 
   // Test if the first delay actually works.
-  auto actual_delay = end - start;
-  auto error = actual_delay - delay;
+  auto actual_delay =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  auto error = std::chrono::duration_cast<std::chrono::milliseconds>(
+      actual_delay - delay);
   std::cerr << "Delay: " << delay.count()
             << "ms. Actual delay: " << actual_delay.count()
             << " ms. Error: " << error.count() << " ms." << std::endl;
-  EXPECT_TRUE(error < std::chrono::milliseconds(100));
+  EXPECT_TRUE(error < std::chrono::milliseconds(200));
 
   // Wait for it to repeat 100 times
   for (int i = 0; i < 100; ++i) {

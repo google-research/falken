@@ -23,6 +23,7 @@ from typing import Optional
 
 from absl import app
 from absl import flags
+from absl import logging
 from data_store import data_store as data_store_module
 from data_store import file_system as data_store_file_system
 from learner import learner as learner_module
@@ -137,6 +138,7 @@ class LearnerService:
 
 def main(unused_argv, assignment_path=None, iterations=-1):
   """Start a learner from the module's flags."""
+  logging.get_absl_handler().use_absl_log_file()
   service = LearnerService(assignment_path)
   # Gracefully shut down when handling SIGTERM.
   signal.signal(signal.SIGTERM,

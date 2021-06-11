@@ -233,6 +233,7 @@ def main(argv):
   if len(argv) > 1:
     logging.error('Non-flag parameters are not allowed: %s', argv)
   logging.debug('Starting the API service...')
+  logging.get_absl_handler().use_absl_log_file()
   server = serve()
   server.wait_for_termination()
 

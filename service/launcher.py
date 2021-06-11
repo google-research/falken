@@ -102,7 +102,8 @@ def run_api(current_path: str):
   args = [
       sys.executable, '-m', 'api.falken_service', '--root_dir', FLAGS.root_dir,
       '--port', str(FLAGS.port), '--ssl_dir', FLAGS.ssl_dir,
-      '--verbosity', str(FLAGS.verbosity), '--alsologtostderr'
+      '--verbosity', str(FLAGS.verbosity), '--alsologtostderr',
+      '--log_dir', FLAGS.log_dir,
   ]
   for hyperparameters in FLAGS.hyperparameters:
     args.extend(['--hyperparameters', hyperparameters])
@@ -125,7 +126,7 @@ def run_learner(current_path: str):
   return subprocess.Popen(
       [sys.executable, '-m', 'learner.learner_service',
        '--root_dir', FLAGS.root_dir, '--verbosity', str(FLAGS.verbosity),
-       '--alsologtostderr'],
+       '--alsologtostderr', '--log_dir', FLAGS.log_dir],
       env=os.environ, cwd=current_path)
 
 
@@ -144,6 +145,7 @@ def main(argv):
   if len(argv) > 1:
     logging.error('Non-flag parameters are not allowed.')
 
+  logging.get_absl_handler().use_absl_log_file()
   check_ssl()
 
   file_dir = os.path.dirname(os.path.abspath(__file__))

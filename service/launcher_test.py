@@ -21,6 +21,7 @@ import sys
 import tempfile
 from unittest import mock
 
+from absl import logging
 from absl.testing import absltest
 import common.generate_protos  # pylint: disable=unused-import
 import launcher
@@ -37,6 +38,7 @@ class LauncherTest(absltest.TestCase):
     os.makedirs(launcher.FLAGS.ssl_dir)
     launcher.FLAGS.root_dir = os.path.join(self.temp_dir.name, 'root_dir')
     os.makedirs(launcher.FLAGS.root_dir)
+    logging.FLAGS.log_dir = self.temp_dir
 
   def tearDown(self):
     """Tear down the testing environment."""
@@ -55,6 +57,7 @@ class LauncherTest(absltest.TestCase):
          '--root_dir', launcher.FLAGS.root_dir, '--port', '50051',
          '--ssl_dir', launcher.FLAGS.ssl_dir,
          '--verbosity', '0', '--alsologtostderr',
+         '--log_dir', self.temp_dir,
          '--hyperparameters', '{"foo": 1}',
          '--hyperparameters', '{"bar": 1000}'],
         env=os.environ, cwd='mock_path')
@@ -81,7 +84,7 @@ class LauncherTest(absltest.TestCase):
     popen.assert_called_once_with(
         [sys.executable, '-m', 'learner.learner_service',
          '--root_dir', launcher.FLAGS.root_dir, '--verbosity', '0',
-         '--alsologtostderr'],
+         '--alsologtostderr', '--log_dir', self.temp_dir],
         env=os.environ, cwd='mock_path')
 
 

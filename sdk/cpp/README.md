@@ -312,6 +312,8 @@ session->Stop();
 
 ## Build the C++ SDK
 
+### Desktop Platforms
+
 1. Make a new subdirectory called build in the sdk/cpp directory and go into
 that directory:
    ```
@@ -374,3 +376,24 @@ Build artifacts are stored under `build/lib` (Linux / macOS) and `build/bin`
 On macOS and Windows it's also possible to open the generated Xcode or Visual
 Studio project and build from the IDE by selecting the falken_cpp_sdk build
 target.
+
+### Android Platforms
+
+1. Open the `sdk/cpp` folder with Android Studio.
+2. Set `FALKEN_PYTHON` with the path of the installed Python3 interpreter in
+   `sdk/cpp/gradle.properties`.
+3. Set `FALKEN_CMAKE_VERSION` with the semantic version number of the installed
+   CMake in `sdk/cpp/gradle.properties`.
+4. Sync project.
+5. Build project.
+6. Close Android Studio.
+7. Package the SDK to generate a zip file that contains build artifacts to use
+   in your projects. From a terminal located in `sdk/cpp`, execute the following
+   commands:
+   ```
+   cd .cxx/cmake/release/arm64-v8a
+   cpack -G ZIP -C Release
+   ```
+
+Build artifacts are stored under `.cxx/cmake/release/arm64-v8a/build/packaging/`
+(Linux / macOS) and `.cxx\cmake\release\arm64-v8a\build\packaging\` (Windows).

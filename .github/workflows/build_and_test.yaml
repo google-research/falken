@@ -2,10 +2,6 @@
 # This workflow builds the debug versions on all platforms and runs tests.
 # Unity builds are only built/tested if the CPP jobs succeed.
 #
-# This workflow is triggered daily.
-#
-# TODO(b/190199635) Enable running the tests once the service is ready.
-#
 name: build_and_test
 on:
   # Only trigger manually

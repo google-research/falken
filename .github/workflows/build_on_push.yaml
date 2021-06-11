@@ -12,8 +12,6 @@ on:
   pull_request:
     branches:
       - main
-  # TODO(b/190199633) remove workflow_dispatch once the repo is stable and testing is working
-  workflow_dispatch:
 env:
   BUILD_SCRIPT: "sdk/build/build_cmake_project.py"
   CPP_SDK_REPO_PATH: "sdk/cpp"

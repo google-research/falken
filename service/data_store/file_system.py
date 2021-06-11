@@ -22,6 +22,7 @@ import os
 import os.path
 import re
 import shutil
+import tempfile
 import time
 
 import braceexpand
@@ -48,8 +49,6 @@ def posix_path(path):
 class FileSystem(object):
   """Encapsulates file system operations so they can be faked in tests."""
 
-  _READ_WRITE_LOCK_TIMEOUT_IN_SECONDS = 60
-
   def __init__(self, root_path):
     """Initializes the file system object with a given root path.
 
@@ -73,10 +72,8 @@ class FileSystem(object):
     Returns:
       A bytes-like object containing the contents of the file.
     """
-    with self.lock_file_context(
-        path, timeout=self._READ_WRITE_LOCK_TIMEOUT_IN_SECONDS):
-      with open(self._resolve(path), 'rb') as f:
-        return f.read()
+    with open(self._resolve(path), 'rb') as f:
+      return f.read()
 
   def write_file(self, path, data):
     """Writes into a file.
@@ -85,12 +82,17 @@ class FileSystem(object):
       path: The path of the file to write the data to.
       data: A bytes-like object containing the data to write.
     """
-    destination_path = self._resolve(path)
-    os.makedirs(os.path.dirname(destination_path), exist_ok=True)
-    with self.lock_file_context(
-        path, timeout=self._READ_WRITE_LOCK_TIMEOUT_IN_SECONDS):
-      with open(destination_path, 'wb') as f:
+    temp_filename = tempfile.NamedTemporaryFile(delete=False).name
+    try:
+      with open(temp_filename, 'wb') as f:
         f.write(data)
+      destination_path = self._resolve(path)
+      os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+      shutil.move(temp_filename, destination_path)
+    except Exception as e:
+      if os.path.exists(temp_filename):
+        os.remove(temp_filename)
+      raise e
 
   def remove_file(self, path):
     """Removes a file.
@@ -127,7 +129,8 @@ class FileSystem(object):
     result = []
     for p in braceexpand.braceexpand(posix_path(pattern)):
       for f in glob.glob(self._resolve(p)):
-        result.append(posix_path(os.path.relpath(f, self._root_path)))
+        if os.access(f, os.R_OK):
+          result.append(posix_path(os.path.relpath(f, self._root_path)))
     return result
 
   def exists(self, path):

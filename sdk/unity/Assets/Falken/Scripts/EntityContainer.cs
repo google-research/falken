@@ -143,6 +143,14 @@ namespace Falken
         /// exists. </exception>
         /// <exception> InvalidOperationException if trying to modify
         /// the container that it's already bound </exception>
+        ///
+        /// Given that the entities names are not stored in the service as
+        /// strings but as enum values instead, when a brain is loaded, generic
+        /// names will be retrieved. For instance, if the names were
+        /// {"enemy", "player", "sidekick"}, the mapping between stored and
+        /// retrieved values would be {"enemy": "entity_0", "player": "entity_1",
+        /// "sidekick": "entity_2"}, since all attributes are stored in
+        ///  alphabetical order.
         /// </summary>
         public Falken.EntityBase this[string key]
         {

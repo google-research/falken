@@ -59,7 +59,7 @@ class FileSystem(object):
     self._root_path = os.path.realpath(root_path)
 
   def _resolve(self, path):
-    absolute_path = os.path.realpath(os.path.join(
+    absolute_path = os.path.abspath(os.path.join(
         self._root_path, os.path.normpath(path)))
     if not absolute_path.startswith(self._root_path):
       raise ValueError(f'{absolute_path} does not start with {self._root_path}')

@@ -366,6 +366,7 @@ that directory:
    ```
    cpack -G ZIP -C Release
    ```
+1. Make sure to unzip the zip file before including the SDK using cmake.
 
 Build artifacts are stored under `build/lib` (Linux / macOS) and `build/bin`
 (Windows DLL)

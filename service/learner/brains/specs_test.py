@@ -851,53 +851,6 @@ class ProtobufValidatorTest(parameterized.TestCase):
                                          'left_stick', True)
 
 
-class DataProtobufConverterTest(absltest.TestCase):
-  """Test specs.ProtobufConverter."""
-
-  def test_unknown_to_tensor(self):
-    """Convert an unsupported proto to a tensor."""
-    with self.assertRaisesWithLiteralMatch(
-        specs.ConversionError,
-        'Failed to convert observations () to a tensor.'):
-      specs.DataProtobufConverter.leaf_to_tensor(
-          observation_pb2.ObservationData(), 'observations')
-
-  def test_category_to_tensor(self):
-    """Convert Category proto to tensor."""
-    data = primitives_pb2.Category()
-    data.value = 42
-    self.assertCountEqual(
-        specs.DataProtobufConverter.leaf_to_tensor(data, 'category'), [42])
-
-  def test_number_to_tensor(self):
-    """Convert Number proto to tensor."""
-    data = primitives_pb2.Number()
-    data.value = 3.0
-    self.assertCountEqual(
-        specs.DataProtobufConverter.leaf_to_tensor(data, 'number'), [3.0])
-
-  def test_position_to_tensor(self):
-    """Convert Position proto to tensor."""
-    data = primitives_pb2.Position()
-    data.x = 1.0
-    data.y = 2.5
-    data.z = 3.5
-    self.assertCountEqual(
-        specs.DataProtobufConverter.leaf_to_tensor(data, 'position'),
-        [1.0, 2.5, 3.5])
-
-  def test_rotation_to_tensor(self):
-    """Convert Rotation proto to tensor."""
-    data = primitives_pb2.Rotation()
-    data.x = 1.0
-    data.y = -1.0
-    data.z = 2.0
-    data.w = 5.0
-    self.assertCountEqual(
-        specs.DataProtobufConverter.leaf_to_tensor(data, 'rotation'),
-        [1.0, -1.0, 2.0, 5.0])
-
-
 class ProtobufNodeTest(parameterized.TestCase):
   """Test specs.ProtobufNode."""
 

@@ -24,6 +24,7 @@ import shutil
 import time
 import uuid
 
+from learner.brains import data_protobuf_generator
 from learner.brains import demonstration_buffer
 from learner.brains import eval_datastore
 from learner.brains import imitation_loss
@@ -249,15 +250,18 @@ def _generate_random_steps(number_of_frames, brain_spec):
   for i, step_phase in demonstration_buffer.generate_index_and_step_phase(
       number_of_frames, demonstration_buffer.StepPhase.SUCCESS):
     yield demonstration_buffer.Step(
-        observation_pb=specs.DataProtobufGenerator.from_spec_node(
+        observation_pb=(
+          data_protobuf_generator.DataProtobufGenerator.from_spec_node(
             brain_spec.observation_spec.proto_node,
             modify_data_proto=(
-                specs.DataProtobufGenerator.randomize_leaf_data_proto))[0],
+                data_protobuf_generator.DataProtobufGenerator.
+                  randomize_leaf_data_proto)))[0],
         reward=0, phase=step_phase, episode_id='0',
-        action_pb=specs.DataProtobufGenerator.from_spec_node(
+        action_pb=data_protobuf_generator.DataProtobufGenerator.from_spec_node(
             brain_spec.action_spec.proto_node,
             modify_data_proto=(
-                specs.DataProtobufGenerator.randomize_leaf_data_proto))[0],
+                data_protobuf_generator.DataProtobufGenerator.
+                  randomize_leaf_data_proto))[0],
         timestamp_micros=i)
 
 

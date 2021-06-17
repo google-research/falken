@@ -91,6 +91,7 @@ _DEFAULT_TEST_MODULES = [
     'learner.brains.brain_cache_test',
     'learner.brains.continuous_imitation_brain_test',
     'learner.brains.data_protobuf_converter_test',
+    'learner.brains.data_protobuf_generator_test',
     'learner.brains.demonstration_buffer_test',
     'learner.brains.egocentric_test',
     'learner.brains.eval_datastore_test',

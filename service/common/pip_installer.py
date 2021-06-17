@@ -20,27 +20,40 @@ import os
 import platform
 import subprocess
 import sys
+from typing import Dict, List, NamedTuple
+
+
+  # A dictionary where the key is a platform name
+  # returned by platform.system() and the value contains a list of supported
+  # architectures for the package. If no constraints are found for the current
+  # platform it is assumed the package is available for the platform.
+PlatformConstraints = Dict[str, List[str]]
+
+
+class ModuleInfo(NamedTuple):
+  # Name of the module to install.
+  pip_module_name: str
+  # An optional version constraint for the pip module.
+  version_constraint: str  = ''
+  # Constraints that need to be satisfied for the host platform before trying
+  # to install the module.
+  platform_constraints: PlatformConstraints = {}
+
 
 # Modules required to execute service modules and tests.
-# Each element of this list is a tuple with:
-# (pip_module_name, version_constraint, platform_constraint)
-# where:
-# - pip_module_name is the name of the module to install.
-# - version_constraint is an optional version constraint for the pip module.
-# - platform_constraint is a dictionary where the key is a platform name
-#   returned by platform.system() and the value contains a list of supported
-#   architectures for the package. If no constraints are found for the current
-#   platform it is assumed the package is available for the platform.
 _REQUIRED_PYTHON_MODULES = [
-    ('absl-py', '', {}),
-    ('braceexpand', '', {}),
-    ('numpy', '', {}),
-    ('tensorflow', '>=2.5.0', {'windows': ['64bit']}),
-    ('tf-agents', '==0.8.0rc1', {}),
-    ('grpcio-tools', '', {}),
-    ('googleapis-common-protos', '', {}),
-    ('flatbuffers', '', {}),
-    ('flufl.lock', '', {}),
+    ModuleInfo(pip_module_name='absl-py'),
+    ModuleInfo(pip_module_name='braceexpand'),
+    ModuleInfo(pip_module_name='numpy'),
+    ModuleInfo(pip_module_name='tensorflow',
+               version_constraint='>=2.5.0',
+               platform_constraints={'windows': ['64bit']}),
+    ModuleInfo(pip_module_name='tf-agents',
+               version_constraint='==0.8.0rc1'),
+    ModuleInfo(pip_module_name='grpcio-tools'),
+    ModuleInfo(pip_module_name='googleapis-common-protos'),
+    ModuleInfo(pip_module_name='flatbuffers'),
+    ModuleInfo(pip_module_name='flufl.lock'),
 ]
 
 _PIP_INSTALL_ARGS = [sys.executable, '-m', 'pip', 'install', '--user']
@@ -59,7 +72,7 @@ def _clear_installed_modules_cache():
   _INSTALLED_MODULE_LIST = []
 
 
-def _module_installed(module):
+def _module_installed(module: str):
   """Determine whether a module is installed.
 
   Args:
@@ -82,7 +95,7 @@ def _module_installed(module):
   return module in _INSTALLED_MODULE_LIST
 
 
-def _install_module(module, version):
+def _install_module(module: str, version: str):
   """Install a Python module.
 
   Args:
@@ -97,7 +110,7 @@ def _install_module(module, version):
   subprocess.check_call(_PIP_INSTALL_ARGS + [f'{module}{version}'])
 
 
-def _check_platform_constraints(module, constraints):
+def _check_platform_constraints(module: str, constraints: PlatformConstraints):
   """Check platform constraints for a module.
 
   Args:
@@ -127,10 +140,10 @@ def _check_platform_constraints(module, constraints):
 def install_dependencies():
   """Install all Python module dependencies."""
   modules_installed = False
-  for module, version, constraints in _REQUIRED_PYTHON_MODULES:
-    _check_platform_constraints(module, constraints)
-    if not _module_installed(module):
-      _install_module(module, version)
+  for info in _REQUIRED_PYTHON_MODULES:
+    _check_platform_constraints(info.pip_module_name, info.platform_constraints)
+    if not _module_installed(info.pip_module_name):
+      _install_module(info.pip_module_name, info.version_constraint)
       modules_installed = True
   if modules_installed:
     _clear_installed_modules_cache()

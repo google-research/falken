@@ -113,10 +113,12 @@ class PipInstallerTest(absltest.TestCase):
     pip_installer.install_dependencies()
 
     mock_module_installed.assert_has_calls([
-        mock.call(m) for m, _, _ in pip_installer._REQUIRED_PYTHON_MODULES
+        mock.call(info.pip_module_name)
+        for info in pip_installer._REQUIRED_PYTHON_MODULES
     ])
     mock_install_module.assert_has_calls([
-        mock.call(m, v) for m, v, _ in pip_installer._REQUIRED_PYTHON_MODULES
+        mock.call(info.pip_module_name, info.version_constraint)
+        for info in pip_installer._REQUIRED_PYTHON_MODULES
     ])
     mock_clear_installed_modules_cache.assert_called()
 
@@ -124,7 +126,8 @@ class PipInstallerTest(absltest.TestCase):
   @mock.patch.object(pip_installer, '_module_installed')
   @mock.patch.object(pip_installer, '_install_module')
   @mock.patch.object(pip_installer, '_REQUIRED_PYTHON_MODULES',
-                     [('foo', '', {}), ('bar', '', {})])
+                     [pip_installer.ModuleInfo(pip_module_name='foo'),
+                      pip_installer.ModuleInfo(pip_module_name='bar')])
   def test_install_missing_dependencies(self, mock_install_module,
                                         mock_module_installed,
                                         mock_clear_installed_modules_cache):
@@ -139,7 +142,8 @@ class PipInstallerTest(absltest.TestCase):
   @mock.patch.object(pip_installer, '_module_installed')
   @mock.patch.object(pip_installer, '_install_module')
   @mock.patch.object(pip_installer, '_REQUIRED_PYTHON_MODULES',
-                     [('foo', '', {}), ('bar', '', {})])
+                     [pip_installer.ModuleInfo(pip_module_name='foo'),
+                      pip_installer.ModuleInfo(pip_module_name='bar')])
   def test_install_no_dependencies(self, mock_install_module,
                                    mock_module_installed,
                                    mock_clear_installed_modules_cache):

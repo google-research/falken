@@ -20,6 +20,7 @@ import os
 import platform
 import subprocess
 import sys
+import tempfile
 
 from unittest import mock
 from absl.testing import absltest
@@ -47,17 +48,37 @@ class PipInstallerTest(absltest.TestCase):
     subprocess.run([sys.executable, '-m', 'pip', 'uninstall', '-y',
                     cls._TEST_MODULE], check=False)
 
-  def test_module_installed(self):
-    """Test checking for an installed module."""
+  def test_find_module_by_name(self):
+    """Test checking for a module that can be imported by name."""
+    self.assertFalse(pip_installer.find_module_by_name('budgemoor'))
+    self.assertTrue(pip_installer.find_module_by_name('time'))
+    tempdir = tempfile.TemporaryDirectory()
+    try:
+      with open(os.path.join(tempdir.name, 'budgemoor.py'), 'w') as f:
+        f.write('print("Fore!")')
+      self.assertTrue(pip_installer.find_module_by_name(
+          'budgemoor', search_path=tempdir.name))
+    finally:
+      tempdir.cleanup()
+
+  def test_module_installed_with_pip(self):
+    """Test checking for an installed module with pip."""
     try:
       self._uninstall_test_module()
-      self.assertFalse(pip_installer._module_installed(self._TEST_MODULE))
+      self.assertFalse(pip_installer._module_installed(self._TEST_MODULE, ''))
       subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--user',
                              self._TEST_MODULE])
       pip_installer._clear_installed_modules_cache()
-      self.assertTrue(pip_installer._module_installed(self._TEST_MODULE))
+      self.assertTrue(pip_installer._module_installed(self._TEST_MODULE, ''))
     finally:
       self._uninstall_test_module()
+
+  @mock.patch.object(pip_installer, 'find_module_by_name')
+  def test_module_installed_with_import(self, mock_find_module_by_name):
+    """Test checking for a module that can be imported."""
+    mock_find_module_by_name.return_value = True
+    self.assertTrue(pip_installer._module_installed('', 'time'))
+    mock_find_module_by_name.assert_called_once_with('time')
 
   def test_install_module(self):
     """Test module installation."""
@@ -113,7 +134,7 @@ class PipInstallerTest(absltest.TestCase):
     pip_installer.install_dependencies()
 
     mock_module_installed.assert_has_calls([
-        mock.call(info.pip_module_name)
+        mock.call(info.pip_module_name, info.import_module_name)
         for info in pip_installer._REQUIRED_PYTHON_MODULES
     ])
     mock_install_module.assert_has_calls([
@@ -132,7 +153,7 @@ class PipInstallerTest(absltest.TestCase):
                                         mock_module_installed,
                                         mock_clear_installed_modules_cache):
     """Only install modules that are missing."""
-    mock_module_installed.side_effect = lambda module: module == 'bar'
+    mock_module_installed.side_effect = lambda module, _: module == 'bar'
 
     pip_installer.install_dependencies()
     mock_install_module.assert_called_with('foo', '')

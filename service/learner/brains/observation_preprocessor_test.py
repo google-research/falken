@@ -22,7 +22,7 @@ from absl.testing import parameterized
 from google.protobuf import text_format
 from learner import test_data
 from learner.brains import observation_preprocessor
-from learner.brains import specs
+from learner.brains import tfa_specs
 import numpy as np
 import tensorflow as tf
 
@@ -52,7 +52,7 @@ class ObservationPreprocessorTest(parameterized.TestCase):
               np.linspace(0, math.pi, len(field.feeler.yaw_angles))):
             field.feeler.yaw_angles[i] = yaw
 
-    spec = specs.BrainSpec(spec_proto)
+    spec = tfa_specs.BrainSpec(spec_proto)
 
     obs_preproc = observation_preprocessor.ObservationPreprocessor(
         spec, get_hparams(feelers_version))
@@ -113,7 +113,7 @@ class ObservationPreprocessorTest(parameterized.TestCase):
 
   @parameterized.parameters(['v1', 'v2'])
   def test_preproc_batch(self, feelers_version):
-    spec = specs.BrainSpec(test_data.brain_spec())
+    spec = tfa_specs.BrainSpec(test_data.brain_spec())
 
     obs_preproc = observation_preprocessor.ObservationPreprocessor(
         spec, get_hparams(feelers_version))
@@ -145,7 +145,7 @@ class ObservationPreprocessorTest(parameterized.TestCase):
     brain_spec.observation_spec.CopyFrom(proto_obs_spec)
     brain_spec.action_spec.CopyFrom(proto_act_spec)
 
-    spec = specs.BrainSpec(brain_spec)
+    spec = tfa_specs.BrainSpec(brain_spec)
 
     obs_preproc = observation_preprocessor.ObservationPreprocessor(
         spec, get_hparams(feelers_version))
@@ -198,7 +198,7 @@ class ObservationPreprocessorTest(parameterized.TestCase):
         'egocentric_distance_mode': dist_mode,
     }
 
-    spec = specs.BrainSpec(brain_spec)
+    spec = tfa_specs.BrainSpec(brain_spec)
     obs_preproc = observation_preprocessor.ObservationPreprocessor(
         spec, hparams)
 

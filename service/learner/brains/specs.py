@@ -17,11 +17,6 @@
 # pylint: disable=g-bad-import-order
 import collections
 
-from learner.brains import data_protobuf_converter
-import tensorflow as tf
-
-from tf_agents.specs import tensor_spec
-
 import common.generate_protos  # pylint: disable=unused-import
 
 import action_pb2
@@ -46,16 +41,27 @@ class TypingError(Exception):
 class BrainSpec:
   """A wrapper class for an observation and action spec proto."""
 
-  def __init__(self, brain_spec_pb):
+  def __init__(self, brain_spec_pb, spec_base_class=None,
+               action_spec_class=None, observation_spec_class=None):
     """Parse and validate the provided spec proto.
 
     Args:
       brain_spec_pb: BrainSpec protobuf to parse and validate.
+      spec_base_class: SpecBase class to use for brain validation.
+      action_spec_class: SpecBase class to use for action validation and
+        conversion.
+      observation_spec_class: SpecBase class to use for action validation and
+        conversion.
     """
     assert isinstance(brain_spec_pb, brain_pb2.BrainSpec)
-    _ = SpecBase(brain_spec_pb)
-    self.action_spec = ActionSpec(brain_spec_pb.action_spec)
-    self.observation_spec = ObservationSpec(brain_spec_pb.observation_spec)
+    spec_base_class = spec_base_class if spec_base_class else SpecBase
+    action_spec_class = action_spec_class if action_spec_class else ActionSpec
+    observation_spec_class = (observation_spec_class
+                              if observation_spec_class else ObservationSpec)
+    _ = spec_base_class(brain_spec_pb)
+    self.action_spec = action_spec_class(brain_spec_pb.action_spec)
+    self.observation_spec = observation_spec_class(
+        brain_spec_pb.observation_spec)
     self.validate_joystick_references()
 
   def validate_joystick_references(self):
@@ -137,13 +143,7 @@ class SpecBase:
     self._spec_proto = spec
     self._spec_proto_node = ProtobufNode.from_spec(spec)
     self._node_nest = self._spec_proto_node.as_nest(include_self=False)
-    # Nested dictionary of TF Agents TensorSpec instances generated from the
-    # proto spec.
-    self._tf_agents_spec_nest = tf.nest.map_structure(
-        lambda node: node.to_tfa_tensor_spec(), self._node_nest)
-    # Nested dictionary of protos.
-    self._proto_spec_nest = tf.nest.map_structure(
-        lambda node: node.proto, self._node_nest)
+    super().__init__()
 
   @property
   def proto(self):
@@ -154,31 +154,6 @@ class SpecBase:
   def proto_node(self):
     """Get the ProtobufNode referencing the underlying protocol buffer."""
     return self._spec_proto_node
-
-  @property
-  def tfa_spec(self):
-    """Returns a nested dictionary of TF Agents TensorSpec instances."""
-    return self._tf_agents_spec_nest
-
-  @property
-  def spec_nest(self):
-    """Returns the proto as a proto spec nest."""
-    return self._proto_spec_nest
-
-  def tfa_value(self, data):
-    """Converts ActionData or ObservationData from protobuf to TF Agents format.
-
-    Args:
-      data: ActionData or ObservationData proto.
-
-    Returns:
-      The data formatted as a dictionary of dictionaries of numpy arrays.
-    """
-    return next(iter(self._spec_proto_node.data_to_proto_nest(
-        data,
-        mapper=data_protobuf_converter.DataProtobufConverter.leaf_to_tensor,
-        options=ProtobufDataValidationOptions(
-            check_feeler_data_with_spec=False)).values()))
 
   def __str__(self):
     """String representation of the proto owned by this object."""
@@ -1386,85 +1361,6 @@ class ProtobufNode:
         names.
     """
     return ProtobufNode._from_spec(spec, name, parent_path, '')
-
-  def _category_type_to_tfa_tensor_spec(self):
-    """Convert a CategoryType node to a TF Agents BoundedTensorSpec.
-
-    Returns:
-      BoundedTensorSpec instance.
-    """
-    return tensor_spec.BoundedTensorSpec(
-        (1,), tf.int32, 0, len(self.proto.enum_values) - 1, name=self.name)
-
-  def _number_type_to_tfa_tensor_spec(self):
-    """Convert a NumberType node to a TF Agents BoundedTensorSpec.
-
-    Returns:
-      BoundedTensorSpec instance.
-    """
-    return tensor_spec.BoundedTensorSpec(
-        (1,), tf.float32, self.proto.minimum, self.proto.maximum,
-        name=self.name)
-
-  def _position_type_to_tfa_tensor_spec(self):
-    """Convert a PositionType node to a TF Agents TensorSpec.
-
-    Returns:
-      TensorSpec instance.
-    """
-    return tensor_spec.TensorSpec((3,), tf.float32, name=self.name)
-
-  def _rotation_type_to_tfa_tensor_spec(self):
-    """Convert a RotationType node to a TF Agents TensorSpec.
-
-    Returns:
-      TensorSpec instance.
-    """
-    return tensor_spec.TensorSpec((4,), tf.float32, name=self.name)
-
-  def _feeler_type_to_tfa_tensor_spec(self):
-    """Convert a FeelerType node to a TF Agents BoundedTensorSpec.
-
-    Returns:
-      BoundedTensorSpec instance.
-    """
-    return tensor_spec.BoundedTensorSpec(
-        (self.proto.count, (1 + len(self.proto.experimental_data)),),
-        tf.float32, minimum=self.proto.distance.minimum,
-        maximum=self.proto.distance.maximum, name=self.name)
-
-  def _joystick_type_to_tfa_tensor_spec(self):
-    """Convert a JoystickType node to a TF Agents BoundedTensorSpec.
-
-    Returns:
-      BoundedTensorSpec instance.
-    """
-    return tensor_spec.BoundedTensorSpec(
-        (2,), tf.float32, name=self.name, minimum=-1, maximum=1)
-
-  def to_tfa_tensor_spec(self):
-    """Returns a TF Agents TensorSpec instance for a leaf node.
-
-    Returns:
-      TensorSpec instance determined by node.
-
-    Raises:
-      InvalidSpecError: If the node is not a leaf node.
-    """
-    proto_class_to_converter = {
-        primitives_pb2.CategoryType: self._category_type_to_tfa_tensor_spec,
-        primitives_pb2.NumberType: self._number_type_to_tfa_tensor_spec,
-        primitives_pb2.PositionType: self._position_type_to_tfa_tensor_spec,
-        primitives_pb2.RotationType: self._rotation_type_to_tfa_tensor_spec,
-        observation_pb2.FeelerType: self._feeler_type_to_tfa_tensor_spec,
-        action_pb2.JoystickType: self._joystick_type_to_tfa_tensor_spec
-    }
-    converter = proto_class_to_converter.get(type(self.proto))
-    if not converter:
-      raise InvalidSpecError(
-          f'Unable to convert {type(self.proto).__qualname__} at "{self.path}" '
-          'to TensorSpec.')
-    return converter()
 
   def _leaf_data_to_proto_nest(self, data, mapper, check_spec_class,
                                unused_options):

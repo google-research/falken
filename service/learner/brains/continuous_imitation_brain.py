@@ -32,7 +32,7 @@ from learner.brains import networks
 from learner.brains import numpy_replay_buffer
 from learner.brains import policies
 from learner.brains import saved_model_to_tflite_model
-from learner.brains import specs
+from learner.brains import tfa_specs
 from log import falken_logging
 import tensorflow as tf
 # Used to workaround https://github.com/tensorflow/tensorflow/issues/41380
@@ -308,7 +308,7 @@ class ContinuousImitationBrain:
     policy_path: string, the path where the policies are stored.
     summary_path: string, the path where TF summaries are stored.
     checkpoint_path: string, the path where model checkpoints are stored.
-    brain_spec: specs.BrainSpec created from spec_pb.
+    brain_spec: tfa_specs.BrainSpec created from spec_pb.
     tf_agent: tf_agent object, the agent created for the purposes of training.
     data_timestamp_micros: Either 0 if no data present or the timestamp up to
       which episode data has been fetched.
@@ -361,7 +361,7 @@ class ContinuousImitationBrain:
 
     _ = brain_id
     self.spec_pb = spec_pb
-    self.brain_spec = specs.BrainSpec(spec_pb)
+    self.brain_spec = tfa_specs.BrainSpec(spec_pb)
 
     self.tf_agent = None
     self._eval_split_rng = random.Random(self._EVAL_SPLIT_SEED)

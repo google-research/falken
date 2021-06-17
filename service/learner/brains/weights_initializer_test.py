@@ -18,6 +18,7 @@
 from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
+from learner.brains import weights_initializer
 import tensorflow as tf
 from tf_agents.keras_layers import bias_layer
 from tf_agents.networks import categorical_projection_network
@@ -26,8 +27,6 @@ from tf_agents.networks import network
 from tf_agents.networks import normal_projection_network
 from tf_agents.networks import sequential
 from tf_agents.specs import tensor_spec
-
-import weights_initializer
 
 
 class _ValidNoWeightsLayer(tf.keras.layers.Layer,

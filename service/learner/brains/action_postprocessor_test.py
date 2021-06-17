@@ -19,7 +19,7 @@ from absl.testing import absltest
 from google.protobuf import text_format
 from learner import test_data
 from learner.brains import action_postprocessor
-from learner.brains import specs
+from learner.brains import tfa_specs
 import tensorflow as tf
 from tf_agents.specs import tensor_spec
 
@@ -32,7 +32,7 @@ class ActionPostprocessorTest(absltest.TestCase):
 
   def test_action_postprocessor(self):
     """Test basic operation of the action postprocessor."""
-    brain_spec = specs.BrainSpec(test_data.brain_spec())
+    brain_spec = tfa_specs.BrainSpec(test_data.brain_spec())
     hparams = dict()
 
     processor = action_postprocessor.ActionPostprocessor(brain_spec, hparams)

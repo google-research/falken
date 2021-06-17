@@ -23,7 +23,7 @@ from absl.testing import absltest
 from learner import test_data
 from learner.brains import networks
 from learner.brains import saved_model_to_tflite_model
-from learner.brains import specs
+from learner.brains import tfa_specs
 import tensorflow as tf
 from tf_agents.agents.behavioral_cloning import behavioral_cloning_agent
 from tf_agents.policies import policy_saver
@@ -61,7 +61,7 @@ class SavedModelToTFLiteModelTest(absltest.TestCase):
       Path to the directory containing the saved model.
     """
     saved_model_path = tempfile.TemporaryDirectory().name
-    brain_spec = specs.BrainSpec(test_data.brain_spec())
+    brain_spec = tfa_specs.BrainSpec(test_data.brain_spec())
     agent = behavioral_cloning_agent.BehavioralCloningAgent(
         ts.time_step_spec(brain_spec.observation_spec.tfa_spec),
         brain_spec.action_spec.tfa_spec,

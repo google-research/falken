@@ -28,7 +28,7 @@ import common.generate_protos  # pylint: disable=unused-import
 import action_pb2
 from learner import test_data
 from learner.brains import demonstration_buffer
-from learner.brains import specs
+from learner.brains import tfa_specs
 
 
 class DemonstrationBufferTest(absltest.TestCase):
@@ -67,7 +67,7 @@ class DemonstrationBufferTest(absltest.TestCase):
   def test_do_not_populated_with_aborted_episodes(self):
     """Test non-success episodes are ignored when populating the buffer."""
     demo_buffer = demonstration_buffer.DemonstrationBuffer(
-        specs.BrainSpec(test_data.brain_spec()))
+        tfa_specs.BrainSpec(test_data.brain_spec()))
 
     buffered_episode_phases = (demonstration_buffer.StepPhase.SUCCESS,
                                demonstration_buffer.StepPhase.FAILURE,
@@ -94,7 +94,7 @@ class DemonstrationBufferTest(absltest.TestCase):
     """Test clearing a demonstration buffer."""
     # Populate the buffer with some data.
     demo_buffer = demonstration_buffer.DemonstrationBuffer(
-        specs.BrainSpec(test_data.brain_spec()))
+        tfa_specs.BrainSpec(test_data.brain_spec()))
     for step in DemonstrationBufferTest._generate_episode_steps(
         0, self._EPISODE_LENGTH,
         demonstration_buffer.StepPhase.SUCCESS):
@@ -104,7 +104,7 @@ class DemonstrationBufferTest(absltest.TestCase):
 
   def test_episode_steps_to_trajectories(self):
     """Test converting episode steps to trajectories."""
-    brain_spec = specs.BrainSpec(test_data.brain_spec())
+    brain_spec = tfa_specs.BrainSpec(test_data.brain_spec())
     steps = list(self._generate_episode_steps(
         0, 5, demonstration_buffer.StepPhase.SUCCESS))
     # Ignore steps 0 & 2
@@ -220,7 +220,7 @@ class DemonstrationBufferTest(absltest.TestCase):
     mock_trajectories = [42, 21]
     mock_batch_trajectories.side_effect = lambda _: mock_trajectories.pop(0)
     trajectories_and_sizes = list(demonstration_buffer.episodes_to_trajectories(
-        episode_step_generators, specs.BrainSpec(test_data.brain_spec())))
+        episode_step_generators, tfa_specs.BrainSpec(test_data.brain_spec())))
     self.assertEqual(trajectories_and_sizes,
                      [(42, number_of_steps - 1), (21, number_of_steps - 1)])
 

@@ -172,7 +172,7 @@ class ActionPostprocessor(network.DistributionNetwork,
     """Create a new action postprocessor.
 
     Args:
-      brain_spec: A specs.BrainSpec.
+      brain_spec: A tfa_specs.BrainSpec.
       hparams: A dictionary of hyperparameters.
     """
     self._brain_spec = brain_spec

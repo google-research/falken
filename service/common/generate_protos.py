@@ -14,14 +14,16 @@
 
 # Lint as: python3
 """Module to generate proto code for use by Falken service."""
+
 import glob
+import importlib
 import os
 import shutil
 import subprocess
 import sys
 import urllib.request
 
-import common.pip_installer  # pylint: disable=unused-import
+from common import pip_installer
 
 _PROTO_GEN_DIR = 'proto_gen_module'
 
@@ -91,7 +93,9 @@ def generate():
   directly import the protos.
   """
   generated_protos_dir = get_generated_protos_dir()
-  if not os.path.exists(generated_protos_dir):
+
+  if not pip_installer.find_module_by_name('falken_service_pb2_grpc',
+                                           search_path=generated_protos_dir):
     os.makedirs(generated_protos_dir)
     source_proto_dirs = get_source_proto_dirs()
     downloaded_proto_dir = download_external_protos()
@@ -108,6 +112,7 @@ def generate():
     except subprocess.CalledProcessError as error:
       clean_up()
       raise error
+    importlib.invalidate_caches()
   if generated_protos_dir not in sys.path:
     sys.path.append(generated_protos_dir)
   os.environ['FALKEN_GENERATED_PROTOS_DIR'] = (

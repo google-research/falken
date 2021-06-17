@@ -20,6 +20,7 @@ directory in the repository. If it must be regenerated, first remove the
 generated_flatbuffers directory, and run the code as normal, imported as a
 module in the code that needs the flatbuffers.
 """
+
 import glob
 import os
 import platform
@@ -29,6 +30,8 @@ import sys
 import tarfile
 import tempfile
 import urllib.request
+
+from common import pip_installer
 
 _FLATBUFFERS_DIR = 'generated_flatbuffers'
 
@@ -128,7 +131,9 @@ def generate():
   python file.
   """
   generated_fbs_dir = get_generated_flatbuffers_dir()
-  if not os.path.exists(generated_fbs_dir):
+
+  if not pip_installer.find_module_by_name('tflite.Model',
+                                           search_path=generated_fbs_dir):
     temp_dir = tempfile.mkdtemp()
     flatc = os.path.normpath(
         os.path.join(
@@ -151,6 +156,7 @@ def generate():
 
     shutil.rmtree(temp_dir)
     write_apache_license_header(generated_fbs_dir)
+    importlib.invalidate_caches()
 
   os.environ['FALKEN_GENERATED_FLATBUFFERS_DIR'] = (
       os.path.abspath(os.path.join(generated_fbs_dir, os.pardir)))

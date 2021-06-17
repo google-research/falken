@@ -21,7 +21,7 @@ from absl.testing import parameterized
 from google.protobuf import text_format
 from learner import test_data
 from learner.brains import networks
-from learner.brains import specs
+from learner.brains import tfa_specs
 from learner.brains import weights_initializer
 import tensorflow as tf
 
@@ -44,7 +44,7 @@ class NetworksTest(parameterized.TestCase):
 
   @parameterized.parameters(([],), ([1],), ([5],), ([5, 10],))
   def test_falken_network(self, batch_dims):
-    brain_spec = specs.BrainSpec(test_data.brain_spec())
+    brain_spec = tfa_specs.BrainSpec(test_data.brain_spec())
     net = networks.FalkenNetwork(brain_spec, dict(self._DEFAULT_HPARAMS))
 
     obs = test_data.observation_data(10, [0, 0, 0])
@@ -108,7 +108,7 @@ class NetworksTest(parameterized.TestCase):
           }
         }
         """, brain_spec)
-    py_spec = specs.BrainSpec(brain_spec)
+    py_spec = tfa_specs.BrainSpec(brain_spec)
     net = networks.FalkenNetwork(
         py_spec,
         dict(fc_layers=[32, 16], dropout=0.1, activation_fn='swish'))
@@ -144,7 +144,7 @@ class NetworksTest(parameterized.TestCase):
     hparams = dict(self._DEFAULT_HPARAMS)
     hparams['feelers_version'] = feelers_version
     network = networks.FalkenNetwork(
-        specs.BrainSpec(test_data.brain_spec()), hparams)
+        tfa_specs.BrainSpec(test_data.brain_spec()), hparams)
     network.initialize_weights()
     mock_initialize_layer_or_model.has_calls(
         mock.call(network._preprocessor),

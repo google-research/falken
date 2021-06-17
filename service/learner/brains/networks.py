@@ -31,7 +31,7 @@ class FalkenNetwork(network.DistributionNetwork,
     """Create a new Falken network.
 
     Args:
-      brain_spec: A specs.BrainSpec describing observations and actions.
+      brain_spec: A tfa_specs.BrainSpec describing observations and actions.
       hparams: A dictionary of hyperparameters.
     """
     self._brain_spec = brain_spec

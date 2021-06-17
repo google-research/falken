@@ -81,7 +81,7 @@ class Step(
     """Extract TFA time_step from step.
 
     Arguments:
-      observation_spec: The specs.ObservationSpec associated with the
+      observation_spec: The tfa_specs.ObservationSpec associated with the
         observation.
 
     Returns:
@@ -110,7 +110,7 @@ class Step(
     """Extract TFA action_step from step.
 
     Arguments:
-      action_spec: The specs.ActionSpec associated with the action
+      action_spec: The tfa_specs.ActionSpec associated with the action
 
     Returns:
       The converted tf_agents PolicyStep object.
@@ -203,7 +203,7 @@ def batch_trajectories(trajectories):
   # Each tf_agents TimeStep (from observation) and tf_agents PolicyStep
   # (from action), referenced by each Trajectory instance, is a nested
   # dictionary with numpy arrays or tensors as leaves
-  # (see specs.SpecBase.tfa_value()). This nested structure is converted
+  # (see tfa_specs.SpecBase.tfa_value()). This nested structure is converted
   # from a list of Trajectory instances to a single Trajectory instance
   # where each leaf is a tensor with a batch size of N where N is the
   # number of trajectories in the episode.
@@ -254,7 +254,7 @@ class DemonstrationBuffer:
     """Initialize the demonstration buffer instance.
 
     Args:
-      brain_spec: specs.BrainSpec instance used to convert Step instances to
+      brain_spec: tfa_specs.BrainSpec instance used to convert Step instances to
         TF agents data structures.
     """
     # Maps episodes to lists of frames.

@@ -165,7 +165,7 @@ class EgocentricDirectionToEntity(network.Network):
     """Create a new egocentric signal preprocessor.
 
     Args:
-      brain_spec: A specs.BrainSpec.
+      brain_spec: A tfa_specs.BrainSpec.
       hparams: A dictionary of hyperparameters.
     """
     self._brain_spec = brain_spec

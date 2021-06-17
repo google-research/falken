@@ -34,7 +34,7 @@ import episode_pb2
 import observation_pb2
 import data_store_pb2
 
-from learner.brains import specs
+from learner.brains import tfa_specs
 
 
 PROJECT_ID = 'project1'
@@ -269,8 +269,8 @@ def trajectory(health=100, position=(0, 0, 0), switch_weapon=0, throttle=1.0,
   Returns:
     TF Agents Trajectory instance.
   """
-  obs_spec = specs.ObservationSpec(observation_spec())
-  act_spec = specs.ActionSpec(action_spec())
+  obs_spec = tfa_specs.ObservationSpec(observation_spec())
+  act_spec = tfa_specs.ActionSpec(action_spec())
   obs_data = obs_spec.tfa_value(observation_data(health, position))
   act_data = act_spec.tfa_value(action_data(switch_weapon, throttle))
 

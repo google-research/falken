@@ -24,6 +24,7 @@ import shutil
 import time
 import uuid
 
+from learner.brains import data_protobuf_generator
 from learner.brains import demonstration_buffer
 from learner.brains import eval_datastore
 from learner.brains import imitation_loss
@@ -31,7 +32,7 @@ from learner.brains import networks
 from learner.brains import numpy_replay_buffer
 from learner.brains import policies
 from learner.brains import saved_model_to_tflite_model
-from learner.brains import specs
+from learner.brains import tfa_specs
 from log import falken_logging
 import tensorflow as tf
 # Used to workaround https://github.com/tensorflow/tensorflow/issues/41380
@@ -249,15 +250,18 @@ def _generate_random_steps(number_of_frames, brain_spec):
   for i, step_phase in demonstration_buffer.generate_index_and_step_phase(
       number_of_frames, demonstration_buffer.StepPhase.SUCCESS):
     yield demonstration_buffer.Step(
-        observation_pb=specs.DataProtobufGenerator.from_spec_node(
+        observation_pb=(
+          data_protobuf_generator.DataProtobufGenerator.from_spec_node(
             brain_spec.observation_spec.proto_node,
             modify_data_proto=(
-                specs.DataProtobufGenerator.randomize_leaf_data_proto))[0],
+                data_protobuf_generator.DataProtobufGenerator.
+                  randomize_leaf_data_proto)))[0],
         reward=0, phase=step_phase, episode_id='0',
-        action_pb=specs.DataProtobufGenerator.from_spec_node(
+        action_pb=data_protobuf_generator.DataProtobufGenerator.from_spec_node(
             brain_spec.action_spec.proto_node,
             modify_data_proto=(
-                specs.DataProtobufGenerator.randomize_leaf_data_proto))[0],
+                data_protobuf_generator.DataProtobufGenerator.
+                  randomize_leaf_data_proto))[0],
         timestamp_micros=i)
 
 
@@ -304,7 +308,7 @@ class ContinuousImitationBrain:
     policy_path: string, the path where the policies are stored.
     summary_path: string, the path where TF summaries are stored.
     checkpoint_path: string, the path where model checkpoints are stored.
-    brain_spec: specs.BrainSpec created from spec_pb.
+    brain_spec: tfa_specs.BrainSpec created from spec_pb.
     tf_agent: tf_agent object, the agent created for the purposes of training.
     data_timestamp_micros: Either 0 if no data present or the timestamp up to
       which episode data has been fetched.
@@ -357,7 +361,7 @@ class ContinuousImitationBrain:
 
     _ = brain_id
     self.spec_pb = spec_pb
-    self.brain_spec = specs.BrainSpec(spec_pb)
+    self.brain_spec = tfa_specs.BrainSpec(spec_pb)
 
     self.tf_agent = None
     self._eval_split_rng = random.Random(self._EVAL_SPLIT_SEED)

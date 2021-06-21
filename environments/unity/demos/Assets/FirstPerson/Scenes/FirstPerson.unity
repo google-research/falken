@@ -7306,10 +7306,10 @@ MonoBehaviour:
   falkenProjectId: 
   falkenApiKey: 
   brainDisplayName: FirstPerson Brain
-  brainId: 86ef5891-8758-41ad-a9dd-c001046ff733
-  snapshotId: d79224ac-5c5e-47b8-bfde-986712a997e5
-  falkenMaxSteps: 750
-  sessionType: 2
+  brainId: 
+  snapshotId: 
+  falkenMaxSteps: 1000
+  sessionType: 1
   humanControlled: 0
   renderGameHUD: 1
   playerPrefab: {fileID: 4552860407420013826, guid: a8c66a6ff57884afb855c29d994bb29a,

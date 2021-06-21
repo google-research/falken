@@ -88,8 +88,11 @@ public class Projectile : MonoBehaviour
                     health.TakeDamage(damage);
                 }
             }
-            Transform impact = Instantiate(impactEffect, hit.point, Quaternion.identity);
-            impact.forward = hit.normal;
+            if (impactEffect)
+            {
+                Transform impact = Instantiate(impactEffect, hit.point, Quaternion.identity);
+                impact.forward = hit.normal;
+            }
 
             // TO DO: This should turn off the mesh renderer and particle systems
             // but delay briefly before being destroyed so the particles can fade out

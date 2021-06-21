@@ -39,7 +39,7 @@ public class FirstPersonGame : FalkenGame<FirstPersonBrainSpec>
 
     void LateUpdate() {
         if (player && episode != null) {
-            if (episode.Completed) {
+            if (EpisodeCompleted) {
                 ResetGame(false);
                 Debug.Log("Episode hit max steps.");
                 if (!singleRoomMode) {

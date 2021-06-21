@@ -57,8 +57,8 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
 
     void LateUpdate()
     {
-        if (playerOne && playerOne.Episode != null && playerOne.Episode.Completed ||
-            playerTwo && playerTwo.Episode != null && playerTwo.Episode.Completed)
+        if (playerOne && playerOne.Episode != null && EpisodeCompleted ||
+            playerTwo && playerTwo.Episode != null && EpisodeCompleted)
         {
             ResetGame();
         }
@@ -80,9 +80,22 @@ public class NegaFalkenGame : FalkenGame<NegaBrainSpec>
 
     private void ResetGame()
     {
-        if (!playerOnePrefab || !playerTwoPrefab || !playerOneSpawn || !playerTwoSpawn)
+        bool timedOut = false;
+        if (playerOne != null && playerOne.Episode != null && !playerOne.Episode.Completed)
         {
-            Debug.LogError("Cannot start NegaFalken without two players and spawns.");
+            playerOne.Episode.Complete(Falken.Episode.CompletionState.Failure);
+            timedOut = true;
+        }
+
+        if (playerTwo != null && playerTwo.Episode != null && playerTwo.Episode.Completed)
+        {
+            playerTwo.Episode.Complete(Falken.Episode.CompletionState.Failure);
+            timedOut = true;
+        }
+
+        if (timedOut)
+        {
+            Debug.Log("Episode timed out. Resetting as failure.");
         }
 
         if(playerOne)

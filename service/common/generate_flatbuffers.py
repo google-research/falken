@@ -134,6 +134,8 @@ def generate():
 
   if not pip_installer.find_module_by_name('tflite.Model',
                                            search_path=generated_fbs_dir):
+    if getattr(sys, 'frozen', False):
+      raise ModuleNotFoundError('FlatBuffers modules not frozen.')
     temp_dir = tempfile.mkdtemp()
     flatc = os.path.normpath(
         os.path.join(

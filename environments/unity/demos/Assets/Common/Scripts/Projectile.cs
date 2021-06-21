@@ -22,7 +22,7 @@ using UnityEngine;
 public class Projectile : MonoBehaviour
 {
     [Tooltip("The speed at which this projectile flies.")]
-    [Range(0, 10)]
+    [Range(0, 50)]
     public float speed = 1;
     [Tooltip("The amount of damage delivered on contact.")]
     [Range(0, 1000)]

@@ -45,7 +45,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enemyPrefab: {fileID: 5212148612514170928, guid: 7c553cccb08b64c7d8b25903a140675f,
     type: 3}
-  spawnProbability: 1
+  spawnProbability: 0.25
   autoActivate: 0
 --- !u!1 &2484924573932006420
 GameObject:
@@ -92,7 +92,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enemyPrefab: {fileID: 5212148612514170928, guid: 7c553cccb08b64c7d8b25903a140675f,
     type: 3}
-  spawnProbability: 1
+  spawnProbability: 0.25
   autoActivate: 0
 --- !u!1 &6527687064318794695
 GameObject:
@@ -176,7 +176,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enemyPrefab: {fileID: 5212148612514170928, guid: 7c553cccb08b64c7d8b25903a140675f,
     type: 3}
-  spawnProbability: 1
+  spawnProbability: 0.25
   autoActivate: 0
 --- !u!1 &8460026492996650472
 GameObject:
@@ -223,7 +223,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enemyPrefab: {fileID: 5212148612514170928, guid: 7c553cccb08b64c7d8b25903a140675f,
     type: 3}
-  spawnProbability: 1
+  spawnProbability: 0.25
   autoActivate: 0
 --- !u!1001 &6527687063448991113
 PrefabInstance:

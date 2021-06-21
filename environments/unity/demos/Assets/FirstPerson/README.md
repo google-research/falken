@@ -41,16 +41,20 @@ falken.unitypackage downloaded from the
 
 ## Play the First Person Game
 
-The goal of this game is to navigate the player various rooms using arrow or
-WASD keys, aim using the mouse, and destroy all enemies using left mouse click.
+The goal of this game is to navigate the player to the exit in a simple demo
+level using arrow or WASD keys, aim using the mouse, and destroy all enemies
+using left mouse click.
 
-The Falken player can only see the enemy or room exit that have "enemy" or
-"exit" hovering over them respectively. You should destroy labeled enemies in
-each room before proceeding to the room's exit. Clear all of the rooms to win
-the game.
+The Falken player can only see the enemy or room exit which have "enemy" or
+"exit" hovering over them respectively. You should destroy labeled enemies
+before proceeding to the room's exit. Clear all of the rooms to win the game.
 
-Play the game for a few rounds, and press the
-`t` key for Falken to take over.
+Play the game for a few rounds, and press the `t` key for Falken to take over.
 
-If Falken is running into trouble playing the game, you can simply take over,
-play correctly, then press the `t` key again for Falken to take over.
+The recommended way to train Falken is to provide a few manual playthroughs
+and then observe the Falken player and provide corrections: If Falken is
+running into trouble playing the game, you can simply take over, play
+correctly, then press the `t` key again for Falken to resume playing.
+
+Note that providing corrections will cause training to restart and so you may
+observe a brief regression in AI behavior.

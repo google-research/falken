@@ -159,8 +159,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   activationRange: 15
-  attackDuration: 5
-  hideDuration: 1
+  attackDuration: 7.5
+  hideDuration: 0.5
   moveDistance: 1.5
   moveDuration: 1
   timingVariance: 0.8

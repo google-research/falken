@@ -42,10 +42,6 @@ public class FirstPersonGame : FalkenGame<FirstPersonBrainSpec>
             if (EpisodeCompleted) {
                 ResetGame(false);
                 Debug.Log("Episode hit max steps.");
-                if (!singleRoomMode) {
-                    episode = CreateEpisode();
-                    player.Episode = episode;
-                }
             }
             else if (singleRoomMode) {
                 if (currentRoom.Cleared) {
@@ -55,13 +51,17 @@ public class FirstPersonGame : FalkenGame<FirstPersonBrainSpec>
             }
             else if (player.CurrentRoom != currentRoom) {
                 if (player.CurrentRoom == level.EndRoom) {
-                    Debug.Log("Completed level. You win!");
-                    ResetGame(true);
+                    if (Enemy.Enemies.Count > 0)
+                    {
+                        Debug.Log("Reached end, but enemies remain. You lose!");
+                        ResetGame(false);
+                    } else
+                    {
+                        Debug.Log("Completed level. You win!");
+                        ResetGame(true);
+                    }
                 } else {
                     Debug.Log("Completed room.");
-                    episode.Complete(Falken.Episode.CompletionState.Success);
-                    episode = CreateEpisode();
-                    player.Episode = episode;
                     currentRoom = player.CurrentRoom;
                 }
             }

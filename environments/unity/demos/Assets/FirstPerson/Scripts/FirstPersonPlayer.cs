@@ -33,11 +33,29 @@ public class FirstPersonEntity : Falken.EntityBase {
     }
 }
 
+public class FirstPersonFeelers : Falken.Feelers
+{
+    public FirstPersonFeelers(float length, float thickness, float fieldOfView, int numberOfFeelers)
+        : base(length, thickness, fieldOfView, numberOfFeelers,
+               new List<string>(){"obstacle", "enemy"}) {}
+
+    public override int OnHit(bool hitSomething, UnityEngine.RaycastHit hit) {
+        if (!hitSomething)
+            return 0;
+        if (hit.collider?.gameObject.GetComponent(typeof(Enemy)) != null)
+        {
+            return 1;
+        }
+        return 0;
+    }
+}
+
 /// <summary>
 /// Player-specific entity.
 /// </summary>
 public class FirstPersonPlayerEntity : FirstPersonEntity {
-    public Falken.Feelers feelers = new Falken.Feelers(10.0f, 0.0f, 360.0f, 15, null);
+    public FirstPersonFeelers moveFeelers = new FirstPersonFeelers(10.0f, 0.0f, 360.0f, 4);
+    public FirstPersonFeelers aimFeelers = new FirstPersonFeelers(10.0f, 0.0f, 0.0f, 1);
 }
 
 /// <summary>
@@ -45,11 +63,6 @@ public class FirstPersonPlayerEntity : FirstPersonEntity {
 /// </summary>
 public class FirstPersonGoalEntity : FirstPersonEntity {
     public Falken.Category state = new Falken.Category(System.Enum.GetNames(typeof(FPGoalState)));
-#if !EGO_EXP
-    public Falken.Number distance = new Falken.Number(0f, 100f);
-    public Falken.Number angleHoriz = new Falken.Number(-1f, 1f);
-    public Falken.Number angleVert = new Falken.Number(-1, 1f);
-#endif
 }
 
 /// <summary>
@@ -57,16 +70,12 @@ public class FirstPersonGoalEntity : FirstPersonEntity {
 /// </summary>
 public class FirstPersonObservations : Falken.ObservationsBase {
     public FirstPersonGoalEntity goal;
-#if EGO_EXP
     public FirstPersonEntity camera;
-#endif
 
     public FirstPersonObservations() {
         player = new FirstPersonPlayerEntity();
         goal = new FirstPersonGoalEntity();
-#if EGO_EXP
         camera = new FirstPersonEntity();
-#endif
     }
 }
 
@@ -74,17 +83,10 @@ public class FirstPersonObservations : Falken.ObservationsBase {
 /// Reflects actions to/from the Falken service.
 /// </summary>
 public class FirstPersonActions : Falken.ActionsBase {
-#if EGO_EXP
     public Falken.Joystick move = new Falken.Joystick(
         Falken.AxesMode.DirectionXZ, Falken.ControlledEntity.Player, Falken.ControlFrame.Player);
     public Falken.Joystick look = new Falken.Joystick(
         Falken.AxesMode.DeltaPitchYaw, Falken.ControlledEntity.Camera);
-#else
-    public Falken.Number moveX = new Falken.Number(-1f, 1f);
-    public Falken.Number moveY = new Falken.Number(-1f, 1f);
-    public Falken.Number lookX = new Falken.Number(-1f, 1f);
-    public Falken.Number lookY = new Falken.Number(-1f, 1f);
-#endif
     public Falken.Boolean fire = new Falken.Boolean();
 }
 
@@ -218,8 +220,9 @@ public class FirstPersonPlayer : MonoBehaviour
             FirstPersonObservations observations = brainSpec.Observations;
             FirstPersonPlayerEntity playerEntity = (FirstPersonPlayerEntity)observations.player;
             playerEntity.UpdateFrom(transform);
-            Vector3 feelersOffset = new Vector3(0.0f, 0.5f, 0.0f);
-            playerEntity.feelers.Update(transform, feelersOffset, true);
+            Vector3 moveFeelersOffset = new Vector3(0.0f, 0.5f, 0.0f);
+            playerEntity.moveFeelers.Update(transform, moveFeelersOffset, true);
+            playerEntity.aimFeelers.Update(playerCamera.transform, new Vector3(), true);
 
             if (currentRoom && currentRoom.Cleared) {
                 if (currentRoom.Exit) {
@@ -243,55 +246,23 @@ public class FirstPersonPlayer : MonoBehaviour
                 observations.goal.UpdateFrom(playerCamera.transform);
                 observations.goal.state.Value = (int)FPGoalState.Exit;
             }
-
-#if EGO_EXP
             observations.camera.UpdateFrom(playerCamera.transform);
-#else
-            Vector3 playerToGoal = observations.goal.position - playerCamera.transform.position;
-            float distanceSqr = playerToGoal.sqrMagnitude;
-            if (distanceSqr > Mathf.Epsilon)
-            {
-                observations.goal.distance.Value = Mathf.Sqrt(distanceSqr);
-                playerToGoal /= observations.goal.distance.Value;
-
-                playerToGoal = playerCamera.transform.InverseTransformDirection(playerToGoal);
-                observations.goal.angleHoriz.Value = playerToGoal.x;
-                observations.goal.angleVert.Value = playerToGoal.y;
-            } else {
-                // No goal available.
-                observations.goal.distance.Value = 0f;
-                observations.goal.angleHoriz.Value = 0f;
-                observations.goal.angleVert.Value = 0f;
-            }
-#endif
 
             FirstPersonActions actions = brainSpec.Actions;
             if (humanControlled) {
-#if EGO_EXP
                 actions.move.X = move.x;
                 actions.move.Y = move.y;
                 actions.look.X = look.x;
                 actions.look.Y = look.y;
-#else
-                actions.moveX.Value = move.x;
-                actions.moveY.Value = move.y;
-                actions.lookX.Value = look.x;
-                actions.lookY.Value = look.y;
-#endif
+
                 actions.fire.Value = fire;
                 actions.ActionsSource = Falken.ActionsBase.Source.HumanDemonstration;
             } else {
-#if EGO_EXP
                 actions.move.X = 0f;
                 actions.move.Y = 0f;
                 actions.look.X = 0f;
                 actions.look.Y = 0f;
-#else
-                actions.moveX.Value = 0f;
-                actions.moveY.Value = 0f;
-                actions.lookX.Value = 0f;
-                actions.lookY.Value = 0f;
-#endif
+
                 actions.fire.Value = false;
                 actions.ActionsSource = Falken.ActionsBase.Source.BrainAction;
             }
@@ -299,17 +270,11 @@ public class FirstPersonPlayer : MonoBehaviour
             episode.Step();
 
             if (!humanControlled) {
-#if EGO_EXP
                 move.x = actions.move.X;
                 move.y = actions.move.Y;
                 look.x = actions.look.X;
                 look.y = actions.look.Y;
-#else
-                move.x = actions.moveX.Value;
-                move.y = actions.moveY.Value;
-                look.x = actions.lookX.Value;
-                look.y = actions.lookY.Value;
-#endif
+
                 jump = false;
                 fire = actions.fire.Value;
             }
@@ -329,7 +294,7 @@ public class FirstPersonPlayer : MonoBehaviour
 
         if (reticleTexture) {
             Color reticleColor = (reticleTarget && reticleTarget.GetComponent<Health>()) ?
-                Color.red : Color.white;
+                Color.red : Color.black;
             reticleColor.a = reticleAlpha;
             GUI.color = reticleColor;
             int reticlePixels = (int)(Screen.width * reticleSize);

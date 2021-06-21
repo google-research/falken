@@ -3329,7 +3329,6 @@ MonoBehaviour:
   bounds:
     m_Center: {x: 0, y: 2.25005, z: 7.5}
     m_Extent: {x: 7.5, y: 2.75005, z: 7.5}
-  enemies: []
 --- !u!1001 &6507175636812400631
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3596,6 +3595,11 @@ PrefabInstance:
       propertyPath: m_Mesh
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 1884841664727343082, guid: 3dbdec9afc9da4670a70e47bc5c8dd8f,
+        type: 3}
+      propertyPath: spawnProbability
+      value: 0.25
+      objectReference: {fileID: 0}
     - target: {fileID: 2435908476869676673, guid: 3dbdec9afc9da4670a70e47bc5c8dd8f,
         type: 3}
       propertyPath: m_Mesh
@@ -3616,6 +3620,11 @@ PrefabInstance:
       propertyPath: m_Mesh
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 2567546027389758386, guid: 3dbdec9afc9da4670a70e47bc5c8dd8f,
+        type: 3}
+      propertyPath: spawnProbability
+      value: 0.25
+      objectReference: {fileID: 0}
     - target: {fileID: 3608444884930124999, guid: 3dbdec9afc9da4670a70e47bc5c8dd8f,
         type: 3}
       propertyPath: m_Mesh
@@ -3635,6 +3644,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Mesh
       value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4127867163771613201, guid: 3dbdec9afc9da4670a70e47bc5c8dd8f,
+        type: 3}
+      propertyPath: spawnProbability
+      value: 0.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 6226805014647519665, guid: 3dbdec9afc9da4670a70e47bc5c8dd8f,
+        type: 3}
+      propertyPath: spawnProbability
+      value: 0.25
       objectReference: {fileID: 0}
     - target: {fileID: 8475804617845377175, guid: 3dbdec9afc9da4670a70e47bc5c8dd8f,
         type: 3}

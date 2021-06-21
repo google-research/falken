@@ -22,7 +22,7 @@ using UnityEngine;
 public class Projectile : MonoBehaviour
 {
     [Tooltip("The speed at which this projectile flies.")]
-    [Range(0, 10)]
+    [Range(0, 50)]
     public float speed = 1;
     [Tooltip("The amount of damage delivered on contact.")]
     [Range(0, 1000)]
@@ -88,8 +88,11 @@ public class Projectile : MonoBehaviour
                     health.TakeDamage(damage);
                 }
             }
-            Transform impact = Instantiate(impactEffect, hit.point, Quaternion.identity);
-            impact.forward = hit.normal;
+            if (impactEffect)
+            {
+                Transform impact = Instantiate(impactEffect, hit.point, Quaternion.identity);
+                impact.forward = hit.normal;
+            }
 
             // TO DO: This should turn off the mesh renderer and particle systems
             // but delay briefly before being destroyed so the particles can fade out

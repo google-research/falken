@@ -88,9 +88,9 @@ public class ThirdPersonGame : FalkenGame<ThirdPersonBrainSpec>
         Shutdown();
     }
 
-    void FixedUpdate()
+    void LateUpdate()
     {
-        if (_episode != null && _episode.Completed)
+        if (_episode != null && EpisodeCompleted)
         {
             Debug.Log("Failed to reach goal. Ending episode.");
             CreateEpisodeAndResetGame(Falken.Episode.CompletionState.Failure);

@@ -44,6 +44,7 @@ public abstract class FalkenGame<PlayerBrainSpec> : MonoBehaviour
     private Falken.Service _service = null;
     private Falken.BrainBase _brain = null;
     private Falken.Session _session = null;
+    private int _steps;
 
     /// <summary>
     /// Getter for brain spec.
@@ -76,6 +77,17 @@ public abstract class FalkenGame<PlayerBrainSpec> : MonoBehaviour
         get
         {
             return _session != null ? _session.SessionTrainingProgress : 0f;
+        }
+    }
+
+    /// <summary>
+    /// Returns true if we've had more FixedUpdates than max steps.
+    /// </summary>
+    protected bool EpisodeCompleted
+    {
+        get
+        {
+            return _steps >= falkenMaxSteps - 1;
         }
     }
 
@@ -133,6 +145,7 @@ public abstract class FalkenGame<PlayerBrainSpec> : MonoBehaviour
     /// </summary>
     protected Falken.Episode CreateEpisode()
     {
+        _steps = 0;
         return _session?.StartEpisode();
     }
 
@@ -162,6 +175,11 @@ public abstract class FalkenGame<PlayerBrainSpec> : MonoBehaviour
     }
 
     protected abstract void ControlChanged();
+
+    void FixedUpdate()
+    {
+        ++_steps;
+    }
 
     void Update()
     {

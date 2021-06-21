@@ -60,7 +60,7 @@ public class CartGame : FalkenGame<CartBrainSpec>
         ResetGame(true);
     }
 
-    public void FixedUpdate()
+    public void LateUpdate()
     {
         if (track && car)
         {
@@ -83,7 +83,7 @@ public class CartGame : FalkenGame<CartBrainSpec>
             }
 
             // Checks whether the episode has been completed w/o reaching the goal.
-            if (episode != null && episode.Completed)
+            if (episode != null && EpisodeCompleted)
             {
                 Debug.Log("Failed episode " + episode.Id);
                 ResetGame(false);

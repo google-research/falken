@@ -94,8 +94,10 @@ def generate():
   """
   generated_protos_dir = get_generated_protos_dir()
 
-  if not pip_installer.find_module_by_name('falken_service_pb2_grpc',
+  if not pip_installer.find_module_by_name('brain_pb2',
                                            search_path=generated_protos_dir):
+    if getattr(sys, 'frozen', False):
+      raise ModuleNotFoundError('Protocol Buffers modules not frozen.')
     os.makedirs(generated_protos_dir)
     source_proto_dirs = get_source_proto_dirs()
     downloaded_proto_dir = download_external_protos()

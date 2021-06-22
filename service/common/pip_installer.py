@@ -131,7 +131,7 @@ def _module_installed(pip_module_name: str, import_module_name: str):
   if import_module_name and find_module_by_name(import_module_name):
     return True
   global _INSTALLED_MODULE_LIST
-  if not _INSTALLED_MODULE_LIST:
+  if not _INSTALLED_MODULE_LIST and not getattr(sys, 'frozen', False):
     logging.debug('Listing installed pip packages')
     result = subprocess.run([sys.executable, '-m', 'pip', 'list'],
                             stdout=subprocess.PIPE, check=True)
@@ -145,7 +145,7 @@ def _module_installed(pip_module_name: str, import_module_name: str):
 
 
 def _install_module(module: str, version: str):
-  """Install a Python module.
+  """Install a Python module if the application isn't frozen.
 
   Args:
     module: Name of the module to install.
@@ -155,8 +155,9 @@ def _install_module(module: str, version: str):
   Raises:
     subprocess.CalledProcessError: If module installation fails.
   """
-  logging.info('Installing Python module %s...', module)
-  subprocess.check_call(_PIP_INSTALL_ARGS + [f'{module}{version}'])
+  if not getattr(sys, 'frozen', False):
+    logging.info('Installing Python module %s...', module)
+    subprocess.check_call(_PIP_INSTALL_ARGS + [f'{module}{version}'])
 
 
 def _check_platform_constraints(module: str, constraints: PlatformConstraints):

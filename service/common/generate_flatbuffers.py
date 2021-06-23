@@ -22,6 +22,7 @@ module in the code that needs the flatbuffers.
 """
 
 import glob
+import importlib
 import os
 import platform
 import shutil

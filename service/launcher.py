@@ -54,8 +54,9 @@ flags.DEFINE_bool(
     'one project_id is specified via --project_ids')
 flags.DEFINE_multi_string(
     'hyperparameters',
-    r'{"fc_layers":[32], "learning_rate":1e-4, "continuous":false, '
-    r'"min_train_examples": 10000, "max_train_examples": 30000000}',
+    r'{"fc_layers":[64], "learning_rate":1e-4, "continuous":false, '
+    r'"min_train_examples":100000, "max_train_examples":30000000, '
+    r'"activation_fn":"tanh"}',
     'Hyperparameters to train the models on.')
 
 

@@ -331,7 +331,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 20
-  infiniteHealth: 0
+  infiniteHealth: 1
   deathAnim: 
 --- !u!1 &4552860408241211176
 GameObject:

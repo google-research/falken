@@ -27,7 +27,7 @@ from absl.testing import absltest
 # generate protos explicitly.
 os.environ['FALKEN_AUTO_GENERATE_PROTOS'] = '0'
 from common import generate_protos
-
+from common import pip_installer
 
 class GenerateProtosTest(absltest.TestCase):
   """Test generate_protos module."""
@@ -56,11 +56,14 @@ class GenerateProtosTest(absltest.TestCase):
   @mock.patch.object(generate_protos, 'get_generated_protos_dir')
   @mock.patch.object(generate_protos, 'clean_up')
   @mock.patch.object(subprocess, 'check_call')
-  def test_generate_protos_failed(self, mock_check_call, mock_clean_up,
+  @mock.patch.object(pip_installer, 'find_module_by_name')
+  def test_generate_protos_failed(self, mock_find_module_by_name,
+                                  mock_check_call, mock_clean_up,
                                   mock_get_generated_protos_dir):
     """Call the generate method and make sure it cleans up on failure."""
     mock_get_generated_protos_dir.return_value = os.path.join(
         self._temp_dir.name, generate_protos._PROTO_GEN_DIR)
+    mock_find_module_by_name.return_value = None
     mock_check_call.side_effect = subprocess.CalledProcessError(1, 'fake')
     with self.assertRaises(subprocess.CalledProcessError):
       generate_protos.generate()

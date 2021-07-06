@@ -257,10 +257,10 @@ session.Stop()
 
 ## Build the Unity SDK
 
-1. Make a new subdirectory called build in the sdk/cpp directory and go into
+1. Make a new subdirectory called build in the sdk/unity directory and go into
 that directory:
    ```
-   cd sdk/cpp
+   cd sdk/unity
    mkdir build
    cd build
    ```

@@ -58,7 +58,8 @@ def convert(saved_model_path: str,
   # Get the signature of the main function from the original model.
   main_graph = model.signatures[signature_keys[0]]
 
-  converter = tf.lite.TFLiteConverter.from_concrete_functions([main_graph])
+  converter = tf.lite.TFLiteConverter.from_concrete_functions([main_graph],
+                                                              model)
   converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
   converter.allow_custom_ops = True
   # Patch the TensorFlow Lite model with the original graph's signature.

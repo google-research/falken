@@ -27,7 +27,7 @@
     "mocha": "^8.4.0",
     "nock": "^13.1.0",
     "webpack-cli": "^4.4.0",
-    "webpack-dev-server": "^3.11.2"
+    "webpack-dev-server": "^5.0.4"
   },
   "dependencies": {
     "@seregpie/three.text-sprite": "^3.2.0",

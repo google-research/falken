@@ -35,6 +35,6 @@
     "google-protobuf": "^3.14.0",
     "grpc-web": "^1.2.1",
     "three": "^0.125.1",
-    "webpack": "^5.18.0"
+    "webpack": "^5.94.0"
   }
 }

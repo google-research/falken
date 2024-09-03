@@ -220,19 +220,19 @@ jobs:
     runs-on:  ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: cpp_sdk_linux_artifacts
           path: ${{ env.INPUT_ARTIFACTS_DIR }}/Linux
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: cpp_sdk_macos_artifacts
           path: ${{ env.INPUT_ARTIFACTS_DIR }}/Darwin
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: cpp_sdk_windows_release_artifacts
           path: ${{ env.INPUT_ARTIFACTS_DIR }}/Windows
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: cpp_sdk_windows_debug_artifacts
           path: ${{ env.INPUT_ARTIFACTS_DIR }}/Windows
@@ -255,15 +255,15 @@ jobs:
     runs-on:  ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: unity_sdk_linux_artifacts
           path: ${{ env.INPUT_ARTIFACTS_DIR }}/Linux
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: unity_sdk_macos_artifacts
           path: ${{ env.INPUT_ARTIFACTS_DIR }}/Darwin
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: unity_sdk_windows_artifacts
           path: ${{ env.INPUT_ARTIFACTS_DIR }}/Windows
@@ -292,11 +292,11 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: cpp_sdk_multiplatform_packaged_artifacts
           path: ${{ env.INPUT_ARTIFACTS_DIR }}
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: unity_sdk_multiplatform_packaged_artifacts
           path: ${{ env.INPUT_ARTIFACTS_DIR }}

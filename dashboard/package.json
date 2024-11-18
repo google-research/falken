@@ -22,7 +22,7 @@
   "devDependencies": {
     "adm-zip": "^0.5.5",
     "debug": "^2.6.9",
-    "firebase": "^8.2.5",
+    "firebase": "^10.9.0",
     "firebase-tools": "^9.2.2",
     "mocha": "^8.4.0",
     "nock": "^13.1.0",

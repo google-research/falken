@@ -23,8 +23,8 @@
     "adm-zip": "^0.5.5",
     "debug": "^2.6.9",
     "firebase": "^8.2.5",
-    "firebase-tools": "^9.2.2",
-    "mocha": "^8.4.0",
+    "firebase-tools": "^13.27.0",
+    "mocha": "^11.7.6",
     "nock": "^13.1.0",
     "webpack-cli": "^4.4.0",
     "webpack-dev-server": "^3.11.2"
